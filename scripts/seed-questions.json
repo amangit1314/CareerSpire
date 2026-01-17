@@ -1,0 +1,196 @@
+[
+  {
+    "title": "Two Sum",
+    "description": "Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target.\n\nYou may assume that each input would have exactly one solution, and you may not use the same element twice.\n\nYou can return the answer in any order.\n\nExample:\nInput: nums = [2,7,11,15], target = 9\nOutput: [0,1]\nExplanation: Because nums[0] + nums[1] == 9, we return [0, 1].",
+    "topic": "arrays",
+    "difficulty": "easy",
+    "type": "dsa",
+    "language": "javascript",
+    "testCases": [
+      {
+        "input": [
+          [
+            2,
+            7,
+            11,
+            15
+          ],
+          9
+        ],
+        "expectedOutput": [
+          0,
+          1
+        ],
+        "isHidden": false
+      },
+      {
+        "input": [
+          [
+            3,
+            2,
+            4
+          ],
+          6
+        ],
+        "expectedOutput": [
+          1,
+          2
+        ],
+        "isHidden": false
+      },
+      {
+        "input": [
+          [
+            3,
+            3
+          ],
+          6
+        ],
+        "expectedOutput": [
+          0,
+          1
+        ],
+        "isHidden": true
+      }
+    ],
+    "expectedComplexity": "O(n)",
+    "hints": [
+      "Use a hash map to store seen numbers",
+      "Check if target - current number exists in the map"
+    ]
+  },
+  {
+    "title": "Reverse Linked List",
+    "description": "Given the head of a singly linked list, reverse the list, and return the reversed list.\n\nExample:\nInput: head = [1,2,3,4,5]\nOutput: [5,4,3,2,1]",
+    "topic": "linked-list",
+    "difficulty": "easy",
+    "type": "dsa",
+    "language": "javascript",
+    "testCases": [
+      {
+        "input": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "expectedOutput": [
+          5,
+          4,
+          3,
+          2,
+          1
+        ],
+        "isHidden": false
+      },
+      {
+        "input": [
+          1,
+          2
+        ],
+        "expectedOutput": [
+          2,
+          1
+        ],
+        "isHidden": false
+      },
+      {
+        "input": [],
+        "expectedOutput": [],
+        "isHidden": true
+      }
+    ],
+    "expectedComplexity": "O(n)",
+    "hints": [
+      "Use three pointers: prev, current, and next",
+      "Iterate through the list and reverse the links"
+    ]
+  },
+  {
+    "title": "Maximum Subarray",
+    "description": "Given an integer array nums, find the contiguous subarray (containing at least one number) which has the largest sum and return its sum.\n\nA subarray is a contiguous part of an array.\n\nExample:\nInput: nums = [-2,1,-3,4,-1,2,1,-5,4]\nOutput: 6\nExplanation: [4,-1,2,1] has the largest sum = 6.",
+    "topic": "dynamic-programming",
+    "difficulty": "medium",
+    "type": "dsa",
+    "language": "javascript",
+    "testCases": [
+      {
+        "input": [
+          -2,
+          1,
+          -3,
+          4,
+          -1,
+          2,
+          1,
+          -5,
+          4
+        ],
+        "expectedOutput": 6,
+        "isHidden": false
+      },
+      {
+        "input": [
+          1
+        ],
+        "expectedOutput": 1,
+        "isHidden": false
+      },
+      {
+        "input": [
+          5,
+          4,
+          -1,
+          7,
+          8
+        ],
+        "expectedOutput": 23,
+        "isHidden": true
+      }
+    ],
+    "expectedComplexity": "O(n)",
+    "hints": [
+      "Use Kadane's algorithm",
+      "Keep track of the maximum sum ending at current position"
+    ]
+  },
+  {
+    "title": "Closure Example",
+    "description": "Write a function that creates a counter using closures. The function should return an object with two methods: increment() and getValue().\n\nExample:\nconst counter = createCounter(0);\ncounter.increment(); // returns 1\ncounter.increment(); // returns 2\ncounter.getValue(); // returns 2",
+    "topic": "closures",
+    "difficulty": "easy",
+    "type": "coding",
+    "language": "javascript",
+    "testCases": [
+      {
+        "input": 0,
+        "expectedOutput": {
+          "increment": "function",
+          "getValue": "function"
+        },
+        "isHidden": false
+      }
+    ],
+    "expectedComplexity": "O(1)",
+    "hints": [
+      "Use a closure to maintain state",
+      "Return an object with methods that access the closed variable"
+    ]
+  },
+  {
+    "title": "Tell me about yourself",
+    "description": "This is a common HR interview question. Provide a structured answer that covers:\n1. Your background and experience\n2. Your key skills and achievements\n3. Why you're interested in this role/company\n\nKeep your answer concise (2-3 minutes when spoken).",
+    "topic": "introduction",
+    "difficulty": "easy",
+    "type": "hr",
+    "language": null,
+    "testCases": [],
+    "expectedComplexity": null,
+    "hints": [
+      "Start with your current role or recent experience",
+      "Highlight 2-3 key achievements",
+      "Connect your experience to the role you're applying for"
+    ]
+  }
+]

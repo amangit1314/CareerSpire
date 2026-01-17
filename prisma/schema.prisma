@@ -1,0 +1,316 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserLevel {
+  FRESHER
+  INTERMEDIATE
+  EXPERIENCED
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum QuestionType {
+  DSA
+  CODING
+  HR
+  APTITUDE
+}
+
+enum ProgrammingLanguage {
+  JAVASCRIPT
+  TYPESCRIPT
+  PYTHON
+  JAVA
+}
+
+enum Framework {
+  REACT
+  ANGULAR
+  VUE
+  NODE
+  FASTAPI
+  DJANGO
+  SPRING_BOOT
+  NONE
+}
+
+enum QuestionFormat {
+  THEORY
+  OUTPUT_PREDICTION
+  CODE_WRITING
+  MCQ
+  DEBUGGING
+}
+
+enum SubscriptionTier {
+  FREE
+  STARTER
+  PRO
+}
+
+enum MockSessionStatus {
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+enum NotificationType {
+  SYSTEM
+  MOCK_RESULT
+  PAYMENT
+  REMINDER
+  SECURITY
+}
+
+enum EmailStatus {
+  QUEUED
+  SENT
+  FAILED
+}
+
+model User {
+  id                    String          @id @default(uuid())
+  email                 String          @unique
+  passwordHash          String?
+  emailVerified         DateTime?
+  name                  String?
+  image                 String?
+  level                 UserLevel       @default(FRESHER)
+  freeMocksRemaining    Int             @default(2)
+  subscriptionTier       SubscriptionTier? @default(FREE)
+  subscriptionEndsAt    DateTime?
+  weakTopics            String[]        @default([])
+  lastLoginAt           DateTime?
+  
+  // Gamification fields
+  xp                    Int             @default(0)
+  currentStreak         Int             @default(0)
+  longestStreak         Int             @default(0)
+  lastPracticeAt        DateTime?
+  badges                String[]        @default([])
+  totalMocksCompleted   Int             @default(0)
+  
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+
+  accounts              Account[]
+  sessions              Session[]
+  mockSessions          MockSession[]
+  payments              Payment[]
+  notifications         Notification[]
+  notificationPreference NotificationPreference?
+  emailLogs             EmailLog[]
+  mediaObjects          MediaObject[]
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(uuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  sessionToken String   @unique
+  refreshTokenHash String
+  userId       String
+  expires      DateTime
+  createdAt    DateTime @default(now())
+  revokedAt    DateTime?
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+model Question {
+  id                 String              @id @default(uuid())
+  title              String
+  description        String              @db.Text
+  topic              String
+  difficulty         Difficulty
+  type               QuestionType
+  language           ProgrammingLanguage?
+  framework          Framework?          @default(NONE)
+  questionFormat     QuestionFormat      @default(CODE_WRITING)
+  testCases          Json                // Array of TestCase objects
+  expectedComplexity String?
+  hints              String[]            @default([])
+  timeAllocation     Int                 @default(10) // minutes
+  codeSnippet        String?             @db.Text // For output prediction questions
+  options            String[]            @default([]) // For MCQ questions
+  correctAnswer      String?             // For MCQ/output questions
+  createdAt          DateTime            @default(now())
+
+  mockResults        MockResult[]
+
+  @@index([topic, difficulty])
+  @@index([type, difficulty])
+  @@index([framework])
+  @@map("questions")
+}
+
+model MockSession {
+  id              String              @id @default(uuid())
+  userId          String
+  questionIds     String[]            // Array of question IDs
+  status          MockSessionStatus   @default(IN_PROGRESS)
+  interviewType   QuestionType        @default(CODING)
+  difficulty      Difficulty          @default(MEDIUM)
+  language        ProgrammingLanguage?
+  framework       Framework?          @default(NONE)
+  totalDuration   Int                 @default(45) // minutes
+  startedAt       DateTime            @default(now())
+  completedAt     DateTime?
+
+  user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  results         MockResult[]
+
+  @@index([userId])
+  @@index([status])
+  @@map("mock_sessions")
+}
+
+model MockResult {
+  id          String    @id @default(uuid())
+  sessionId   String
+  questionId  String
+  userCode    String    @db.Text
+  testResults Json      // TestResult object
+  score       Int
+  feedback    Json      // Feedback object
+  timeSpent   Int       // seconds
+  submittedAt DateTime  @default(now())
+
+  session     MockSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  question    Question    @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([questionId])
+  @@map("mock_results")
+}
+
+model Payment {
+  id                String        @id @default(uuid())
+  userId            String
+  razorpayOrderId   String?       @unique
+  razorpayPaymentId String?
+  amount            Int           // in paise
+  currency          String        @default("INR")
+  status            PaymentStatus @default(PENDING)
+  subscriptionTier  SubscriptionTier?
+  createdAt         DateTime      @default(now())
+
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@map("payments")
+}
+
+model Notification {
+  id          String          @id @default(uuid())
+  userId      String
+  type        NotificationType
+  title       String
+  body        String          @db.Text
+  meta        Json?
+  readAt      DateTime?
+  createdAt   DateTime        @default(now())
+
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emailLogs   EmailLog[]
+
+  @@index([userId, createdAt])
+  @@index([userId, readAt])
+  @@map("notifications")
+}
+
+model NotificationPreference {
+  userId        String   @id
+  emailEnabled  Boolean  @default(true)
+  inAppEnabled  Boolean  @default(true)
+  digestEnabled Boolean  @default(false)
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notification_preferences")
+}
+
+model EmailLog {
+  id                String          @id @default(uuid())
+  userId            String?
+  notificationId    String?
+  to                String
+  subject           String
+  status            EmailStatus     @default(QUEUED)
+  providerMessageId String?
+  error             String?         @db.Text
+  createdAt         DateTime        @default(now())
+
+  user              User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+  notification      Notification?   @relation(fields: [notificationId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([notificationId])
+  @@index([status])
+  @@map("email_logs")
+}
+
+model MediaObject {
+  id               String   @id @default(uuid())
+  userId           String
+  bucket           String
+  path             String
+  contentType      String
+  size             Int
+  signedUrlExpires DateTime?
+  createdAt        DateTime @default(now())
+
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("media_objects")
+}

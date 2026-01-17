@@ -1,0 +1,21 @@
+now generate the questions according to the most avialable topic, and when user search for any skill lets say Nest.js,
+
+so ask ai to genrate all possible topic in it and a question bank for the skill to practice for interview or learning,
+
+and store them in the db, so that next any anybody search it we can serve it from our db,
+
+basically we are creating an full ai based question bank, skill learning, skill practicing and mock interview platform.
+
+which most people have never seen,
+
+so that even we dont have any info about anything we will ask it from ai like, we ask to chatgpt, deepseek, etc
+
+and it serves us, main difference is we will serve the result as a content in out website,
+
+if we already have info in db we will serve from db, if we dont have ai will generate it and we will show it
+
+
+
+--------------------------------------------------------------------------------------
+16-01-26 - 12:09 pm
+--------------------------------------------------------------------------------------
