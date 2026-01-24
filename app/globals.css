@@ -236,3 +236,145 @@
     @apply bg-background text-foreground;
   }
 }
+
+:root {
+  /* Chart-specific color variables */
+  --chart-primary: 222.2 47.4% 11.2%;
+  --chart-secondary: 220 8.9% 46.1%;
+  --chart-border: 220 13% 91%;
+  --chart-grid: 220 13% 91%;
+  --chart-tooltip-bg: 0 0% 100%;
+  --chart-tooltip-border: 220 13% 91%;
+
+  /* Gradient backgrounds */
+  --gradient-primary: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary)/0.8) 100%);
+  --gradient-secondary: linear-gradient(135deg, hsl(var(--secondary)) 0%, hsl(var(--secondary)/0.8) 100%);
+
+  /* Glass morphism effects */
+  --glass-bg: rgba(255, 255, 255, 0.1);
+  --glass-border: rgba(255, 255, 255, 0.2);
+  --glass-blur: blur(10px);
+
+  /* Chart spacing */
+  --chart-padding: 1rem;
+  --chart-radius: 0.75rem;
+
+  /* Animation */
+  --animation-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+  --animation-duration: 300ms;
+}
+
+.dark {
+  /* Dark mode chart colors */
+  --chart-primary: 210 40% 98%;
+  --chart-secondary: 217.2 32.6% 83.5%;
+  --chart-border: 215 25.2% 26.9%;
+  --chart-grid: 215 25.2% 26.9%;
+  --chart-tooltip-bg: 222.2 47.4% 11.2%;
+  --chart-tooltip-border: 215 25.2% 26.9%;
+
+  /* Dark mode glass */
+  --glass-bg: rgba(0, 0, 0, 0.2);
+  --glass-border: rgba(255, 255, 255, 0.1);
+}
+
+/* Custom styles for Recharts */
+.recharts-wrapper {
+  font-family: var(--font-sans);
+}
+
+.recharts-cartesian-grid-horizontal line,
+.recharts-cartesian-grid-vertical line {
+  stroke: hsl(var(--border) / 0.2);
+}
+
+.recharts-tooltip-wrapper {
+  outline: none;
+}
+
+.recharts-active-dot {
+  filter: drop-shadow(0 0 4px hsl(var(--primary) / 0.5));
+}
+
+.recharts-curve {
+  transition: stroke-width 0.2s var(--animation-smooth);
+}
+
+.recharts-curve:hover {
+  stroke-width: 3;
+}
+
+/* Custom scrollbar for tooltips if needed */
+.custom-tooltip-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--primary) / 0.3) transparent;
+}
+
+.custom-tooltip-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+
+.custom-tooltip-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-tooltip-scroll::-webkit-scrollbar-thumb {
+  background: hsl(var(--primary) / 0.3);
+  border-radius: 2px;
+}
+
+/* Smooth animations for chart elements */
+@keyframes lineDraw {
+  from {
+    stroke-dashoffset: 1000;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.animate-line {
+  animation: lineDraw 1.5s var(--animation-smooth) forwards;
+}
+
+/* Glass effect utility classes */
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+}
+
+.glass-primary {
+  background: linear-gradient(135deg,
+      hsl(var(--primary) / 0.1) 0%,
+      hsl(var(--primary) / 0.05) 100%);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid hsl(var(--primary) / 0.2);
+}
+
+/* Chart container styles */
+.chart-container {
+  background: hsl(var(--card));
+  border-radius: var(--chart-radius);
+  border: 1px solid hsl(var(--border));
+  padding: var(--chart-padding);
+  transition: all var(--animation-duration) var(--animation-smooth);
+}
+
+.chart-container:hover {
+  border-color: hsl(var(--primary) / 0.3);
+  box-shadow: 0 4px 20px hsl(var(--primary) / 0.1);
+}
+
+/* Responsive chart adjustments */
+@media (max-width: 640px) {
+  .chart-container {
+    padding: 0.5rem;
+  }
+
+  .recharts-text {
+    font-size: 10px;
+  }
+}

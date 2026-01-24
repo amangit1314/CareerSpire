@@ -201,21 +201,22 @@ export async function getTopicDetails(categorySlug: string, topicSlug: string) {
     // 1. Get Guide (Theory)
     const guide = await generateTopicGuide(categorySlug, topicSlug);
 
-    // 2. Get Questions
+    // 2. Get Questions (Look for exact topic match first for uniqueness)
     let questions = await prisma.question.findMany({
         where: {
-            topic: { contains: topicSlug, mode: 'insensitive' }
+            topic: { equals: topicSlug, mode: 'insensitive' }
         },
         take: 10
     });
 
-    // 3. Generate questions if missing
+    // 3. Generate questions if missing or not enough unique ones
     if (questions.length < 3) {
+        console.log(`Generating fresh questions for topic: ${topicSlug}`);
         const aiQuestions = await generateAIQuestions({
             difficulty: 'MEDIUM',
             type: 'CODING',
             count: 3,
-            topics: [topicSlug] // Specific topic
+            topics: [`${categorySlug}: ${topicSlug}`] // Contextual prompt
         });
 
         // Save generated questions
@@ -226,7 +227,7 @@ export async function getTopicDetails(categorySlug: string, topicSlug: string) {
                         data: {
                             title: q.title,
                             description: q.description,
-                            topic: topicSlug, // Enforce specific topic tag
+                            topic: topicSlug, // Tag with the specific topic slug
                             difficulty: q.difficulty as Difficulty,
                             type: q.type as QuestionType,
                             testCases: q.testCases,
@@ -240,9 +241,9 @@ export async function getTopicDetails(categorySlug: string, topicSlug: string) {
                     console.error('Failed to save generated question:', e);
                 }
             }
-            // Re-fetch
+            // Re-fetch using exact match
             questions = await prisma.question.findMany({
-                where: { topic: { contains: topicSlug, mode: 'insensitive' } },
+                where: { topic: { equals: topicSlug, mode: 'insensitive' } },
                 take: 10
             });
         }
@@ -252,4 +253,67 @@ export async function getTopicDetails(categorySlug: string, topicSlug: string) {
         guide,
         questions
     };
+}
+
+export async function getQuestionDetails(questionId: string) {
+    try {
+        const question = await prisma.question.findUnique({
+            where: { id: questionId }
+        });
+        return question;
+    } catch (error) {
+        console.error('Failed to fetch question details:', error);
+        return null;
+    }
+}
+
+export async function generatePracticeExplanation(topic: string, questionTitle: string, questionDesc: string) {
+    try {
+        const { llmClient } = await import('@/lib/llmClient');
+        const prompt = `You are a ChatGPT-like AI tutor for a technical interview prep platform.
+The user is about to practice a question on the topic: "${topic}".
+Question Title: "${questionTitle}"
+Question Description: "${questionDesc}"
+
+Step 1: Briefly explain the core concept behind this topic in a friendly, conversational, and encouraging tone. (2-3 short paragraphs).
+Step 2: Connect it to why it's important in real-world engineering or interviews.
+Step 3: End by prompting the user to take a shot at the question.
+
+Format the response in Markdown. Do not give away the solution yet.`;
+
+        const response = await llmClient(prompt);
+        return response;
+    } catch (error) {
+        console.error('Failed to generate practice explanation:', error);
+        return "I'm having trouble connecting to my brain right now, but let's dive into this question! What do you think is the first step?";
+    }
+}
+
+export async function getTutorResponse(
+    question: {
+        title: string;
+        description: string;
+        topic: string;
+        expectedAnswerFormat?: string;
+    },
+    userAnswer: string
+) {
+    try {
+        const { generateFeedback } = await import('@/lib/llm');
+        const feedback = await generateFeedback(
+            {
+                title: question.title,
+                description: question.description,
+                topic: question.topic,
+                expectedAnswerFormat: question.expectedAnswerFormat,
+            },
+            userAnswer,
+            { passed: 0, total: 0 },
+            0
+        );
+        return feedback;
+    } catch (error) {
+        console.error('Failed to get tutor response:', error);
+        throw error;
+    }
 }

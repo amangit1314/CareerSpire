@@ -4,14 +4,17 @@ import { Editor } from '@monaco-editor/react';
 import { useState } from 'react';
 import { Button } from './ui/button';
 import { Play, Loader2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface CodeEditorProps {
-  language?: 'javascript' | 'python';
+  language?: string;
   value: string;
   onChange: (value: string | undefined) => void;
   onRun?: () => void;
   isRunning?: boolean;
   height?: string;
+  readOnly?: boolean;
+  className?: string;
 }
 
 export function CodeEditor({
@@ -21,9 +24,11 @@ export function CodeEditor({
   onRun,
   isRunning = false,
   height = '500px',
+  readOnly = false,
+  className,
 }: CodeEditorProps) {
   return (
-    <div className="relative border rounded-lg overflow-hidden bg-[#1e1e1e]">
+    <div className={cn("relative border rounded-lg overflow-hidden bg-[#1e1e1e] flex flex-col", className)}>
       <div className="flex items-center justify-between px-4 py-2 bg-[#252526] border-b">
         <span className="text-sm text-muted-foreground font-mono">
           {language}
@@ -49,24 +54,28 @@ export function CodeEditor({
           </Button>
         )}
       </div>
-      <Editor
-        height={height}
-        language={language}
-        value={value}
-        onChange={onChange}
-        theme="vs-dark"
-        options={{
-          minimap: { enabled: false },
-          fontSize: 14,
-          lineNumbers: 'on',
-          roundedSelection: false,
-          scrollBeyondLastLine: false,
-          automaticLayout: true,
-          tabSize: 2,
-          wordWrap: 'on',
-          padding: { top: 16, bottom: 16 },
-        }}
-      />
+      <div className="flex-1 min-h-0">
+        <Editor
+          height={height}
+          language={language}
+          value={value}
+          onChange={onChange}
+          theme="vs-dark"
+          options={{
+            readOnly,
+            domReadOnly: readOnly,
+            minimap: { enabled: false },
+            fontSize: 14,
+            lineNumbers: 'on',
+            roundedSelection: false,
+            scrollBeyondLastLine: false,
+            automaticLayout: true,
+            tabSize: 2,
+            wordWrap: 'on',
+            padding: { top: 16, bottom: 16 },
+          }}
+        />
+      </div>
     </div>
   );
 }

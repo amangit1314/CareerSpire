@@ -51,10 +51,10 @@ export function Navbar() {
 
           <div className="hidden md:flex items-center space-x-8">
             {/* 'Features', */}
-            {['Dashboard', 'Pricing', 'Resources'].map((item) => (
+            {['Dashboard', 'Community', 'Pricing', 'Resources'].map((item) => (
               <Link
                 key={item}
-                href={item === 'Dashboard' ? '/dashboard' : item === 'Pricing' ? '/pricing' : item === 'Resources' ? '/resources' : '#'}
+                href={item === 'Dashboard' ? '/dashboard' : item === 'Community' ? '/community' : item === 'Pricing' ? '/pricing' : item === 'Resources' ? '/resources' : '#'}
                 className={`${dmSans.className} text-sm font-medium text-muted-foreground/80 hover:text-primary transition-colors relative group`}
               >
                 {item}
@@ -63,8 +63,6 @@ export function Navbar() {
             ))}
 
             <div className="h-4 w-px bg-border/50 mx-2" />
-
-
 
             {isAuthenticated ? (
               <div className="flex items-center space-x-4">

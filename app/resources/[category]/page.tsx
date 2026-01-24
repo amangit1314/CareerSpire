@@ -62,7 +62,7 @@ export default async function ResourceCategoryPage({ params }: { params: Promise
                                     <Badge variant={
                                         topic.difficulty === 'Beginner' ? 'secondary' :
                                             topic.difficulty === 'Intermediate' ? 'default' : 'destructive'
-                                    } className="text-xs">
+                                    } className="text-xs dark:text-white">
                                         {topic.difficulty}
                                     </Badge>
                                     <span className="text-sm font-medium text-primary flex items-center opacity-0 group-hover:opacity-100 transition-all transform translate-x-[-10px] group-hover:translate-x-0">

@@ -146,8 +146,11 @@ export default async function TopicDetailsPage({ params }: { params: Promise<{ c
                         {questions.length > 0 ? (
                             questions.map((q: any, index: number) => (
                                 <QuestionCard
-                                    key={q.id} question={q} index={index + 1}
-                                // category={q.category}
+                                    key={q.id}
+                                    question={q}
+                                    index={index + 1}
+                                    categorySlug={category}
+                                    topicSlug={topic}
                                 />
                             ))
                         ) : (

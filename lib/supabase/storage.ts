@@ -29,8 +29,8 @@ export async function createSignedUploadUrl(
   contentType: string,
   size: number
 ): Promise<UploadUrlResponse> {
-  // Validate file size (max 10MB)
-  const MAX_SIZE = 10 * 1024 * 1024;
+  // Validate file size (max 100MB for video)
+  const MAX_SIZE = 100 * 1024 * 1024;
   if (size > MAX_SIZE) {
     throw new Error(`File size exceeds maximum allowed size of ${MAX_SIZE / 1024 / 1024}MB`);
   }
@@ -43,6 +43,8 @@ export async function createSignedUploadUrl(
     'image/webp',
     'application/pdf',
     'text/plain',
+    'video/webm',
+    'video/mp4',
   ];
   if (!allowedTypes.includes(contentType)) {
     throw new Error(`File type ${contentType} is not allowed. Allowed types: ${allowedTypes.join(', ')}`);
@@ -113,7 +115,7 @@ export async function ensureBucketExists(): Promise<void> {
   if (!bucketExists) {
     const { error: createError } = await supabase.storage.createBucket(MEDIA_BUCKET, {
       public: false,
-      fileSizeLimit: 10485760, // 10MB
+      fileSizeLimit: 104857600, // 100MB
       allowedMimeTypes: [
         'image/jpeg',
         'image/png',
@@ -121,6 +123,8 @@ export async function ensureBucketExists(): Promise<void> {
         'image/webp',
         'application/pdf',
         'text/plain',
+        'video/webm',
+        'video/mp4',
       ],
     });
 

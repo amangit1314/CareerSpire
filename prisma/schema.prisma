@@ -7,7 +7,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  url      = env("DIRECT_URL")
 }
 
 enum UserLevel {
@@ -27,6 +27,7 @@ enum QuestionType {
   CODING
   HR
   APTITUDE
+  VIDEO
 }
 
 enum ProgrammingLanguage {
@@ -38,6 +39,8 @@ enum ProgrammingLanguage {
 
 enum Framework {
   REACT
+  NEXT
+  NEST
   ANGULAR
   VUE
   NODE
@@ -53,6 +56,7 @@ enum QuestionFormat {
   CODE_WRITING
   MCQ
   DEBUGGING
+  DSA
 }
 
 enum SubscriptionTier {
@@ -119,6 +123,7 @@ model User {
   notificationPreference NotificationPreference?
   emailLogs             EmailLog[]
   mediaObjects          MediaObject[]
+  interviewExperiences  InterviewExperience[]
 
   @@map("users")
 }
@@ -166,25 +171,47 @@ model VerificationToken {
 }
 
 model Question {
-  id                 String              @id @default(uuid())
-  title              String
-  description        String              @db.Text
-  topic              String
-  difficulty         Difficulty
-  type               QuestionType
-  language           ProgrammingLanguage?
-  framework          Framework?          @default(NONE)
-  questionFormat     QuestionFormat      @default(CODE_WRITING)
-  testCases          Json                // Array of TestCase objects
-  expectedComplexity String?
+  id                   String              @id @default(uuid())
+  title                String
+  description          String              @db.Text
+  topic                String
+  difficulty           Difficulty
+  type                 QuestionType
+  language             ProgrammingLanguage?
+  framework            Framework?          @default(NONE)
+  questionFormat       QuestionFormat      @default(CODE_WRITING)
+
+  
   hints              String[]            @default([])
   timeAllocation     Int                 @default(10) // minutes
-  codeSnippet        String?             @db.Text // For output prediction questions
-  options            String[]            @default([]) // For MCQ questions
-  correctAnswer      String?             // For MCQ/output questions
-  createdAt          DateTime            @default(now())
 
-  mockResults        MockResult[]
+  // DSA-specific
+  testCases            Json?
+  expectedComplexity   String?
+
+  // Coding language interview
+  tags                 String[]            @default([])
+  followUps            String[]            @default([])
+  expectedAnswerFormat AnswerFormat         @default(SHORT_ANSWER)
+  codeSnippet          String?             @db.Text
+
+  // MCQ / Output prediction
+  options              String[]            @default([])
+  correctAnswer        String?
+
+  // HR interview
+  category             QuestionCategory?
+
+  // Interview logic
+  expectedTimeMinutes  Int                 @default(10)
+  weight               Float               @default(1.0)
+
+  // Metadata
+  source               QuestionSource      @default(AI)
+  version              Int                 @default(1)
+  createdAt            DateTime            @default(now())
+
+  mockResults          MockResult[]
 
   @@index([topic, difficulty])
   @@index([type, difficulty])
@@ -192,10 +219,33 @@ model Question {
   @@map("questions")
 }
 
+enum AnswerFormat {
+  SHORT_ANSWER
+  CODE_SNIPPET
+  REASONING
+  MCQ
+}
+
+enum QuestionCategory {
+  BEHAVIORAL
+  REFLECTION
+  PUZZLE
+  MOTIVATION
+  CONFLICT
+  LEADERSHIP
+  OWNERSHIP
+}
+
+enum QuestionSource {
+  AI
+  CURATED
+  COMMUNITY
+}
+
 model MockSession {
   id              String              @id @default(uuid())
   userId          String
-  questionIds     String[]            // Array of question IDs
+  questionIds     String[]            @default([])           // Array of question IDs
   status          MockSessionStatus   @default(IN_PROGRESS)
   interviewType   QuestionType        @default(CODING)
   difficulty      Difficulty          @default(MEDIUM)
@@ -204,12 +254,26 @@ model MockSession {
   totalDuration   Int                 @default(45) // minutes
   startedAt       DateTime            @default(now())
   completedAt     DateTime?
+  
+  // Dynamic question storage for CODING/HR mocks
+  codingQuestions Json?
+  hrQuestions     Json?
+  
+  // Video interview fields
+  videoRecordingUrl   String?         @db.Text
+  videoThumbnailUrl   String?
+  isPublic            Boolean         @default(false)
+  views               Int             @default(0)
+  likes               Int             @default(0)
 
   user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   results         MockResult[]
+  videoLikes      VideoLike[]
+  comments        VideoComment[]
 
   @@index([userId])
   @@index([status])
+  @@index([isPublic])
   @@map("mock_sessions")
 }
 
@@ -313,4 +377,55 @@ model MediaObject {
 
   @@index([userId])
   @@map("media_objects")
+}
+
+// ============ Community Features ============
+
+model VideoLike {
+  id          String      @id @default(uuid())
+  sessionId   String
+  userId      String
+  createdAt   DateTime    @default(now())
+  
+  session     MockSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  
+  @@unique([sessionId, userId])
+  @@index([sessionId])
+  @@map("video_likes")
+}
+
+model VideoComment {
+  id          String      @id @default(uuid())
+  sessionId   String
+  userId      String
+  content     String      @db.Text
+  createdAt   DateTime    @default(now())
+  
+  session     MockSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  
+  @@index([sessionId])
+  @@map("video_comments")
+}
+
+model InterviewExperience {
+  id            String     @id @default(uuid())
+  userId        String
+  company       String
+  role          String
+  interviewType String     // onsite, phone, video, take-home
+  difficulty    Difficulty
+  outcome       String     // offered, rejected, pending, ghosted
+  rounds        Int        @default(1)
+  questions     Json       // array of question summaries
+  tips          String     @db.Text
+  isPublic      Boolean    @default(true)
+  likes         Int        @default(0)
+  createdAt     DateTime   @default(now())
+  
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([company])
+  @@index([userId])
+  @@index([isPublic])
+  @@map("interview_experiences")
 }

@@ -8,7 +8,7 @@ class ApiManager {
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || '';
     this.client = axios.create({
       baseURL: baseUrl.endsWith('/api') ? baseUrl : `${baseUrl}/api`,
-      timeout: 30000,
+      timeout: 120000,
       headers: {
         'Content-Type': 'application/json',
       },

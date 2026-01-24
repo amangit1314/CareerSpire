@@ -9,7 +9,7 @@ import { z } from 'zod';
 const uploadMediaSchema = z.object({
   fileName: z.string().min(1).max(255),
   contentType: z.string().min(1),
-  size: z.number().min(1).max(10 * 1024 * 1024), // 10MB max
+  size: z.number().min(1).max(100 * 1024 * 1024), // 100MB max
 });
 
 export async function createMediaUploadUrlAction(input: unknown) {

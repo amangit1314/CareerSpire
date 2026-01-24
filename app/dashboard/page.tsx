@@ -8,9 +8,9 @@ import { DashboardSkeleton } from '@/components/skeletons/DashboardSkeleton';
 import { ErrorMessage } from '@/components/ui/error-message';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { TrendingUp, Target, Clock, Award, Play, Loader2 } from 'lucide-react';
+import { TrendingUp, Target, Clock, Award, Play, Loader2, TrendingDown, Minus } from 'lucide-react';
 import Link from 'next/link';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Area } from 'recharts';
 import { formatDate } from '@/lib/utils';
 import { dmSans } from '@/lib/fonts';
 
@@ -106,39 +106,11 @@ export default function DashboardPage() {
             <CardTitle className={dmSans.className}>Score Trend</CardTitle>
           </CardHeader>
           <CardContent className="p-0 sm:p-6">
-            <div className="h-[300px] w-full mt-4">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={stats.scoreTrend} margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis
-                    dataKey="date"
-                    stroke="hsl(var(--muted-foreground))"
-                    fontSize={12}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <YAxis
-                    domain={[0, 100]}
-                    stroke="hsl(var(--muted-foreground))"
-                    fontSize={12}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'hsl(var(--background))',
-                      borderColor: 'hsl(var(--border))',
-                      color: 'hsl(var(--foreground))'
-                    }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="score"
-                    stroke="hsl(var(--primary))"
-                    strokeWidth={2}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+            <div className="h-[300px] w-full">
+
+
+              <ScoreTrendChart stats={stats} />
+
             </div>
           </CardContent>
         </Card>
@@ -209,5 +181,171 @@ export default function DashboardPage() {
         </CardContent>
       </Card>
     </div >
+  );
+}
+
+
+// Enhanced Score Trend Component
+function ScoreTrendChart({ stats }: { stats: any }) {
+  const calculateTrend = () => {
+    if (stats.scoreTrend.length < 2) return 'stable';
+    const recent = stats.scoreTrend.slice(-2);
+    return recent[1].score > recent[0].score ? 'up' :
+      recent[1].score < recent[0].score ? 'down' : 'stable';
+  };
+
+  const trend = calculateTrend();
+  const latestScore = stats.scoreTrend[stats.scoreTrend.length - 1]?.score || 0;
+
+  return (
+    <div className="chart-container p-4">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h3 className="font-semibold text-lg">Performance Trend</h3>
+          <p className="text-sm text-muted-foreground">Your practice scores over time</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className={`
+            px-3 py-1 rounded-full text-sm font-medium flex items-center gap-1
+            ${trend === 'up' ? 'bg-green-500/10 text-green-500' :
+              trend === 'down' ? 'bg-red-500/10 text-red-500' :
+                'bg-blue-500/10 text-blue-500'}
+          `}>
+            {trend === 'up' ? <TrendingUp className="h-4 w-4" /> :
+              trend === 'down' ? <TrendingDown className="h-4 w-4" /> :
+                <Minus className="h-4 w-4" />}
+            {latestScore}%
+          </div>
+        </div>
+      </div>
+
+      <div style={{ height: 250 }}>
+        <ResponsiveContainer width="100%" height={300}>
+          <LineChart
+            data={stats.scoreTrend}
+            margin={{ top: 20, right: 30, left: 10, bottom: 20 }}
+          >
+            <defs>
+              <linearGradient id="scoreGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.8} />
+                <stop offset="95%" stopColor="var(--primary)" stopOpacity={0.1} />
+              </linearGradient>
+            </defs>
+
+            <CartesianGrid
+              strokeDasharray="3 3"
+              stroke="var(--border)"
+              strokeOpacity={0.3}
+              vertical={false}
+            />
+
+            <XAxis
+              dataKey="date"
+              stroke="var(--muted-foreground)"
+              fontSize={11}
+              tickLine={false}
+              axisLine={false}
+              tick={{ fill: 'var(--muted-foreground)' }}
+              tickMargin={10}
+              padding={{ left: 10, right: 10 }}
+            />
+
+            <YAxis
+              domain={[0, 100]}
+              stroke="var(--muted-foreground)"
+              fontSize={11}
+              tickLine={false}
+              axisLine={false}
+              tick={{ fill: 'var(--muted-foreground)' }}
+              tickMargin={10}
+              tickFormatter={(value) => `${value}%`}
+            />
+
+            <Tooltip
+              content={({ active, payload, label }) => {
+                if (active && payload && payload.length) {
+                  return (
+                    <div className="glass p-3 rounded-lg shadow-lg border border-primary/20">
+                      <p className="text-sm font-semibold text-primary">{label}</p>
+                      <p className="text-lg font-bold mt-1">
+                        {payload[0].value}%
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Practice Score
+                      </p>
+                    </div>
+                  );
+                }
+                return null;
+              }}
+              cursor={{
+                stroke: 'var(--primary)',
+                strokeWidth: 1,
+                strokeDasharray: '3 3',
+              }}
+            />
+
+            {/* Area under line */}
+            <Area
+              type="monotone"
+              dataKey="score"
+              stroke="var(--primary)"
+              strokeWidth={3}
+              fillOpacity={1}
+              fill="url(#scoreGradient)"
+              activeDot={{
+                r: 6,
+                fill: 'var(--primary)',
+                stroke: 'hsl(var(--background))',
+                strokeWidth: 2,
+              }}
+            />
+
+            {/* Reference line for average or target */}
+            <ReferenceLine
+              y={stats.averageScore || 70}
+              stroke="var(--secondary)"
+              strokeDasharray="5 5"
+              strokeWidth={1}
+              label={{
+                value: `Avg: ${stats.averageScore || 70}%`,
+                position: 'insideTopRight',
+                fill: 'var(--secondary)',
+                fontSize: 10
+              }}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Chart stats summary */}
+      <div className="grid grid-cols-3 gap-4 mt-6 pt-6 border-t border-border">
+        <div className="text-center">
+          <p className="text-sm text-muted-foreground">Highest</p>
+          <p className="text-xl font-semibold">
+            {Math.max(...stats.scoreTrend.map((s: any) => s.score))}%
+          </p>
+        </div>
+        <div className="text-center">
+          <p className="text-sm text-muted-foreground">Average</p>
+          <p className="text-xl font-semibold">
+            {(stats.scoreTrend.reduce((a: number, b: any) => a + b.score, 0) / stats.scoreTrend.length).toFixed(1)}%
+          </p>
+        </div>
+        <div className="text-center">
+          <p className="text-sm text-muted-foreground">Improvement</p>
+          <p className={`
+            text-xl font-semibold flex items-center justify-center gap-1
+            ${trend === 'up' ? 'text-green-500' :
+              trend === 'down' ? 'text-red-500' : 'text-blue-500'}
+          `}>
+            {trend === 'up' ? '+' : trend === 'down' ? '-' : ''}
+            {stats.scoreTrend.length > 1
+              ? Math.abs(stats.scoreTrend[stats.scoreTrend.length - 1].score - stats.scoreTrend[0].score)
+              : 0}%
+          </p>
+        </div>
+      </div>
+    </div>
   );
 }

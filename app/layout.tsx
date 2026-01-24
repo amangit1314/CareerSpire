@@ -4,6 +4,7 @@ import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { Providers } from "./providers";
 import { inter, dmSans } from "@/lib/fonts";
+import NavbarWrapper from "@/components/NavbarWrapper";
 
 export const metadata: Metadata = {
   title: "Mocky - AI-Powered Mock Interview Platform",
@@ -19,7 +20,9 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} ${dmSans.variable} ${inter.className} antialiased min-h-screen flex flex-col`}>
         <Providers>
-          <Navbar />
+          {/* <Navbar /> */}
+
+          <NavbarWrapper />
           <main className="flex-grow">
             {children}
           </main>
@@ -29,3 +32,5 @@ export default function RootLayout({
     </html>
   );
 }
+
+

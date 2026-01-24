@@ -21,8 +21,14 @@ const FeedbackSchema = z.object({
 export type Feedback = z.infer<typeof FeedbackSchema>;
 
 export async function generateFeedback(
-  question: { title: string; description: string; topic: string },
-  userCode: string,
+  question: {
+    title: string;
+    description: string;
+    topic: string;
+    codeSnippet?: string | null;
+    expectedAnswerFormat?: string;
+  },
+  userAnswer: string,
   testResults: { passed: number; total: number },
   timeSpent: number
 ): Promise<Feedback> {
@@ -31,42 +37,49 @@ export async function generateFeedback(
   const apiUrl = process.env.OPENROUTER_API_URL || 'https://api.openai.com/v1/chat/completions';
   const model = process.env.LLM_MODEL || 'openai/gpt-4o-mini';
 
-  const prompt = `You are an expert coding interview evaluator and mentor. Evaluate this submission and provide corrected code with detailed explanations:
+  const isReasoning = question.expectedAnswerFormat === 'REASONING' || question.expectedAnswerFormat === 'SHORT_ANSWER';
 
-Question: ${question.title}
-Description: ${question.description}
+  const prompt = `You are a Senior Technical Interviewer and Mentor.
+Evaluate the user's submission for the following question.
+
+### Question Details
+Title: ${question.title}
 Topic: ${question.topic}
+Description: ${question.description}
+${question.codeSnippet ? `Reference Code Snippet Provided to User:\n\`\`\`\n${question.codeSnippet}\n\`\`\`` : ''}
 
-User's Submitted Code:
+### User's Submission
+Answer/Code:
 \`\`\`
-${userCode}
+${userAnswer}
 \`\`\`
 
-Test Results: ${testResults.passed}/${testResults.total} passed
-Time Spent: ${timeSpent} seconds
+### Context
+Test Cases Passed: ${testResults.passed}/${testResults.total} (Note: Only applicable for implementation tasks)
+Time Taken: ${timeSpent} seconds
+
+### Evaluation Criteria:
+${isReasoning
+      ? `This is a THEORETICAL/REASONING question. Evaluate the depth of understanding, correctness of concepts, and clarity of explanation. Check for common misconceptions.`
+      : `This is a CODING/IMPLEMENTATION task. Evaluate code quality, efficiency, edge cases, and correctness.`}
 
 Provide structured feedback in JSON format:
 {
   "score": 0-100,
-  "codeQuality": 0-100,
-  "timeComplexity": "O(n) format",
-  "strengths": ["strength1", "strength2"],
-  "improvements": ["improvement1", "improvement2"],
-  "nextQuestion": "suggested topic to practice next",
-  "isCodeCorrect": true/false,
-  "approachSummary": "A 2-3 sentence explanation of the optimal approach to solve this problem",
-  "correctedCode": "The complete corrected/optimized code with inline comments explaining each important step. If user's code was correct, add comments explaining what each part does. Use // for single-line comments. Add a comment for every significant line or block.",
+  "codeQuality": 0-100 (If theory, this represents 'Explanation Quality'),
+  "timeComplexity": "O(n) format (or 'N/A' for theory)",
+  "strengths": ["expert observation 1", "expert observation 2"],
+  "improvements": ["critical improvement 1", "critical improvement 2"],
+  "nextQuestion": "sophisticated follow-up topic",
+  "isCodeCorrect": true/false (Is the conceptual answer or code correct?),
+  "approachSummary": "A 2-3 sentence summary of the ideal professional answer/approach",
+  "correctedCode": "Provide the 'Gold Standard' answer here. If theory, provide a perfect explanation with examples. If code, provide optimized/corrected code wrapped in Markdown code blocks with inline comments.",
   "codeExplanation": [
-    {"lineRange": "1-3", "explanation": "What these lines do"},
-    {"lineRange": "5", "explanation": "What this specific line does"}
+    {"lineRange": "...", "explanation": "Detailed breakdown of the gold standard answer"}
   ]
 }
 
-IMPORTANT for correctedCode:
-- If user's code is CORRECT: Add inline comments (// ...) explaining each step
-- If user's code is INCORRECT: Provide the corrected version with comments explaining the fix
-- Make sure comments are clear and educational
-- Explain the "why" not just the "what"`;
+Be rigorous but constructive. Act like a mentor at a top tech company.`;
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 25000); // 25s timeout for more complex response
@@ -116,7 +129,11 @@ IMPORTANT for correctedCode:
     };
   }
 }
-import { Difficulty, QuestionType } from '@/types/enums';
+
+// --------------------------------------------------------------------------------------------
+import { Difficulty, QuestionType, ProgrammingLanguage, Framework, QuestionFormat, AnswerFormat } from '@/types/enums';
+import { llmClient } from './llmClient';
+
 
 const AISchema = z.object({
   questions: z.array(z.object({
@@ -192,6 +209,271 @@ Format the output as a valid JSON object with a "questions" array. Ensure strict
     return [];
   }
 }
+
+// ======== UTILS ========
+
+export function normalizeEnum<T extends Record<string, string>>(val: any, enumObj: T): T[keyof T] | undefined {
+  if (typeof val !== 'string') return undefined;
+  const upper = val.toUpperCase().trim();
+
+  // Handle common aliases
+  if (upper === 'JS') return enumObj.JAVASCRIPT as any;
+  if (upper === 'TS') return enumObj.TYPESCRIPT as any;
+  if (upper === 'PY') return enumObj.PYTHON as any;
+
+  // Direct match
+  const match = Object.values(enumObj).find(e => e.toUpperCase() === upper);
+  return match as T[keyof T];
+}
+
+// ======== SCHEMAS ========
+
+// DSA Schema
+const DSAQuestionSchema = z.object({
+  title: z.string(),
+  tags: z.array(z.string()),
+  statement: z.string(),
+  definitions: z.string().optional(),
+  examples: z.array(z.object({
+    input: z.string(),
+    output: z.string(),
+    explanation: z.string()
+  })).min(2).max(3),
+  constraints: z.array(z.string()),
+  expectedComplexity: z.object({
+    time: z.string(),
+    space: z.string().optional()
+  }),
+  hints: z.array(z.string()).optional()
+});
+
+// CODING Schema
+const CodingQuestionSchema = z.object({
+  id: z.string().optional(),
+  title: z.string().optional(),
+  question: z.string(),
+  codeSnippet: z.string().nullable().optional(),
+  language: z.preprocess((val) => normalizeEnum(val, ProgrammingLanguage) || val, z.string()),
+  framework: z.preprocess((val) => normalizeEnum(val, Framework) || val, z.string().nullable()),
+  difficulty: z.preprocess((val) => normalizeEnum(val, Difficulty) || val, z.nativeEnum(Difficulty)),
+  questionFormat: z.preprocess((val) => typeof val === 'string' ? val.toUpperCase() : val, z.nativeEnum(QuestionFormat)).default(QuestionFormat.CODE_WRITING),
+  expectedAnswerFormat: z.preprocess((val) => typeof val === 'string' ? val.toUpperCase() : val, z.nativeEnum(AnswerFormat)),
+  followUps: z.array(z.string()).default([]),
+  tags: z.array(z.string()).default([]),
+  expectedTimeMinutes: z.number(),
+  examples: z.array(z.object({
+    input: z.string(),
+    output: z.string(),
+    explanation: z.string()
+  })).optional(),
+  constraints: z.array(z.string()).optional()
+});
+
+// HR Schema
+const HRQuestionSchema = z.object({
+  id: z.string().optional(),
+  question: z.string(),
+  category: z.preprocess((val) => typeof val === 'string' ? val.toUpperCase() : val, z.enum(["BEHAVIORAL", "REFLECTION", "PUZZLE", "MOTIVATION", "CONFLICT", "LEADERSHIP", "OWNERSHIP"])),
+  guidance: z.string(),
+  expectedTimeMinutes: z.number()
+});
+
+// ======== CACHE ========
+const questionCache = new Map<string, { questions: any[]; expires: number }>();
+const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+
+function getCachedQuestions(key: string): any[] | null {
+  const entry = questionCache.get(key);
+  if (entry && entry.expires > Date.now()) {
+    console.log(`[Cache] Serving cached questions for key: ${key}`);
+    return entry.questions;
+  }
+  if (entry) {
+    questionCache.delete(key);
+  }
+  return null;
+}
+
+function setCachedQuestions(key: string, questions: any[]) {
+  questionCache.set(key, {
+    questions,
+    expires: Date.now() + CACHE_TTL
+  });
+}
+
+// ======== GENERATORS ========
+
+export async function generateDSAQuestions(opts: {
+  difficulty: Difficulty,
+  count?: number
+}) {
+  const count = opts.count ?? 4;
+  const cacheKey = `dsa_${opts.difficulty}_${count}`;
+  const cached = getCachedQuestions(cacheKey);
+  if (cached) return cached;
+
+  const prompt = `
+Generate ${count} DSA interview problems in strict JSON format.
+
+Each problem must include:
+- title
+- tags
+- problem statement
+- optional definitions
+- 2-3 examples (with input, output, and explanation)
+- constraints
+- expected complexity (time & optional space)
+- optional hints
+
+Format example:
+{
+ "questions": [
+   {
+     "title": "...",
+     "tags": ["array", "hashing"],
+     "statement": "...",
+     "definitions": "...",
+     "examples": [
+         { "input": "...", "output": "...", "explanation": "..." }
+     ],
+     "constraints": ["..."],
+     "expectedComplexity": { "time": "O(n)", "space": "O(1)" },
+     "hints": ["...", "..."]
+   }
+ ]
+}
+ONLY RETURN JSON.
+`;
+
+  const res = await llmClient(prompt, { response_format: "json_object" });
+  const data = JSON.parse(res);
+
+  const questions = z.array(DSAQuestionSchema).parse(data.questions);
+  setCachedQuestions(cacheKey, questions);
+  return questions;
+}
+
+export async function generateCodingQuestions(opts: {
+  language: string;
+  framework?: string | null;
+  difficulty: Difficulty;
+  count: number;
+}) {
+  const cacheKey = `coding_${opts.language}_${opts.framework ?? 'none'}_${opts.difficulty}_${opts.count}`;
+  const cached = getCachedQuestions(cacheKey);
+  if (cached) return cached;
+
+  // Split into 2 parallel batches if count is high
+  const batchSize = Math.ceil(opts.count / 2);
+  const batches = [batchSize, opts.count - batchSize].filter(c => c > 0);
+
+  console.log(`[LLM] Generating ${opts.count} Coding questions in ${batches.length} parallel batches...`);
+
+  const results = await Promise.all(batches.map(async (count) => {
+    const prompt = `
+You are a Senior Technical Interviewer at a top-tier tech company (Google, Meta, Netflix).
+Your goal is to conduct a rigorous, professional, and insightful technical interview.
+Generate ${count} high-quality interview questions.
+
+Language: ${opts.language}
+Framework: ${opts.framework ?? "None"}
+Difficulty: ${opts.difficulty}
+
+### Interview Structure Requirements:
+Generate a diverse mix of the following types:
+1. **Theory / Conceptual**: Deep dives into language internals (e.g., event loop, memory management, closures, prototypes). 
+   - expectedAnswerFormat: REASONING or SHORT_ANSWER
+   - questionFormat: THEORY
+2. **Output Prediction**: Provide a tricky, high-quality code snippet and ask what it logs/outputs and WHY.
+   - expectedAnswerFormat: SHORT_ANSWER
+   - questionFormat: OUTPUT_PREDICTION
+   - codeSnippet: (The snippet to analyze)
+3. **Debugging / Refactoring**: Identify bugs in a snippet or improve its performance/readability.
+   - expectedAnswerFormat: CODE_SNIPPET
+   - questionFormat: DEBUGGING
+   - codeSnippet: (The buggy/unoptimized code)
+4. **Practical Implementation**: Implement a specific pattern, utility, or component.
+   - expectedAnswerFormat: CODE_SNIPPET
+   - questionFormat: CODE_WRITING
+
+### Rules:
+- DO NOT generate generic LeetCode/DSA problems. Focus on the actual LANGUAGE and FRAMEWORK.
+- For Output Prediction, ensure the code is realistic but demonstrates subtle language mechanics.
+- The quality must be ELITE. Avoid surface-level questions.
+- For each question include:
+   - title (Short catchy title)
+   - question (Detailed prompt)
+   - codeSnippet (Required for OUTPUT_PREDICTION and DEBUGGING, else null)
+   - language (Normalized, e.g. JAVASCRIPT)
+   - framework (Normalized, e.g. REACT or null)
+   - difficulty (EASY, MEDIUM, HARD)
+   - questionFormat (THEORY, OUTPUT_PREDICTION, CODE_WRITING, DEBUGGING)
+   - expectedAnswerFormat (SHORT_ANSWER, CODE_SNIPPET, REASONING)
+   - followUps[] (2-3 expert follow-up questions)
+   - tags[]
+   - expectedTimeMinutes (realistic for a senior)
+   - examples[] (2-3 examples with: input, output, explanation) - Required for all types
+   - constraints[] (List of technical constraints)
+
+Return ONLY JSON: { "questions": [...] }
+`;
+    const res = await llmClient(prompt, { response_format: "json_object" });
+    const data = JSON.parse(res);
+    return z.array(CodingQuestionSchema).parse(data.questions);
+  }));
+
+  const questions = results.flat().map((q, i) => ({ ...q, id: `coding_${Date.now()}_${i}` }));
+  setCachedQuestions(cacheKey, questions);
+  return questions;
+}
+
+export async function generateHRQuestions(opts: {
+  difficulty: Difficulty;
+  count: number;
+}) {
+  const cacheKey = `hr_${opts.difficulty}_${opts.count}`;
+  const cached = getCachedQuestions(cacheKey);
+  if (cached) return cached;
+
+  // Split into 2 batches
+  const batchSize = Math.ceil(opts.count / 2);
+  const batches = [batchSize, opts.count - batchSize].filter(c => c > 0);
+
+  console.log(`[LLM] Generating ${opts.count} HR questions in ${batches.length} parallel batches...`);
+
+  const results = await Promise.all(batches.map(async (count) => {
+    const prompt = `
+Generate ${count} HR/behavioral interview questions.
+
+Mix categories:
+- BEHAVIORAL
+- REFLECTION
+- PUZZLE
+- MOTIVATION
+- CONFLICT
+- LEADERSHIP
+- OWNERSHIP
+
+For each include:
+- question
+- category
+- guidance (e.g. STAR)
+- expectedTimeMinutes
+Return only JSON:
+{ "questions": [ ... ] }
+`;
+    const res = await llmClient(prompt, { response_format: "json_object" });
+    const data = JSON.parse(res);
+    return z.array(HRQuestionSchema).parse(data.questions);
+  }));
+
+  const questions = results.flat().map((q, i) => ({ ...q, id: `hr_${Date.now()}_${i}` }));
+  setCachedQuestions(cacheKey, questions);
+  return questions;
+}
+
+
+// --------------------------------------------------------------------------------------------
 
 const SyllabusSchema = z.object({
   topics: z.array(z.object({

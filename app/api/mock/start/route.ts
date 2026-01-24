@@ -5,6 +5,8 @@ import { checkRateLimit, RATE_LIMITS, getRateLimitHeaders } from '@/lib/rate-lim
 import { createErrorResponse } from '@/lib/errors';
 import type { ApiResponse, StartMockResponse } from '@/types';
 
+export const maxDuration = 60;
+
 export async function POST(request: NextRequest) {
   try {
     const userId = await requireAuth();

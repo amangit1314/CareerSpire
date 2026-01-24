@@ -6,10 +6,13 @@ import { Clock, Code, Target } from 'lucide-react';
 import { Question, Difficulty } from '@/types';
 import { cn } from '@/lib/utils';
 import { dmSans } from '@/lib/fonts';
+import Link from 'next/link';
 
 interface QuestionCardProps {
   question: Question;
   index: number;
+  categorySlug?: string;
+  topicSlug?: string;
   timeSpent?: number;
   isActive?: boolean;
   onSelect?: () => void;
@@ -18,6 +21,8 @@ interface QuestionCardProps {
 export function QuestionCard({
   question,
   index,
+  categorySlug,
+  topicSlug,
   timeSpent,
   isActive = false,
   onSelect,
@@ -28,10 +33,10 @@ export function QuestionCard({
     [Difficulty.HARD]: 'bg-red-500/10 text-red-600 border-red-500/20',
   };
 
-  return (
+  const cardContent = (
     <Card
       className={cn(
-        'cursor-pointer transition-all hover:shadow-md',
+        'cursor-pointer transition-all hover:shadow-md h-full',
         isActive && 'ring-2 ring-primary'
       )}
       onClick={onSelect}
@@ -39,7 +44,7 @@ export function QuestionCard({
       <CardHeader>
         <div className="flex items-start justify-between">
           <CardTitle className={`${dmSans.className} text-lg`}>
-            Question {index + 1}: {question.title}
+            Question {index}: {question.title}
           </CardTitle>
           <Badge
             className={cn(
@@ -73,6 +78,16 @@ export function QuestionCard({
       </CardContent>
     </Card>
   );
+
+  if (categorySlug && topicSlug) {
+    return (
+      <Link href={`/resources/${categorySlug}/${topicSlug}/${question.id}`} className="block h-full">
+        {cardContent}
+      </Link>
+    );
+  }
+
+  return cardContent;
 }
 
 

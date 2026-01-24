@@ -1,3 +1,4 @@
+
 import {
   UserLevel,
   Difficulty,
@@ -7,6 +8,10 @@ import {
   MockSessionStatus,
   PaymentStatus,
   NotificationType,
+  Framework,
+  QuestionFormat,
+  AnswerFormat,
+  QuestionSource
 } from './enums';
 
 export {
@@ -18,6 +23,10 @@ export {
   MockSessionStatus,
   PaymentStatus,
   NotificationType,
+  Framework,
+  QuestionFormat,
+  AnswerFormat,
+  QuestionSource
 };
 
 // Base types
@@ -99,6 +108,10 @@ export interface Question {
   difficulty: Difficulty;
   type: QuestionType;
   language: ProgrammingLanguage | null;
+  framework: Framework | null;
+  questionFormat: QuestionFormat;
+  expectedAnswerFormat: AnswerFormat;
+  codeSnippet?: string | null;
   testCases: TestCase[];
   expectedComplexity: string | null;
   hints: string[];
@@ -108,12 +121,39 @@ export interface Question {
 export interface MockSession {
   id: string;
   userId: string;
-  questionIds: string[];
+  questionIds?: string[];
   status: MockSessionStatus;
   startedAt: Date;
   completedAt: Date | null;
+  type?: QuestionType;
+  difficulty?: Difficulty;
+  language?: ProgrammingLanguage | null;
+  framework?: Framework | null;
   questions?: Question[];
   results?: MockResult[];
+  codingQuestions?: CodingQuestion[];
+  hrQuestions?: HRQuestion[];
+  // Video interview fields
+  videoRecordingUrl?: string | null;
+  isPublic?: boolean;
+}
+
+export interface CodingQuestion {
+  question: string;
+  language: string;
+  framework: string | null;
+  difficulty: string;
+  expectedAnswerFormat: string;
+  followUps: string[];
+  tags: string[];
+  expectedTimeMinutes: number;
+}
+
+export interface HRQuestion {
+  question: string;
+  category: string;
+  guidance: string;
+  expectedTimeMinutes: number;
 }
 
 export interface MockResult {
@@ -214,7 +254,8 @@ export interface AuthResponse {
 export interface StartMockRequest {
   type?: QuestionType;
   difficulty?: Difficulty;
-  language?: ProgrammingLanguage;
+  language?: ProgrammingLanguage | null;
+  framework?: Framework | null;
 }
 
 export interface StartMockResponse {
