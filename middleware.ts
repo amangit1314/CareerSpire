@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { verifyAccessToken } from '@/lib/auth';
+import { verifyAccessToken } from '@/lib/auth-edge';
 
 const publicRoutes = ['/auth/login', '/auth/signup', '/', '/pricing'];
 const apiPublicRoutes = ['/api/auth/signup', '/api/auth/signin'];
@@ -75,9 +75,9 @@ export async function middleware(request: NextRequest) {
     // Clear invalid tokens
     const response = pathname.startsWith('/api')
       ? NextResponse.json(
-          { error: { message: 'Session expired. Please log in again.', code: 'TOKEN_EXPIRED' } },
-          { status: 401 }
-        )
+        { error: { message: 'Session expired. Please log in again.', code: 'TOKEN_EXPIRED' } },
+        { status: 401 }
+      )
       : NextResponse.redirect(new URL('/auth/login', request.url));
 
     response.cookies.delete('access_token');
