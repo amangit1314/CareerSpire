@@ -1,7 +1,7 @@
 'use server';
 
 import { prisma } from '@/lib/prisma';
-import { Difficulty, QuestionType, MockSessionStatus, ProgrammingLanguage, Framework } from '@/types/enums';
+import { Difficulty, QuestionType, MockSessionStatus, ProgrammingLanguage, Framework, QuestionFormat, AnswerFormat } from '@/types/enums';
 import type { StartMockRequest, MockSession, SubmitSolutionRequest } from '@/types';
 import { generateDSAQuestions, generateCodingQuestions, generateHRQuestions, generateFeedback, normalizeEnum } from '@/lib/llm';
 import { AppError } from '@/lib/errors';
@@ -121,6 +121,8 @@ async function startDSAMock(
       type: q.type as unknown as QuestionType,
       language: q.language as unknown as ProgrammingLanguage | null,
       framework: q.framework as unknown as Framework | null,
+      questionFormat: q.questionFormat as unknown as QuestionFormat,
+      expectedAnswerFormat: q.expectedAnswerFormat as unknown as AnswerFormat,
       testCases: (q.testCases || []) as any[],
     })),
     results: [],
@@ -213,6 +215,8 @@ async function startCodingMock(
       type: q.type as unknown as QuestionType,
       language: q.language as unknown as ProgrammingLanguage | null,
       framework: q.framework as unknown as Framework | null,
+      questionFormat: q.questionFormat as unknown as QuestionFormat,
+      expectedAnswerFormat: q.expectedAnswerFormat as unknown as AnswerFormat,
       testCases: (q.testCases || []) as any[],
     })),
     results: [],
@@ -290,6 +294,8 @@ async function startHRMock(
       type: q.type as unknown as QuestionType,
       language: q.language as unknown as ProgrammingLanguage | null,
       framework: q.framework as unknown as Framework | null,
+      questionFormat: q.questionFormat as unknown as QuestionFormat,
+      expectedAnswerFormat: q.expectedAnswerFormat as unknown as AnswerFormat,
       testCases: (q.testCases || []) as any[],
     })),
     results: [],
@@ -370,6 +376,10 @@ export async function getMockSessionAction(
         difficulty: r.question.difficulty as Difficulty,
         type: r.question.type as QuestionType,
         language: r.question.language as any,
+        framework: r.question.framework as any,
+        questionFormat: r.question.questionFormat as QuestionFormat,
+        expectedAnswerFormat: r.question.expectedAnswerFormat as AnswerFormat,
+        codeSnippet: r.question.codeSnippet,
         testCases: r.question.testCases as any,
         expectedComplexity: r.question.expectedComplexity,
         hints: r.question.hints,
@@ -410,6 +420,8 @@ export async function submitSolutionAction(
     type: questionRecord.type as unknown as QuestionType,
     language: questionRecord.language as unknown as ProgrammingLanguage | null,
     framework: questionRecord.framework as unknown as Framework | null,
+    questionFormat: questionRecord.questionFormat as unknown as QuestionFormat,
+    expectedAnswerFormat: questionRecord.expectedAnswerFormat as unknown as AnswerFormat,
     testCases: (questionRecord.testCases || []) as any[],
   };
 
@@ -536,6 +548,10 @@ export async function submitSolutionAction(
       difficulty: question.difficulty as Difficulty,
       type: question.type as QuestionType,
       language: question.language as any,
+      framework: question.framework as any,
+      questionFormat: question.questionFormat as QuestionFormat,
+      expectedAnswerFormat: question.expectedAnswerFormat as AnswerFormat,
+      codeSnippet: question.codeSnippet,
       testCases: question.testCases as any,
       expectedComplexity: question.expectedComplexity,
       hints: question.hints,
