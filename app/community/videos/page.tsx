@@ -15,6 +15,7 @@ import { getPublicVideoInterviews } from '@/app/actions/video.actions';
 import { dmSans } from '@/lib/fonts';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
+import { DateRange } from 'react-day-picker';
 
 type VideoInterview = {
   id: string;
@@ -38,12 +39,12 @@ export default function VideoMockInterviewsPage() {
   const [videos, setVideos] = useState<VideoInterview[]>([]);
   const [filteredVideos, setFilteredVideos] = useState<VideoInterview[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  
+
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
   const [difficultyFilter, setDifficultyFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'recent' | 'popular' | 'trending'>('recent');
-  const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>({});
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
 
   // Fetch videos
   useEffect(() => {
@@ -137,7 +138,7 @@ export default function VideoMockInterviewsPage() {
             tags: ['ML', 'Python', 'Statistics']
           }
         ];
-        
+
         setVideos(mockVideos);
         setFilteredVideos(mockVideos);
       } catch (error) {
@@ -146,18 +147,18 @@ export default function VideoMockInterviewsPage() {
         setIsLoading(false);
       }
     };
-    
+
     loadVideos();
   }, []);
 
   // Apply filters
   useEffect(() => {
     let result = [...videos];
-    
+
     // Search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      result = result.filter(video => 
+      result = result.filter(video =>
         video.title.toLowerCase().includes(query) ||
         video.company?.toLowerCase().includes(query) ||
         video.role?.toLowerCase().includes(query) ||
@@ -165,20 +166,20 @@ export default function VideoMockInterviewsPage() {
         video.user.name.toLowerCase().includes(query)
       );
     }
-    
+
     // Difficulty filter
     if (difficultyFilter !== 'all') {
       result = result.filter(video => video.difficulty === difficultyFilter);
     }
-    
+
     // Date range filter
-    if (dateRange.from && dateRange.to) {
+    if (dateRange?.from && dateRange?.to) {
       result = result.filter(video => {
         const videoDate = new Date(video.createdAt);
         return videoDate >= dateRange.from! && videoDate <= dateRange.to!;
       });
     }
-    
+
     // Sorting
     switch (sortBy) {
       case 'recent':
@@ -191,7 +192,7 @@ export default function VideoMockInterviewsPage() {
         result.sort((a, b) => (b.likes / b.views) - (a.likes / a.views));
         break;
     }
-    
+
     setFilteredVideos(result);
   }, [videos, searchQuery, difficultyFilter, sortBy, dateRange]);
 
@@ -224,7 +225,7 @@ export default function VideoMockInterviewsPage() {
               </Link>
             </Button>
           </div>
-          
+
           <div className="grid md:grid-cols-2 gap-8">
             <div>
               <h1 className={cn(dmSans.className, "text-4xl font-bold mb-4")}>
@@ -233,7 +234,7 @@ export default function VideoMockInterviewsPage() {
               <p className="text-muted-foreground text-lg mb-6">
                 Watch real interview recordings shared by our community. Learn from others' experiences and prepare for your own interviews.
               </p>
-              
+
               <div className="flex items-center gap-2">
                 <div className="flex items-center gap-2 text-sm">
                   <TrendingUp className="h-4 w-4 text-primary" />
@@ -242,7 +243,7 @@ export default function VideoMockInterviewsPage() {
                 </div>
               </div>
             </div>
-            
+
             <div className="flex items-center justify-center">
               <Card className="glass border-primary/10 p-6 w-full max-w-md">
                 <div className="flex items-center justify-between mb-4">
@@ -278,7 +279,7 @@ export default function VideoMockInterviewsPage() {
                   />
                 </div>
               </div>
-              
+
               {/* Difficulty Filter */}
               <div>
                 <Select value={difficultyFilter} onValueChange={setDifficultyFilter}>
@@ -294,7 +295,7 @@ export default function VideoMockInterviewsPage() {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               {/* Sort By */}
               <div>
                 <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
@@ -309,14 +310,14 @@ export default function VideoMockInterviewsPage() {
                 </Select>
               </div>
             </div>
-            
+
             {/* Date Range Filter */}
             <div className="mt-4 flex items-center gap-4">
               <Popover>
                 <PopoverTrigger asChild>
                   <Button variant="outline" className="gap-2">
                     <CalendarIcon className="h-4 w-4" />
-                    {dateRange.from ? (
+                    {dateRange?.from ? (
                       dateRange.to ? (
                         <>
                           {format(dateRange.from, 'LLL dd')} - {format(dateRange.to, 'LLL dd, y')}
@@ -333,16 +334,16 @@ export default function VideoMockInterviewsPage() {
                   <CalendarComponent
                     initialFocus
                     mode="range"
-                    defaultMonth={dateRange.from}
+                    defaultMonth={dateRange?.from}
                     selected={dateRange}
                     onSelect={setDateRange}
                     numberOfMonths={2}
                   />
                 </PopoverContent>
               </Popover>
-              
-              {dateRange.from && (
-                <Button variant="ghost" size="sm" onClick={() => setDateRange({})}>
+
+              {dateRange?.from && (
+                <Button variant="ghost" size="sm" onClick={() => setDateRange(undefined)}>
                   Clear Dates
                 </Button>
               )}
@@ -360,7 +361,7 @@ export default function VideoMockInterviewsPage() {
               Showing {filteredVideos.length} of {videos.length} interviews
             </p>
           </div>
-          
+
           <Tabs value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
             <TabsList>
               <TabsTrigger value="recent">Recent</TabsTrigger>
@@ -394,7 +395,7 @@ export default function VideoMockInterviewsPage() {
                         <Play className="h-8 w-8 text-primary ml-1" />
                       </div>
                     </div>
-                    
+
                     {/* Difficulty Badge */}
                     <div className="absolute top-3 left-3">
                       <span className={cn(
@@ -404,20 +405,20 @@ export default function VideoMockInterviewsPage() {
                         {video.difficulty.charAt(0).toUpperCase() + video.difficulty.slice(1)}
                       </span>
                     </div>
-                    
+
                     {/* Duration Badge */}
                     <div className="absolute bottom-3 right-3 bg-black/70 text-white px-2 py-1 rounded text-xs flex items-center gap-1">
                       <Clock className="h-3 w-3" />
                       {formatDuration(video.duration)}
                     </div>
                   </div>
-                  
+
                   <CardContent className="p-4">
                     <div className="mb-3">
                       <h3 className={cn(dmSans.className, "font-semibold line-clamp-2 mb-2")}>
                         {video.title}
                       </h3>
-                      
+
                       <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
                         {video.company && (
                           <span className="font-medium text-foreground">{video.company}</span>
@@ -429,7 +430,7 @@ export default function VideoMockInterviewsPage() {
                           </>
                         )}
                       </div>
-                      
+
                       {/* Tags */}
                       <div className="flex flex-wrap gap-1 mb-4">
                         {video.tags.slice(0, 3).map((tag, idx) => (
@@ -447,7 +448,7 @@ export default function VideoMockInterviewsPage() {
                         )}
                       </div>
                     </div>
-                    
+
                     {/* Stats & User */}
                     <div className="flex items-center justify-between pt-4 border-t border-primary/5">
                       <div className="flex items-center gap-2">
@@ -456,7 +457,7 @@ export default function VideoMockInterviewsPage() {
                         </div>
                         <span className="text-sm font-medium">{video.user.name}</span>
                       </div>
-                      
+
                       <div className="flex items-center gap-4 text-sm text-muted-foreground">
                         <div className="flex items-center gap-1">
                           <Eye className="h-4 w-4" />
@@ -468,7 +469,7 @@ export default function VideoMockInterviewsPage() {
                         </div>
                       </div>
                     </div>
-                    
+
                     {/* Date */}
                     <div className="mt-3 text-xs text-muted-foreground flex items-center gap-1">
                       <Calendar className="h-3 w-3" />
@@ -499,7 +500,7 @@ export default function VideoMockInterviewsPage() {
                 <Button variant="outline" onClick={() => {
                   setSearchQuery('');
                   setDifficultyFilter('all');
-                  setDateRange({});
+                  setDateRange(undefined);
                 }}>
                   Clear All Filters
                 </Button>
