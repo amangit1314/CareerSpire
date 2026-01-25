@@ -102,7 +102,7 @@ export default function Home() {
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-6 pt-4">
             <Link href="/auth/signup">
-              <Button size="lg" className={`${dmSans.className} text-lg px-10 py-7 rounded-2xl shadow-xl shadow-primary/20 hover:shadow-primary/30 transition-all duration-300 transform hover:-translate-y-1 group`}>
+              <Button size="lg" className={`${dmSans.className} text-lg px-10 py-7 rounded-2xl shadow-xl shadow-primary/20 hover:shadow-primary/30 transition-all duration-300 transform hover:-translate-y-1 group dark:text-white`}>
                 Start Free Mock
                 <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
               </Button>
@@ -205,10 +205,10 @@ export default function Home() {
           <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/2 w-96 h-96 bg-white/20 rounded-full blur-3xl" />
 
           <div className="relative z-10 space-y-8">
-            <h2 className={`${dmSans.className} text-4xl md:text-6xl font-extrabold`}>
+            <h2 className={`${dmSans.className} text-4xl md:text-6xl font-extrabold dark:text-white`}>
               The Future of Prep is Here.
             </h2>
-            <p className="text-xl opacity-90 max-w-xl mx-auto leading-relaxed">
+            <p className="text-xl opacity-90 max-w-xl mx-auto leading-relaxed dark:text-white">
               Don't leave your career to chance. Practice with the most advanced AI interview engine on the market.
             </p>
             <div className="pt-6">

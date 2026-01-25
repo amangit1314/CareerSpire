@@ -103,6 +103,7 @@ export function Navbar() {
               </div>
             ) : (
               <div className="flex items-center space-x-4">
+                <ThemeToggle />
                 <Link href="/auth/login">
                   <Button variant="ghost" size="sm" className="rounded-xl hover:bg-primary/5">
                     Log in
