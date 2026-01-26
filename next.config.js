@@ -12,13 +12,20 @@
 
 // export default nextConfig;
 
-// next.config.js
-module.exports = {
+// next.config.js - ES Module syntax
+import withPWA from 'next-pwa';
+
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  reactStrictMode: true,
+  swcMinify: true,
+  images: {
+    domains: ['localhost', 'vercel.app', 'your-production-domain.com'],
+  },
   async headers() {
     return [
       {
-        // Apply these headers to all routes
-        source: '/:path*',
+        source: '/api/:path*',
         headers: [
           {
             key: 'Access-Control-Allow-Origin',
@@ -42,4 +49,18 @@ module.exports = {
       },
     ];
   },
+  // Remove the experimental if not needed or update syntax
+  experimental: {
+    serverComponentsExternalPackages: [],
+  },
 };
+
+// If you're using next-pwa
+const pwaConfig = withPWA({
+  dest: 'public',
+  disable: process.env.NODE_ENV === 'development',
+  // Other PWA options...
+});
+
+// Export the config
+export default pwaConfig ? pwaConfig(nextConfig) : nextConfig;
