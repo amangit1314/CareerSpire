@@ -98,32 +98,25 @@ export const config = {
   ],
 };
 
-// // middleware.ts
-// import { NextResponse } from 'next/server';
-// import type { NextRequest } from 'next/server';
-// import { verifyAccessToken } from '@/lib/auth-edge';
 
-// const publicRoutes = ['/auth/login', '/auth/signup', '/', '/pricing'];
-// const apiPublicRoutes = ['/api/auth/signup', '/api/auth/signin'];
+// CORS headers configuration
+const corsHeaders = {
+  'Access-Control-Allow-Origin': process.env.NODE_ENV === 'production'
+    ? 'https://mocky-nine.vercel.app'
+    : 'http://localhost:3000',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS, PATCH',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, Cookie, X-Requested-With, Accept, Origin',
+  'Access-Control-Allow-Credentials': 'true',
+  'Access-Control-Max-Age': '86400', // 24 hours
+} as const;
 
-// // CORS headers configuration
-// const corsHeaders = {
-//   'Access-Control-Allow-Origin': process.env.NODE_ENV === 'production'
-//     ? 'https://mocky-nine.vercel.app'
-//     : 'http://localhost:3000',
-//   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS, PATCH',
-//   'Access-Control-Allow-Headers': 'Content-Type, Authorization, Cookie, X-Requested-With, Accept, Origin',
-//   'Access-Control-Allow-Credentials': 'true',
-//   'Access-Control-Max-Age': '86400', // 24 hours
-// } as const;
-
-// // Helper to add CORS headers to a response
-// function addCorsHeaders(response: NextResponse) {
-//   Object.entries(corsHeaders).forEach(([key, value]) => {
-//     response.headers.set(key, value);
-//   });
-//   return response;
-// }
+// Helper to add CORS headers to a response
+function addCorsHeaders(response: NextResponse) {
+  Object.entries(corsHeaders).forEach(([key, value]) => {
+    response.headers.set(key, value);
+  });
+  return response;
+}
 
 // // Helper to create a CORS-enabled response
 // function corsResponse(status: number = 200, body?: any) {
