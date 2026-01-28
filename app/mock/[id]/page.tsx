@@ -71,7 +71,7 @@ export default function MockInterviewPage() {
         setEditorType('text'); // Default to text for REASONING or null
       }
     }
-  }, [session, currentQuestionIndex]);
+  }, [currentQuestionIndex]); // Only reset when question index changes, not when session refetches
 
   useEffect(() => {
     const interval = setInterval(() => {
