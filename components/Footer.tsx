@@ -88,7 +88,7 @@ export function Footer() {
 
                     {/* Links Grid */}
                     <div className="w-full lg:w-3/5">
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 md:gap-12">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-8">
                             {footerLinks.map((group) => (
                                 <div key={group.title} className="space-y-6">
                                     <h3 className={`${dmSans.className} text-sm font-bold text-foreground uppercase tracking-[0.2em]`}>
@@ -99,7 +99,7 @@ export function Footer() {
                                             <li key={link.name}>
                                                 <Link
                                                     href={link.href}
-                                                    className="text-base text-muted-foreground/70 hover:text-primary transition-all flex justify-start items-center group/link hover:translate-x-1"
+                                                    className="text-sm text-muted-foreground/70 hover:text-primary transition-all flex justify-start items-center group/link hover:translate-x-1"
                                                 >
                                                     <ArrowRight className="h-4 w-4 mr-3 opacity-0 -ml-7 group-hover/link:opacity-100 group-hover/link:ml-0 transition-all duration-300 hidden md:block" />
                                                     {link.name}
