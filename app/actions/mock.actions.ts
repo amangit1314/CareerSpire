@@ -26,9 +26,9 @@ export async function startMockAction(
   }
 
   // Free tier usage
-  if (user.subscriptionTier === 'FREE' && user.freeMocksRemaining <= 0) {
-    throw new AppError('No mocks remaining. Please upgrade your plan.', 'NO_MOCKS_REMAINING', 403);
-  }
+  // if (user.subscriptionTier === 'FREE' && user.freeMocksRemaining <= 0) {
+  //   throw new AppError('No mocks remaining. Please upgrade your plan.', 'NO_MOCKS_REMAINING', 403);
+  // }
 
   const difficulty =
     data.difficulty ||
@@ -73,10 +73,16 @@ async function startDSAMock(
           difficulty: difficulty as any,
           type: 'DSA',
           tags: q.tags,
-          testCases: q.examples as any,
+          testCases: q.examples.map((ex: any) => ({
+            input: ex.input,
+            expectedOutput: ex.output,
+            isHidden: false
+          })),
           expectedComplexity: q.expectedComplexity.time,
           hints: q.hints || [],
-        }
+          starterCode: q.starterCode,
+          entryFunctionName: q.entryPoint,
+        } as any
       }).catch((err) => {
         console.error('Failed to save AI question:', err);
         return null;
@@ -431,11 +437,14 @@ export async function submitSolutionAction(
 
   // Run tests (only for DSA/CODING with language)
   let testResults: any = { passed: 0, total: 1, details: [] };
-  if (question.type === 'DSA' || (question.type === 'CODING' && question.language)) {
+  if (question.type === 'DSA' || (question.type === 'CODING' && (question.language || data.language))) {
+    // Use user-selected language if available, otherwise fallback to question language
+    const lang = (data.language || question.language || 'JAVASCRIPT').toLowerCase();
+
     testResults = await runTests(
       data.code,
       question,
-      question.language === 'PYTHON' ? 'python' : 'javascript'
+      lang as any
     );
   }
 

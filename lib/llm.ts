@@ -244,7 +244,9 @@ const DSAQuestionSchema = z.object({
     time: z.string(),
     space: z.string().optional()
   }),
-  hints: z.array(z.string()).optional()
+  hints: z.array(z.string()).optional(),
+  starterCode: z.string().optional(),
+  entryPoint: z.string().optional()
 });
 
 // CODING Schema
@@ -324,6 +326,8 @@ Each problem must include:
 - constraints
 - expected complexity (time & optional space)
 - optional hints
+- entryPoint: The exact name of the core function to execute (e.g. "twoSum").
+- starterCode: A professional boilerplate for the user to start with. Use standard LeetCode-style signatures for JavaScript.
 
 Format example:
 {
@@ -334,11 +338,13 @@ Format example:
      "statement": "...",
      "definitions": "...",
      "examples": [
-         { "input": "...", "output": "...", "explanation": "..." }
+         { "input": "[2,7,11,15], 9", "output": "[0, 1]", "explanation": "..." }
      ],
      "constraints": ["..."],
      "expectedComplexity": { "time": "O(n)", "space": "O(1)" },
-     "hints": ["...", "..."]
+     "hints": ["...", "..."],
+     "entryPoint": "twoSum",
+     "starterCode": "function twoSum(nums, target) {\n    // Write your solution here\n};"
    }
  ]
 }

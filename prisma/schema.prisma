@@ -188,6 +188,8 @@ model Question {
   // DSA-specific
   testCases            Json?
   expectedComplexity   String?
+  starterCode          String?             @db.Text
+  entryFunctionName    String?
 
   // Coding language interview
   tags                 String[]            @default([])

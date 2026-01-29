@@ -15,7 +15,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useMockSession, useSubmitSolution } from '@/hooks/useMock';
 import { Question, MockResult, ProgrammingLanguage, AnswerFormat, QuestionFormat } from '@/types';
-import { Bug, Clock, Send, ShieldAlert, Sparkles, Terminal, Lightbulb, Loader2, Code2 } from 'lucide-react';
+import { Bug, Clock, Send, ShieldAlert, Sparkles, Terminal, Lightbulb, Loader2, Code2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { dmSans } from '@/lib/fonts';
 import { cn } from '@/lib/utils';
 import ReactMarkdown from 'react-markdown';
@@ -50,16 +50,22 @@ export default function MockInterviewPage() {
 
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [code, setCode] = useState('');
+  const [selectedLanguage, setSelectedLanguage] = useState<string>('javascript');
   const [timeSpent, setTimeSpent] = useState(0);
   const [submittedResult, setSubmittedResult] = useState<MockResult | null>(null);
   const [activeTab, setActiveTab] = useState('description');
   const [editorType, setEditorType] = useState<'code' | 'text'>('code');
+  const [isCodePanelCollapsed, setIsCodePanelCollapsed] = useState(false);
 
   useEffect(() => {
     if (session?.questions && session.questions.length > 0) {
       const currentQuestion = session.questions[currentQuestionIndex];
-      const isPython = currentQuestion.language === ProgrammingLanguage.PYTHON;
-      setCode(isPython ? '# Write your solution here\n' : '// Write your solution here\n');
+      const lang = currentQuestion.language?.toLowerCase() || 'javascript';
+      setSelectedLanguage(lang);
+
+      const isPython = lang === 'python';
+      const defaultCode = isPython ? '# Write your solution here\n' : '// Write your solution here\n';
+      setCode(currentQuestion.starterCode || defaultCode);
       setTimeSpent(0);
       setSubmittedResult(null);
       setActiveTab('description');
@@ -72,6 +78,15 @@ export default function MockInterviewPage() {
       }
     }
   }, [currentQuestionIndex]); // Only reset when question index changes, not when session refetches
+
+  // Auto-collapse code panel when viewing feedback
+  useEffect(() => {
+    if (activeTab === 'feedback') {
+      setIsCodePanelCollapsed(true);
+    } else {
+      setIsCodePanelCollapsed(false);
+    }
+  }, [activeTab]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -90,6 +105,7 @@ export default function MockInterviewPage() {
         sessionId: session.id,
         questionId: currentQuestion.id,
         code,
+        language: selectedLanguage.toUpperCase(),
         timeSpent,
       });
 
@@ -212,9 +228,12 @@ export default function MockInterviewPage() {
       </header>
 
       {/* Main Panels */}
-      <main className="flex-1 flex overflow-hidden">
+      <main className="flex-1 flex overflow-hidden relative">
         {/* Left Panel: Description & Info */}
-        <div className="w-1/2 flex flex-col border-r h-full bg-muted/[0.02]">
+        <div className={cn(
+          "flex flex-col border-r h-full bg-muted/[0.02] transition-all duration-300 ease-in-out",
+          isCodePanelCollapsed ? "w-full" : "w-1/2"
+        )}>
           <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
             <div className="px-4 border-b shrink-0 bg-muted/10">
               <TabsList className="h-12 bg-transparent gap-6">
@@ -309,13 +328,13 @@ export default function MockInterviewPage() {
                   </TabsContent>
 
                   <TabsContent value="feedback" className="m-0 focus-visible:ring-0">
-                    <div className="py-4 pb-12">
+                    <div className="py-4 pb-12 mr-13">
                       {activeResult && <FeedbackPanel result={activeResult} />}
 
                       {activeResult && (
                         <div className="mt-8 flex flex-col gap-4">
                           {currentQuestionIndex < session.questions.length - 1 ? (
-                            <Button onClick={handleNextQuestion} className="w-full h-12" size="lg">
+                            <Button onClick={handleNextQuestion} className="w-full h-12 dark:text-white" size="lg">
                               Go to Next Question
                             </Button>
                           ) : (
@@ -334,30 +353,72 @@ export default function MockInterviewPage() {
         </div>
 
         {/* Right Panel: Editor */}
-        <div className="w-1/2 flex flex-col h-full bg-background">
+        <div className={cn(
+          "flex flex-col h-full bg-background transition-all duration-300 ease-in-out overflow-hidden",
+          isCodePanelCollapsed ? "w-0" : "w-1/2"
+        )}>
           <div className="h-10 border-b flex items-center justify-between px-4 bg-muted/5 shrink-0">
-            <div className="flex items-center gap-2 text-xs font-semibold text-primary">
-              <Code2 className="h-3.5 w-3.5" />
-              Editor Mode:
-              <Select
-                value={editorType}
-                onValueChange={(value: 'code' | 'text') => setEditorType(value)}
-              >
-                <SelectTrigger className="h-7 w-[130px] text-xs border-none bg-transparent focus:ring-0 px-2">
-                  <SelectValue placeholder="Select mode" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="code">Code Editor</SelectItem>
-                  <SelectItem value="text">Text Editor</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="flex items-center gap-4 text-xs font-semibold text-primary">
+              <div className="flex items-center gap-2">
+                <Code2 className="h-3.5 w-3.5" />
+                Editor:
+                <Select
+                  value={editorType}
+                  onValueChange={(value: 'code' | 'text') => setEditorType(value)}
+                >
+                  <SelectTrigger className="h-7 w-[110px] text-xs border-none bg-transparent focus:ring-0 px-2 hover:bg-muted/10">
+                    <SelectValue placeholder="Mode" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="code">Code Editor</SelectItem>
+                    <SelectItem value="text">Text Editor</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {editorType === 'code' && currentQuestion.type === 'DSA' && (
+                <div className="flex items-center gap-2 border-l pl-4 border-border/50">
+                  Language:
+                  <Select
+                    value={selectedLanguage}
+                    onValueChange={(value) => {
+                      setSelectedLanguage(value);
+                      // Update starter comment if code is empty or just the old comment
+                      const isPython = value === 'python';
+                      const oldComment = selectedLanguage === 'python' ? '# Write your solution here\n' : '// Write your solution here\n';
+                      const newComment = isPython ? '# Write your solution here\n' : '// Write your solution here\n';
+                      if (code === '' || code === oldComment) {
+                        setCode(newComment);
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="h-7 w-[100px] text-xs border-none bg-transparent focus:ring-0 px-2 hover:bg-muted/10 font-bold uppercase">
+                      <SelectValue placeholder="Language" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="javascript">JAVASCRIPT</SelectItem>
+                      <SelectItem value="python">PYTHON</SelectItem>
+                      <SelectItem value="java">JAVA</SelectItem>
+                      <SelectItem value="cpp">C++</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2"
+              onClick={() => setIsCodePanelCollapsed(!isCodePanelCollapsed)}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
           </div>
           <div className="flex-1 overflow-hidden relative">
             {editorType === 'code' ? (
               <div className="h-full p-4">
                 <CodeEditor
-                  language={currentQuestion.language?.toLowerCase() || 'javascript'}
+                  language={selectedLanguage}
                   value={code}
                   onChange={(value) => setCode(value || '')}
                   height="100%"
@@ -394,6 +455,21 @@ export default function MockInterviewPage() {
             </div>
           </div>
         </div>
+
+        {/* Vertical Tab Handle (when collapsed) */}
+        {isCodePanelCollapsed && (
+          <button
+            onClick={() => setIsCodePanelCollapsed(false)}
+            className="absolute right-0 top-0 h-full w-12 bg-muted/30 hover:bg-muted/50 border-l border-border flex items-center justify-center transition-colors group"
+          >
+            <div className="flex flex-col items-center gap-2">
+              <ChevronLeft className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+              <div className="writing-mode-vertical text-xs font-semibold text-muted-foreground group-hover:text-primary transition-colors" style={{ writingMode: 'vertical-rl' }}>
+                Code Editor
+              </div>
+            </div>
+          </button>
+        )}
       </main>
     </div>
   );

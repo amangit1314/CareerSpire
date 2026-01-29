@@ -102,11 +102,11 @@ export default function DashboardPage() {
       {/* Score Trend */}
       {stats.scoreTrend.length > 0 && (
         <Card className="mb-8 overflow-hidden">
-          <CardHeader>
+          {/* <CardHeader>
             <CardTitle className={dmSans.className}>Score Trend</CardTitle>
-          </CardHeader>
+          </CardHeader> */}
           <CardContent className="p-0 sm:p-6">
-            <div className="h-[300px] w-full">
+            <div className="h-full w-full">
 
 
               <ScoreTrendChart stats={stats} />
@@ -219,7 +219,7 @@ function ScoreTrendChart({ stats }: { stats: any }) {
         </div>
       </div>
 
-      <div style={{ height: 250 }}>
+      <div style={{ height: 270 }}>
         <ResponsiveContainer width="100%" height={300}>
           <LineChart
             data={stats.scoreTrend}
@@ -247,7 +247,7 @@ function ScoreTrendChart({ stats }: { stats: any }) {
               axisLine={false}
               tick={{ fill: 'var(--muted-foreground)' }}
               tickMargin={10}
-              padding={{ left: 10, right: 10 }}
+              padding={{ left: 20, right: 10 }}
             />
 
             <YAxis
@@ -304,13 +304,13 @@ function ScoreTrendChart({ stats }: { stats: any }) {
             {/* Reference line for average or target */}
             <ReferenceLine
               y={stats.averageScore || 70}
-              stroke="var(--secondary)"
+              stroke="var(--secondary-avg)"
               strokeDasharray="5 5"
               strokeWidth={1}
               label={{
                 value: `Avg: ${stats.averageScore || 70}%`,
                 position: 'insideTopRight',
-                fill: 'var(--secondary)',
+                fill: 'var(--secondary-avg)',
                 fontSize: 10
               }}
             />

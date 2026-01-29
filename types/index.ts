@@ -112,6 +112,8 @@ export interface Question {
   questionFormat: QuestionFormat;
   expectedAnswerFormat: AnswerFormat;
   codeSnippet?: string | null;
+  starterCode?: string | null;
+  entryFunctionName?: string | null;
   testCases: TestCase[];
   expectedComplexity: string | null;
   hints: string[];
@@ -266,6 +268,7 @@ export interface SubmitSolutionRequest {
   sessionId: string;
   questionId: string;
   code: string;
+  language: string;
   timeSpent: number;
 }
 

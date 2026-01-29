@@ -6,6 +6,7 @@ import { MockResult } from '@/types';
 import { cn } from '@/lib/utils';
 import { dmSans } from '@/lib/fonts';
 import { useState } from 'react';
+import { CodeEditor } from './CodeEditor';
 
 interface FeedbackPanelProps {
   result: MockResult;
@@ -14,6 +15,32 @@ interface FeedbackPanelProps {
 export function FeedbackPanel({ result }: FeedbackPanelProps) {
   const { feedback, testResults, score } = result;
   const [showFullCode, setShowFullCode] = useState(true);
+
+  // Helper to format values for display (avoids extra quotes for stringified JSON)
+  const formatValue = (val: any) => {
+    if (val === null || val === undefined) return 'null';
+
+    if (typeof val === 'string') {
+      const trimmed = val.trim();
+
+      // If it looks like a JSON array/object or multiple arguments (comma-separated), 
+      // OR if it's already properly quoted, don't wrap in more quotes
+      if (
+        (trimmed.startsWith('[') && trimmed.endsWith(']')) ||
+        (trimmed.startsWith('{') && trimmed.endsWith('}')) ||
+        (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+        trimmed.includes(',')
+      ) {
+        return trimmed;
+      }
+
+      // For simple strings, show with quotes as requested
+      return `"${trimmed}"`;
+    }
+
+    // Numbers, booleans, objects, arrays
+    return JSON.stringify(val);
+  };
 
   return (
     <div className="space-y-4">
@@ -82,9 +109,13 @@ export function FeedbackPanel({ result }: FeedbackPanelProps) {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <pre className="bg-slate-950 text-slate-50 p-4 rounded-lg overflow-x-auto text-sm font-mono leading-relaxed">
-              <code>{feedback.correctedCode}</code>
-            </pre>
+            <CodeEditor
+              value={feedback.correctedCode.replace(/```[\w]*\n?|```/g, '').trim()}
+              language="javascript"
+              readOnly
+              height="400px"
+              onChange={() => { }}
+            />
           </CardContent>
         </Card>
       )}
@@ -120,38 +151,49 @@ export function FeedbackPanel({ result }: FeedbackPanelProps) {
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
-            {testResults.details.map((test, idx) => (
-              <div
-                key={idx}
-                className={cn(
-                  'flex items-center gap-3 p-3 rounded-lg border',
-                  test.passed
-                    ? 'bg-green-500/10 border-green-500/20'
-                    : 'bg-red-500/10 border-red-500/20'
-                )}
-              >
-                {test.passed ? (
-                  <CheckCircle2 className="h-5 w-5 text-green-600" />
-                ) : (
-                  <XCircle className="h-5 w-5 text-red-600" />
-                )}
-                <div className="flex-1">
-                  <p className="text-sm font-mono">
-                    Input: {JSON.stringify(test.input)}
-                  </p>
-                  {!test.passed && (
-                    <>
-                      <p className="text-xs text-muted-foreground">
-                        Expected: {JSON.stringify(test.expected)}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Got: {JSON.stringify(test.actual)}
-                      </p>
-                    </>
+            {testResults.details && testResults.details.length > 0 ? (
+              testResults.details.map((test, idx) => (
+                <div
+                  key={idx}
+                  className={cn(
+                    'flex items-center gap-3 p-3 rounded-lg border',
+                    test.passed
+                      ? 'bg-green-500/10 border-green-500/20'
+                      : 'bg-red-500/10 border-red-500/20'
                   )}
+                >
+                  {test.passed ? (
+                    <CheckCircle2 className="h-5 w-5 text-green-600" />
+                  ) : (
+                    <XCircle className="h-5 w-5 text-red-600" />
+                  )}
+                  <div className="flex-1">
+                    <p className="text-sm font-mono">
+                      Input: {formatValue(test.input)}
+                    </p>
+                    <div className="flex flex-col gap-0.5">
+                      <p className="text-xs text-muted-foreground">
+                        Expected: <span className="font-mono text-foreground/80">{formatValue(test.expected)}</span>
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Got: <span className={cn("font-mono", test.passed ? "text-green-500" : "text-red-500")}>
+                          {formatValue(test.actual)}
+                        </span>
+                      </p>
+                      {test.error && (
+                        <p className="text-xs text-red-400 mt-1 italic">
+                          Error: {test.error}
+                        </p>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                No test cases available for this question
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>
