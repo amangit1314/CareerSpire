@@ -1,5 +1,5 @@
 {
-  "name": "Mocky",
+  "name": "mocky",
   "version": "0.1.0",
   "type": "module",
   "private": true,
@@ -7,7 +7,9 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test:pipeline": "tsx scripts/test-runner.ts",
+    "verify:platform": "tsx scripts/verify-platform.ts"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",

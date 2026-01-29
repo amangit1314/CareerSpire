@@ -1,6 +1,6 @@
 import { Question, TestCase } from '@/types';
 import vm from 'node:vm';
-import { execSync } from 'node:child_process';
+import { execSync, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -8,13 +8,71 @@ import os from 'node:os';
 export interface TestResult {
   passed: number;
   total: number;
+  verdict: 'AC' | 'WA' | 'TLE' | 'RE' | 'CE' | 'UNKNOWN';
   details: Array<{
     input: any;
     expected: any;
     actual: any;
     passed: boolean;
     error?: string;
+    stdout?: string;
   }>;
+}
+
+const TIME_LIMIT_MS = 3000;
+const MEMORY_LIMIT_MB = 256;
+
+/**
+ * Normalizes values for comparison (handles floats, whitespace, deep equality)
+ */
+function isEqual(actual: any, expected: any): boolean {
+  if (actual === expected) return true;
+
+  // Handle floats with epsilon
+  if (typeof actual === 'number' && typeof expected === 'number') {
+    return Math.abs(actual - expected) < 1e-6;
+  }
+
+  // If one is string and other is number, try converting
+  if (typeof actual === 'string' && typeof expected === 'number') {
+    return Math.abs(parseFloat(actual) - expected) < 1e-6;
+  }
+  if (typeof actual === 'number' && typeof expected === 'string') {
+    return Math.abs(actual - parseFloat(expected)) < 1e-6;
+  }
+
+  // Handle strings with whitespace normalization
+  if (typeof actual === 'string' && typeof expected === 'string') {
+    return actual.trim() === expected.trim();
+  }
+
+  // Handle Booleans from strings
+  if (typeof actual === 'string' && typeof expected === 'boolean') {
+    return actual.toLowerCase().trim() === expected.toString();
+  }
+
+  // Deep equality for objects/arrays via JSON
+  try {
+    const normalize = (val: any) => {
+      if (typeof val === 'string') {
+        const trimmed = val.trim();
+        if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
+          try { return JSON.stringify(JSON.parse(trimmed)); } catch { return trimmed; }
+        }
+        return trimmed;
+      }
+      return JSON.stringify(val);
+    };
+
+    const normActual = normalize(actual);
+    const normExpected = normalize(expected);
+
+    if (normActual === normExpected) return true;
+  } catch {
+    return false;
+  }
+
+  return false;
 }
 
 export async function runTests(
@@ -23,310 +81,451 @@ export async function runTests(
   language: 'javascript' | 'python' | 'java' | 'cpp' = 'javascript'
 ): Promise<TestResult> {
   const testCases = (question.testCases || []) as any[];
-  const results: TestResult['details'] = [];
-  const lang = (language || 'javascript').toLowerCase() as any;
+  const lang = (language || 'javascript').toLowerCase();
 
-  if (lang === 'javascript') {
-    return runJavaScriptTests(code, testCases, question.entryFunctionName);
-  } else if (lang === 'python') {
-    return runPythonTests(code, testCases, question.entryFunctionName);
-  } else {
-    testCases.forEach((tc) => {
-      const expected = tc.expectedOutput ?? tc.output ?? tc.expected ?? tc.expected_output ?? null;
-      results.push({
+  try {
+    switch (lang) {
+      case 'javascript':
+        return await runJavaScriptTests(code, testCases, question.entryFunctionName);
+      case 'python':
+        return await runPythonTests(code, testCases, question.entryFunctionName);
+      case 'java':
+        return await runJavaTests(code, testCases, question.entryFunctionName);
+      default:
+        throw new Error(`Language ${language} is not supported yet.`);
+    }
+  } catch (err: any) {
+    return {
+      passed: 0,
+      total: testCases.length,
+      verdict: 'RE',
+      details: testCases.map(tc => ({
         input: tc.input,
-        expected,
+        expected: tc.expectedOutput || tc.output,
         actual: null,
         passed: false,
-        error: `${language.toUpperCase()} execution not yet fully supported.`,
-      });
-    });
+        error: err.message
+      }))
+    };
   }
-
-  return {
-    passed: results.filter((r) => r.passed).length,
-    total: results.length,
-    details: results,
-  };
 }
 
 async function runJavaScriptTests(userCode: string, testCases: any[], entryName?: string | null): Promise<TestResult> {
   const results: TestResult['details'] = [];
 
+  // Use a cleaner approach: Inject a driver into the VM context
+  const context = vm.createContext({
+    console: {
+      log: (...args: any[]) => { /* Captured stdout if needed */ },
+      error: (...args: any[]) => { /* Captured stderr if needed */ }
+    },
+    process: { exit: () => { throw new Error('process.exit() is forbidden'); } },
+    Buffer: null,
+    require: null, // Disable require for security
+  });
+
   try {
-    const context = vm.createContext({ console, JSON, Array, Object, Math, Set, Map });
+    // 1. Execute User Code to populate context
+    vm.runInContext(userCode, context, { timeout: TIME_LIMIT_MS });
 
-    // 1. First, define a safe bridge in the context
-    // We pass userCode as a variable to avoid template interpolation issues in the script itself
-    vm.runInContext(`const __userCodeString = ${JSON.stringify(userCode)};`, context);
+    // 2. Identify Entry Point
+    let entryPoint: Function | null = null;
 
-    // 2. Execute user code
-    vm.runInContext(userCode, context);
-
-    // 3. Define and get the test bridge
-    const bridgeText = `
-      (input, entryPoint) => {
-        let entry;
-        try {
-          if (entryPoint) {
-            try {
-              const val = eval(entryPoint);
-              if (typeof val === 'function') {
-                const prototypes = val.prototype ? Object.getOwnPropertyNames(val.prototype).filter(m => m !== 'constructor') : [];
-                if (prototypes.length > 0) {
-                  const instance = new val();
-                  entry = instance[prototypes[0]].bind(instance);
-                } else {
-                  entry = val;
-                }
-              }
-            } catch(e) {}
-          }
-          
-          if (!entry) {
-             // Fallback: search for any function in the global scope (var/function declarations)
-             const globals = Object.keys(this);
-             for (const key of globals) {
-               if (typeof this[key] === 'function' && key !== 'eval' && key !== 'console') {
-                 entry = this[key];
-                 break;
-               }
-             }
-          }
-          
-          if (!entry) {
-             // Second fallback: search first function name in code and try to eval it (works for const/let)
-             const m = __userCodeString.match(/(?:function|const|let|var)\\s+([a-zA-Z_$][\\w$]*)/);
-             if (m && m[1]) {
-                try {
-                  const val = eval(m[1]);
-                  if (typeof val === 'function') entry = val;
-                } catch(e) {}
-             }
-          }
-
-          if (!entry) throw new Error("Could not find a valid function to call. Please check your function name.");
-          
-          let args = [];
-          if (typeof input === 'string') {
-             const trimmed = input.trim();
-             if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
-               try { args = JSON.parse(input); } catch(e) { args = [input]; }
-             } else if (trimmed.includes(',')) {
-               try { args = eval('[' + input + ']'); } catch(e) { args = [input]; }
-             } else {
-               try { args = [JSON.parse(input)]; } catch(e) { args = [input]; }
-             }
-          } else if (Array.isArray(input)) {
-             args = input;
-          } else {
-             args = [input];
-          }
-          
-          return entry(...args);
-        } catch (e) {
-          throw e;
+    if (entryName && typeof context[entryName] === 'function') {
+      entryPoint = context[entryName];
+    } else {
+      // Fallback: search for any function
+      for (const key in context) {
+        if (typeof context[key] === 'function') {
+          entryPoint = context[key];
+          break;
         }
       }
-    `;
+    }
 
-    const runTestFn = vm.runInContext(bridgeText, context);
+    if (!entryPoint) throw new Error("No function found. Please define a function.");
 
     for (const tc of testCases) {
-      const expected = tc.expectedOutput ?? tc.output ?? tc.expected ?? tc.expected_output ?? null;
-      let parsedExpected = expected;
-
-      if (typeof expected === 'string') {
-        const trimmed = expected.trim();
-        if ((trimmed.startsWith('[') && trimmed.endsWith(']')) || (trimmed.startsWith('{') && trimmed.endsWith('}'))) {
-          try { parsedExpected = JSON.parse(expected); } catch { }
-        }
-      }
+      const expected = tc.expectedOutput ?? tc.output ?? tc.expected ?? null;
+      let actual: any = null;
+      let error: string | undefined;
 
       try {
-        const actual = runTestFn(tc.input, entryName);
-        const passed = JSON.stringify(actual) === JSON.stringify(parsedExpected);
+        // Handle input parsing (if it's a string, try to parse as JSON or args)
+        let args: any[] = [];
+        if (Array.isArray(tc.input)) {
+          args = tc.input;
+        } else if (typeof tc.input === 'string') {
+          const trimmed = tc.input.trim();
+          try {
+            // Try as a single JSON array
+            if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+              args = JSON.parse(trimmed);
+              if (!Array.isArray(args)) args = [args];
+            } else {
+              // Try parsing as multiple JSON arguments separated by commas (carefully)
+              // Simple split for now, but better would be a proper parser
+              try {
+                args = JSON.parse(`[${trimmed}]`);
+              } catch {
+                args = [trimmed]; // Fallback to raw string
+              }
+            }
+          } catch {
+            args = [tc.input];
+          }
+        } else {
+          args = [tc.input];
+        }
+
+        actual = entryPoint(...args);
+        console.log(`[JS-Runner] ${entryName || 'found'} executed. Input: ${JSON.stringify(args).substring(0, 50)}... Result:`, actual);
+
         results.push({
           input: tc.input,
-          expected: parsedExpected,
+          expected,
           actual,
-          passed,
+          passed: isEqual(actual, expected)
         });
       } catch (err: any) {
         results.push({
           input: tc.input,
-          expected: parsedExpected,
+          expected,
           actual: null,
           passed: false,
-          error: err.message,
+          error: err.message
         });
       }
     }
   } catch (err: any) {
-    testCases.forEach((tc) => {
-      const expected = tc.expectedOutput ?? tc.output ?? tc.expected ?? tc.expected_output ?? null;
-      results.push({
-        input: tc.input,
-        expected,
-        actual: null,
-        passed: false,
-        error: `Setup Error: ${err.message}`,
-      });
-    });
+    throw err;
   }
 
+  const passedCount = results.filter(r => r.passed).length;
   return {
-    passed: results.filter((r) => r.passed).length,
+    passed: passedCount,
     total: results.length,
-    details: results,
+    verdict: passedCount === results.length ? 'AC' : (results.some(r => r.error) ? 'RE' : 'WA'),
+    details: results
   };
 }
 
 async function runPythonTests(code: string, testCases: any[], entryName?: string | null): Promise<TestResult> {
-  const results: TestResult['details'] = [];
-  const tempDir = os.tmpdir();
-  const timestamp = Date.now();
-  const userCodePath = path.join(tempDir, `user_code_${timestamp}.py`);
-  const runnerPath = path.join(tempDir, `runner_${timestamp}.py`);
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mocky-py-'));
+  const userCodePath = path.join(tempDir, 'solution.py');
+  const runnerPath = path.join(tempDir, 'runner.py');
 
   try {
     fs.writeFileSync(userCodePath, code);
 
-    for (const tc of testCases) {
-      const expected = tc.expectedOutput ?? tc.output ?? tc.expected ?? tc.expected_output ?? null;
-      let parsedExpected = expected;
-
-      if (typeof expected === 'string') {
-        const trimmed = expected.trim();
-        if ((trimmed.startsWith('[') && trimmed.endsWith(']')) || (trimmed.startsWith('{') && trimmed.endsWith('}'))) {
-          try { parsedExpected = JSON.parse(expected); } catch { }
-        }
-      }
-
-      const runnerCode = `
+    const runnerCode = `
 import json
 import sys
-import ast
+import solution
+from solution import *
 
-def run_test():
+def normalize(val):
+    if isinstance(val, float): return round(val, 6)
+    return val
+
+test_cases = ${JSON.stringify(testCases)}
+results = []
+
+for tc in test_cases:
     try:
-        # User Code
-        ${code.split('\n').map(line => '        ' + line).join('\n')}
+        # Find entry point
+        entry_name = "${entryName || ''}"
+        target = None
         
-        # Test Input
-        input_val = ${JSON.stringify(tc.input)}
+        if entry_name and hasattr(solution, entry_name):
+            target = getattr(solution, entry_name)
+        else:
+            # Fallback to Solution class or any function
+            if hasattr(solution, 'Solution'):
+                sol_class = getattr(solution, 'Solution')
+                inst = sol_class()
+                # find first non-private method
+                methods = [m for m in dir(inst) if not m.startswith('__') and callable(getattr(inst, m))]
+                if methods: target = getattr(inst, methods[0])
+            
+            if not target:
+                for name in dir(solution):
+                    if not name.startswith('__'):
+                        attr = getattr(solution, name)
+                        if callable(attr):
+                            target = attr
+                            break
         
-        # Parse inputs
-        args = []
-        try:
-            if isinstance(input_val, str):
-                trimmed = input_val.strip()
-                if trimmed.startswith('[') and trimmed.endswith(']'):
-                    args = json.loads(input_val)
-                elif ',' in trimmed:
-                    args = ast.literal_eval("[" + input_val + "]")
-                else:
-                    try:
-                        args = [json.loads(input_val)]
-                    except:
-                        args = [input_val]
-            elif isinstance(input_val, list):
-                args = input_val
-            else:
-                args = [input_val]
-        except:
-            args = [input_val]
+        if not target:
+            raise Exception("No callable function found in submission")
 
-        target_fn = None
-        lcls = locals()
-        
-        # 1. Try explicit entry point
-        entry_pt = "${entryName || ''}"
-        if entry_pt and entry_pt in lcls:
-            obj = lcls[entry_pt]
-            if callable(obj): target_fn = obj
-            elif hasattr(obj, '__class__'):
-               try:
-                  instance = obj() if isinstance(obj, type) else obj
-                  methods = [m for m in dir(instance) if not m.startswith('__') and callable(getattr(instance, m))]
-                  if methods: target_fn = getattr(instance, methods[0])
-               except: pass
+        # Prepare input
+        inp = tc['input']
+        if isinstance(inp, str) and inp.startswith('['):
+            args = json.loads(inp)
+        elif isinstance(inp, list):
+            args = inp
+        else:
+            args = [inp]
 
-        # 2. Try Solution class
-        if not target_fn and 'Solution' in lcls:
-            sol = lcls['Solution']()
-            methods = [m for m in dir(sol) if not m.startswith('__') and callable(getattr(sol, m))]
-            if methods: target_fn = getattr(sol, methods[0])
-        
-        # 3. Try any function
-        if not target_fn:
-            for name, obj in lcls.items():
-                if callable(obj) and name not in ['json', 'sys', 'ast', 'run_test']:
-                    target_fn = obj
-                    break
-
-        if not target_fn: return {"error": "No function found."}
-
-        result = target_fn(*args)
-        return {"result": result}
+        actual = target(*args)
+        results.append({"actual": actual, "passed": True})
     except Exception as e:
-        return {"error": str(e)}
+        results.append({"error": str(e), "passed": False})
 
-print(json.dumps(run_test()))
+print(json.dumps(results))
 `;
-      fs.writeFileSync(runnerPath, runnerCode);
+    fs.writeFileSync(runnerPath, runnerCode);
 
-      try {
-        const output = execSync(`python3 "${runnerPath}"`, { encoding: 'utf8', timeout: 3000 });
-        const data = JSON.parse(output.trim() || '{}');
+    const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
+    const proc = spawnSync(pythonCmd, [runnerPath], {
+      cwd: tempDir,
+      timeout: TIME_LIMIT_MS,
+      encoding: 'utf8',
+      env: { ...process.env, PYTHONPATH: tempDir }
+    });
 
-        if (data.error) {
-          results.push({
-            input: tc.input,
-            expected: parsedExpected,
-            actual: null,
-            passed: false,
-            error: data.error,
-          });
-        } else {
-          const actual = data.result;
-          const passed = JSON.stringify(actual) === JSON.stringify(parsedExpected);
-          results.push({
-            input: tc.input,
-            expected: parsedExpected,
-            actual,
-            passed,
-          });
-        }
-      } catch (err: any) {
-        results.push({
+    if (proc.status !== 0 && !proc.stdout) {
+      return {
+        passed: 0,
+        total: testCases.length,
+        verdict: proc.error?.message?.includes('ETIMEDOUT') ? 'TLE' : 'RE',
+        details: testCases.map(tc => ({
           input: tc.input,
-          expected: parsedExpected,
+          expected: tc.expectedOutput || tc.output,
           actual: null,
           passed: false,
-          error: err.message || 'Python execution error',
-        });
-      }
+          error: proc.stderr || proc.error?.message || 'Unknown execution error'
+        }))
+      };
     }
-  } catch (err: any) {
-    testCases.forEach((tc) => {
-      const expected = tc.expectedOutput ?? tc.output ?? tc.expected ?? tc.expected_output ?? null;
-      results.push({
+
+    let rawResults: any[] = [];
+    try {
+      rawResults = JSON.parse(proc.stdout.trim());
+    } catch {
+      throw new Error("Failed to parse execution output: " + proc.stdout);
+    }
+
+    const details = testCases.map((tc, i) => {
+      const res = rawResults[i];
+      const expected = tc.expectedOutput ?? tc.output ?? tc.expected;
+      return {
         input: tc.input,
         expected,
-        actual: null,
-        passed: false,
-        error: `Execution Setup Error: ${err.message}`,
-      });
+        actual: res.actual,
+        passed: res.passed && isEqual(res.actual, expected),
+        error: res.error,
+        stdout: proc.stdout
+      };
     });
-  } finally {
-    if (fs.existsSync(userCodePath)) try { fs.unlinkSync(userCodePath); } catch (e) { }
-    if (fs.existsSync(runnerPath)) try { fs.unlinkSync(runnerPath); } catch (e) { }
-  }
 
-  return {
-    passed: results.filter((r) => r.passed).length,
-    total: results.length,
-    details: results,
-  };
+    const passedCount = details.filter(d => d.passed).length;
+    return {
+      passed: passedCount,
+      total: details.length,
+      verdict: passedCount === details.length ? 'AC' : (details.some(d => d.error) ? 'RE' : 'WA'),
+      details
+    };
+
+  } finally {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  }
 }
+
+async function runJavaTests(code: string, testCases: any[], entryName?: string | null): Promise<TestResult> {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mocky-java-'));
+
+  try {
+    // 1. Detect Class Name or default to Solution
+    const classMatch = code.match(/class\s+([a-zA-Z_$][\w$]*)/);
+    const className = classMatch ? classMatch[1] : 'Solution';
+    const filePath = path.join(tempDir, `${className}.java`);
+    fs.writeFileSync(filePath, code);
+
+    // 2. Create Runner
+    const runnerCode = `
+import java.util.*;
+import com.google.gson.*;
+
+public class Runner {
+    public static void main(String[] args) {
+        Gson gson = new Gson();
+        List<Map<String, Object>> results = new ArrayList<>();
+        ${className} solution = new ${className}();
+        
+        // This is a simplified runner for MVP. 
+        // In a real system, we'd use reflection to call the method based on entryName.
+        try {
+            // Simplified: Expecting a single method to test
+            java.lang.reflect.Method[] methods = solution.getClass().getDeclaredMethods();
+            java.lang.reflect.Method target = null;
+            for (var m : methods) {
+                if (!m.getName().equals("main") && !java.lang.reflect.Modifier.isPrivate(m.getModifiers())) {
+                    target = m;
+                    break;
+                }
+            }
+            
+            if (target == null) throw new Exception("No target method found");
+
+            String jsonInput = System.getProperty("testCases");
+            JsonArray cases = JsonParser.parseString(jsonInput).getAsJsonArray();
+
+            for (JsonElement el : cases) {
+                JsonObject tc = el.getAsJsonObject();
+                JsonElement inp = tc.get("input");
+                
+                Object[] callArgs;
+                if (inp.isJsonArray()) {
+                    JsonArray arr = inp.getAsJsonArray();
+                    callArgs = new Object[arr.size()];
+                    for(int i=0; i<arr.size(); i++) {
+                       // Very rough type mapping for MVP
+                       JsonElement v = arr.get(i);
+                       if (v.isJsonPrimitive()) {
+                           if (v.getAsJsonPrimitive().isNumber()) callArgs[i] = v.getAsInt();
+                           else if (v.getAsJsonPrimitive().isBoolean()) callArgs[i] = v.getAsBoolean();
+                           else callArgs[i] = v.getAsString();
+                       }
+                    }
+                } else {
+                    callArgs = new Object[]{ gson.fromJson(inp, Object.class) };
+                }
+
+                try {
+                    Object result = target.invoke(solution, callArgs);
+                    Map<String, Object> r = new HashMap<>();
+                    r.put("actual", result);
+                    r.put("passed", true);
+                    results.add(r);
+                } catch (Exception e) {
+                    Map<String, Object> r = new HashMap<>();
+                    r.put("error", e.getCause() != null ? e.getCause().getMessage() : e.getMessage());
+                    r.put("passed", false);
+                    results.add(r);
+                }
+            }
+        } catch (Exception e) {
+            System.err.println(e.getMessage());
+        }
+        System.out.println("RESULT_START" + gson.toJson(results) + "RESULT_END");
+    }
+}
+`;
+    // Note: Java runner needs Gson for easy JSON handling in this mock
+    // For MVP without external deps, we'd use a simpler format, but let's assume standard libs or provide a simple JSON util.
+    // Actually, let's keep it simpler for now to avoid needing Gson in the environment.
+
+    // REVISED SIMPLE JAVA RUNNER (No external deps) v2
+    const simpleRunner = `
+import java.util.*;
+import java.lang.reflect.*;
+
+public class Runner {
+    public static void main(String[] args) throws Exception {
+        ${className} sol = new ${className}();
+        Method[] methods = sol.getClass().getDeclaredMethods();
+        Method target = null;
+        for (Method m : methods) {
+            if (!m.getName().equals("main") && (m.getModifiers() & Modifier.PUBLIC) != 0) {
+                target = m;
+                break;
+            }
+        }
+        
+        if (target == null) {
+            System.out.println("ERR: No public method found");
+            return;
+        }
+
+        Class<?>[] paramTypes = target.getParameterTypes();
+        Scanner sc = new Scanner(System.in);
+        while(sc.hasNextLine()) {
+            String line = sc.nextLine();
+            if (line.isEmpty()) continue;
+            try {
+                Object[] callArgs = new Object[paramTypes.length];
+                // Very basic split for demo/MVP: split by comma if not in brackets
+                String[] tokens = line.split(",(?![^\\\\[]*])"); 
+                
+                for (int i = 0; i < paramTypes.length; i++) {
+                    String t = (i < tokens.length) ? tokens[i].trim() : "";
+                    if (paramTypes[i] == int.class || paramTypes[i] == Integer.class) {
+                        callArgs[i] = Integer.parseInt(t);
+                    } else if (paramTypes[i] == double.class || paramTypes[i] == Double.class) {
+                        callArgs[i] = Double.parseDouble(t);
+                    } else if (paramTypes[i] == boolean.class || paramTypes[i] == Boolean.class) {
+                        callArgs[i] = Boolean.parseBoolean(t);
+                    } else {
+                        callArgs[i] = t;
+                    }
+                }
+                
+                Object result = target.invoke(sol, callArgs);
+                System.out.println("RES:" + result);
+            } catch (Exception e) {
+                System.out.println("ERR:" + (e.getCause() != null ? e.getCause().getMessage() : e.getMessage()));
+            }
+        }
+    }
+}
+`;
+    fs.writeFileSync(path.join(tempDir, 'Runner.java'), simpleRunner);
+
+    // Compile
+    const compile = spawnSync('javac', [`${className}.java`, 'Runner.java'], { cwd: tempDir, encoding: 'utf8' });
+    if (compile.status !== 0) {
+      return {
+        passed: 0,
+        total: testCases.length,
+        verdict: 'CE',
+        details: testCases.map(tc => ({
+          input: tc.input,
+          expected: tc.expectedOutput || tc.output,
+          actual: null,
+          passed: false,
+          error: compile.stderr
+        }))
+      };
+    }
+
+    const run = spawnSync('java', ['Runner'], {
+      cwd: tempDir,
+      input: testCases.map(tc => {
+        if (Array.isArray(tc.input)) return tc.input.join(',');
+        return typeof tc.input === 'string' ? tc.input : JSON.stringify(tc.input);
+      }).join('\n'),
+      timeout: TIME_LIMIT_MS,
+      encoding: 'utf8'
+    });
+
+    const lines = run.stdout.split('\n');
+    const details = testCases.map((tc, i) => {
+      const line = lines.find(l => l.startsWith('RES:') || l.startsWith('ERR:'));
+      if (line) lines.splice(lines.indexOf(line), 1);
+
+      const expected = tc.expectedOutput ?? tc.output;
+      if (!line) return { input: tc.input, expected, actual: null, passed: false, error: 'No output' };
+
+      if (line.startsWith('ERR:')) {
+        return { input: tc.input, expected, actual: null, passed: false, error: line.substring(4) };
+      } else {
+        const actual = line.substring(4);
+        return { input: tc.input, expected, actual, passed: isEqual(actual, expected) };
+      }
+    });
+
+    const passedCount = details.filter(d => d.passed).length;
+    return {
+      passed: passedCount,
+      total: details.length,
+      verdict: passedCount === details.length ? 'AC' : (details.some(d => d.error) ? 'RE' : 'WA'),
+      details
+    };
+
+  } finally {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  }
+}
+
