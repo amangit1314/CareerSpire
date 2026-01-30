@@ -3,7 +3,7 @@
 import { prisma } from '@/lib/prisma';
 import { MockSessionStatus, QuestionType, Difficulty } from '@/types/enums';
 import type { MockSession, HRQuestion } from '@/types';
-import { generateHRQuestions } from '@/lib/llm';
+import { generateHRQuestions } from '@/lib/llm.tsxt';
 import { AppError } from '@/lib/errors';
 import { getSignedUrl } from '@/lib/supabase/storage';
 

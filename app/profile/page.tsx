@@ -9,6 +9,10 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/hooks/useAuth';
 import { authService } from '@/services/auth.service';
+import { changePasswordAction, deleteAccountAction } from '@/app/actions/auth.actions';
+import { toast } from 'sonner';
+import { AnimatePresence } from 'framer-motion';
+
 import { dmSans, inter } from '@/lib/fonts';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
@@ -31,8 +35,13 @@ import {
     Edit3,
     Camera,
     Settings,
-    ShieldCheck
+    ShieldCheck,
+    AlertTriangle,
+    X,
+    Trash2,
+    Loader2
 } from 'lucide-react';
+
 
 // Gamification Constants
 const LEVELS = [
@@ -95,6 +104,17 @@ export default function ProfilePage() {
         avgScore: 0,
     });
 
+    // Change Password State
+    const [showChangePassword, setShowChangePassword] = useState(false);
+    const [currentPassword, setCurrentPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmNewPassword, setConfirmNewPassword] = useState('');
+    const [isChangingPassword, setIsChangingPassword] = useState(false);
+
+    // Delete Account State
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
+
     useEffect(() => {
         const fetchStats = async () => {
             try {
@@ -131,10 +151,49 @@ export default function ProfilePage() {
         try {
             await authService.updateProfile({ name });
             setEditing(false);
-        } catch (error) {
+            toast.success('Profile updated successfully');
+        } catch (error: any) {
             console.error('Failed to update profile:', error);
+            toast.error(error.message || 'Failed to update profile');
         }
         setSaving(false);
+    };
+
+    const handleChangePassword = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (newPassword !== confirmNewPassword) {
+            toast.error('New passwords do not match');
+            return;
+        }
+        if (newPassword.length < 6) {
+            toast.error('New password must be at least 6 characters');
+            return;
+        }
+        setIsChangingPassword(true);
+        try {
+            await changePasswordAction({ currentPassword, newPassword });
+            toast.success('Password changed successfully');
+            setShowChangePassword(false);
+            setCurrentPassword('');
+            setNewPassword('');
+            setConfirmNewPassword('');
+        } catch (error: any) {
+            toast.error(error.message || 'Failed to change password');
+        } finally {
+            setIsChangingPassword(false);
+        }
+    };
+
+    const handleDeleteAccount = async () => {
+        setIsDeleting(true);
+        try {
+            await deleteAccountAction();
+            toast.success('Account deleted successfully');
+            router.push('/');
+        } catch (error: any) {
+            toast.error(error.message || 'Failed to delete account');
+            setIsDeleting(false);
+        }
     };
 
     if (isLoading) {
@@ -376,7 +435,11 @@ export default function ProfilePage() {
                                 <p className="text-[10px] text-muted-foreground px-1 uppercase tracking-wider font-bold">Email address is permanent and linked to your performance data</p>
                             </div>
 
-                            <Button variant="outline" className="w-full h-12 rounded-2xl border-primary/20 hover:bg-primary/5 transition-colors font-bold tracking-tight">
+                            <Button
+                                variant="outline"
+                                onClick={() => setShowChangePassword(true)}
+                                className="w-full h-12 rounded-2xl border-primary/20 hover:bg-primary/5 transition-colors font-bold tracking-tight"
+                            >
                                 Change Password
                             </Button>
                         </CardContent>
@@ -411,6 +474,142 @@ export default function ProfilePage() {
                         </CardContent>
                     </Card>
                 </div>
+
+                {/* Danger Zone */}
+                <Card className="border-red-500/20 bg-red-500/5 rounded-3xl overflow-hidden mt-8">
+                    <CardHeader className="p-8 pb-4">
+                        <CardTitle className={cn("flex items-center gap-3 text-2xl font-black tracking-tight text-red-600", dmSans.className)}>
+                            <div className="p-2 rounded-xl bg-red-500/10">
+                                <AlertTriangle className="h-6 w-6 text-red-500" />
+                            </div>
+                            Danger Zone
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-8 pt-4 flex flex-col md:flex-row items-center justify-between gap-6">
+                        <div className="space-y-1">
+                            <p className="font-bold text-lg">Delete Account</p>
+                            <p className="text-sm text-muted-foreground max-w-xl">
+                                Permanently delete your account and all associated data. This action cannot be undone.
+                                Everything including your mock history, XP, and badges will be lost.
+                            </p>
+                        </div>
+                        <Button
+                            variant="destructive"
+                            onClick={() => setShowDeleteConfirm(true)}
+                            className="h-12 px-8 rounded-2xl font-black tracking-tight shadow-xl shadow-red-500/20"
+                        >
+                            Delete Account
+                        </Button>
+                    </CardContent>
+                </Card>
+
+                {/* Modals */}
+                <AnimatePresence>
+                    {showChangePassword && (
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm">
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                                className="w-full max-w-md bg-card border border-border shadow-2xl rounded-3xl overflow-hidden"
+                            >
+                                <div className="p-6 border-b flex items-center justify-between">
+                                    <h2 className={cn("text-xl font-black", dmSans.className)}>Change Password</h2>
+                                    <button onClick={() => setShowChangePassword(false)} className="p-2 rounded-xl hover:bg-muted transition-colors">
+                                        <X className="h-5 w-5" />
+                                    </button>
+                                </div>
+                                <form onSubmit={handleChangePassword} className="p-6 space-y-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="currentPassword">Current Password</Label>
+                                        <Input
+                                            id="currentPassword"
+                                            type="password"
+                                            value={currentPassword}
+                                            onChange={(e) => setCurrentPassword(e.target.value)}
+                                            required
+                                            className="h-12 rounded-xl bg-muted/30"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="newPassword">New Password</Label>
+                                        <Input
+                                            id="newPassword"
+                                            type="password"
+                                            value={newPassword}
+                                            onChange={(e) => setNewPassword(e.target.value)}
+                                            required
+                                            className="h-12 rounded-xl bg-muted/30"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="confirmNewPassword">Confirm New Password</Label>
+                                        <Input
+                                            id="confirmNewPassword"
+                                            type="password"
+                                            value={confirmNewPassword}
+                                            onChange={(e) => setConfirmNewPassword(e.target.value)}
+                                            required
+                                            className="h-12 rounded-xl bg-muted/30"
+                                        />
+                                    </div>
+                                    <Button type="submit" className="w-full h-12 rounded-xl text-white mt-4" disabled={isChangingPassword}>
+                                        {isChangingPassword ? (
+                                            <>
+                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                Updating...
+                                            </>
+                                        ) : (
+                                            'Update Password'
+                                        )}
+                                    </Button>
+                                </form>
+                            </motion.div>
+                        </div>
+                    )}
+
+                    {showDeleteConfirm && (
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm">
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                                className="w-full max-w-md bg-card border border-red-500/20 shadow-2xl rounded-3xl overflow-hidden"
+                            >
+                                <div className="p-8 text-center space-y-4">
+                                    <div className="w-16 h-16 bg-red-500/10 rounded-2xl mx-auto flex items-center justify-center">
+                                        <Trash2 className="h-8 w-8 text-red-500" />
+                                    </div>
+                                    <div>
+                                        <h2 className={cn("text-2xl font-black mb-2", dmSans.className)}>Delete Account?</h2>
+                                        <p className="text-muted-foreground text-sm">
+                                            This action is <span className="text-red-500 font-bold uppercase">permanent</span>.
+                                            You will lose all your progress, history, and subscription access.
+                                        </p>
+                                    </div>
+                                    <div className="flex flex-col gap-3 pt-4">
+                                        <Button
+                                            variant="destructive"
+                                            onClick={handleDeleteAccount}
+                                            disabled={isDeleting}
+                                            className="h-12 rounded-xl font-black uppercase tracking-widest text-xs"
+                                        >
+                                            {isDeleting ? 'Deleting...' : 'Yes, Delete My Account'}
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            onClick={() => setShowDeleteConfirm(false)}
+                                            disabled={isDeleting}
+                                            className="h-12 rounded-xl font-bold"
+                                        >
+                                            Cancel
+                                        </Button>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        </div>
+                    )}
+                </AnimatePresence>
             </div>
         </div>
     );

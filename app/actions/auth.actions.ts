@@ -9,6 +9,8 @@ import { NotificationType } from '@/types/enums';
 import type { SignUpRequest, SignInRequest, AuthResponse, User } from '@/types';
 import { UserLevel, SubscriptionTier } from '@/types/enums';
 import { z } from 'zod';
+import crypto from 'node:crypto';
+
 
 
 function toUserResponse(user: any): User {
@@ -236,4 +238,145 @@ export async function getCurrentUserAction(): Promise<User> {
   }
 
   return toUserResponse(user);
+}
+
+const forgotPasswordSchema = z.object({
+  email: z.string().email('Please enter a valid email address'),
+});
+
+export async function requestPasswordResetAction(data: { email: string }): Promise<{ message: string }> {
+  try {
+    const validated = forgotPasswordSchema.parse(data);
+    const user = await prisma.user.findUnique({
+      where: { email: validated.email },
+    });
+
+    if (!user) {
+      // Don't reveal if user exists or not for security, but we can log it
+      console.log(`Password reset requested for non-existent email: ${validated.email}`);
+      return { message: 'If an account exists with this email, a reset link has been sent.' };
+    }
+
+    const token = crypto.randomUUID();
+    const expires = new Date(Date.now() + 3600000); // 1 hour
+
+    await prisma.verificationToken.create({
+      data: {
+        identifier: user.email,
+        token,
+        expires,
+      },
+    });
+
+    const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL}/auth/reset-password?token=${token}`;
+
+    await sendEmailTemplate('password-reset', user.email, {
+      name: user.name || 'there',
+      resetUrl,
+    });
+
+    return { message: 'If an account exists with this email, a reset link has been sent.' };
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      throw new AppError(error.issues[0]?.message || 'Invalid input', 'VALIDATION_ERROR', 400);
+    }
+    throw new AppError('Failed to process password reset request', 'FORGOT_PASSWORD_ERROR', 500);
+  }
+}
+
+const resetPasswordSchema = z.object({
+  token: z.string().min(1, 'Token is required'),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
+});
+
+export async function resetPasswordAction(data: z.infer<typeof resetPasswordSchema>): Promise<{ success: boolean }> {
+  try {
+    const validated = resetPasswordSchema.parse(data);
+
+    const verificationToken = await prisma.verificationToken.findUnique({
+      where: { token: validated.token },
+    });
+
+    if (!verificationToken || verificationToken.expires < new Date()) {
+      throw new AppError('Invalid or expired reset token. Please request a new one.', 'INVALID_TOKEN', 400);
+    }
+
+    const passwordHash = await hashPassword(validated.password);
+
+    await prisma.user.update({
+      where: { email: verificationToken.identifier },
+      data: { passwordHash },
+    });
+
+    await prisma.verificationToken.delete({
+      where: { token: validated.token },
+    });
+
+    return { success: true };
+  } catch (error) {
+    if (error instanceof AppError) throw error;
+    if (error instanceof z.ZodError) {
+      throw new AppError(error.issues[0]?.message || 'Invalid input', 'VALIDATION_ERROR', 400);
+    }
+    throw new AppError('Failed to reset password', 'RESET_PASSWORD_ERROR', 500);
+  }
+}
+
+const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, 'Current password is required'),
+  newPassword: z.string().min(6, 'New password must be at least 6 characters'),
+});
+
+export async function changePasswordAction(data: z.infer<typeof changePasswordSchema>): Promise<{ success: boolean }> {
+  try {
+    const { requireAuth } = await import('@/lib/auth');
+    const userId = await requireAuth();
+
+    const validated = changePasswordSchema.parse(data);
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user || !user.passwordHash) {
+      throw new AppError('User not found or password not set', 'USER_NOT_FOUND', 404);
+    }
+
+    const isValid = await verifyPassword(validated.currentPassword, user.passwordHash);
+    if (!isValid) {
+      throw new AppError('The current password you entered is incorrect.', 'INVALID_PASSWORD', 401);
+    }
+
+    const passwordHash = await hashPassword(validated.newPassword);
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash },
+    });
+
+    return { success: true };
+  } catch (error) {
+    if (error instanceof AppError) throw error;
+    if (error instanceof z.ZodError) {
+      throw new AppError(error.issues[0]?.message || 'Invalid input', 'VALIDATION_ERROR', 400);
+    }
+    throw new AppError('Failed to change password', 'CHANGE_PASSWORD_ERROR', 500);
+  }
+}
+
+export async function deleteAccountAction(): Promise<{ success: boolean }> {
+  try {
+    const { requireAuth } = await import('@/lib/auth');
+    const userId = await requireAuth();
+
+    await prisma.user.delete({
+      where: { id: userId },
+    });
+
+    await clearAuthCookies();
+
+    return { success: true };
+  } catch (error) {
+    throw new AppError('Failed to delete account. Please try again later.', 'DELETE_ACCOUNT_ERROR', 500);
+  }
 }

@@ -36,6 +36,9 @@ export function Navbar() {
     router.push('/');
   };
 
+  // 'Features',
+  const links = ['Dashboard', 'Pricing', 'Resources'];
+
   return (
     <motion.nav
       initial={{ y: -100 }}
@@ -50,8 +53,7 @@ export function Navbar() {
           </Link>
 
           <div className="hidden md:flex items-center space-x-8">
-            {/* 'Features', */}
-            {['Dashboard', 'Community', 'Pricing', 'Resources'].map((item) => (
+            {links.map((item) => (
               <Link
                 key={item}
                 href={item === 'Dashboard' ? '/dashboard' : item === 'Community' ? '/community' : item === 'Pricing' ? '/pricing' : item === 'Resources' ? '/resources' : '#'}
@@ -62,7 +64,7 @@ export function Navbar() {
               </Link>
             ))}
 
-            <div className="h-4 w-px bg-border/50 mx-2" />
+            <div className="h-4 w-px bg-[var(--secondary-avg)] mr-2" />
 
             {isAuthenticated ? (
               <div className="flex items-center space-x-4">
@@ -141,10 +143,10 @@ export function Navbar() {
             animate={{ opacity: 1, height: 'auto' }}
             className="md:hidden py-6 space-y-4 border-t bg-background/95 backdrop-blur-lg rounded-b-3xl absolute left-0 right-0 top-16 px-4 shadow-lg z-50"
           >
-            {['Dashboard', 'Pricing', 'Features', 'Resources'].map((item) => (
+            {links.map((item) => (
               <Link
                 key={item}
-                href={item === 'Dashboard' ? '/dashboard' : item === 'Pricing' ? '/pricing' : item === 'Resources' ? '/resources' : '#'}
+                href={item === 'Dashboard' ? '/dashboard' : item === 'Pricing' ? '/pricing' : item === 'Resources' ? '/resources' : '/resources'}
                 className="block px-4 py-3 text-base font-medium hover:bg-primary/5 rounded-2xl transition-all"
                 onClick={() => setMobileMenuOpen(false)}
               >
@@ -162,7 +164,7 @@ export function Navbar() {
                     <Button variant="ghost" className="w-full rounded-2xl">Login</Button>
                   </Link>
                   <Link href="/auth/signup" className="block w-full">
-                    <Button className="w-full rounded-2xl shadow-lg shadow-primary/20">Get Started</Button>
+                    <Button className="w-full rounded-2xl shadow-lg shadow-primary/20 dark:text-white">Get Started</Button>
                   </Link>
                 </>
               )}
@@ -173,4 +175,3 @@ export function Navbar() {
     </motion.nav>
   );
 }
-

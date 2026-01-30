@@ -232,7 +232,7 @@ export default function MockInterviewPage() {
         {/* Left Panel: Description & Info */}
         <div className={cn(
           "flex flex-col border-r h-full bg-muted/[0.02] transition-all duration-300 ease-in-out",
-          isCodePanelCollapsed ? "w-full" : "w-1/2"
+          isCodePanelCollapsed ? "w-full mr-12" : "w-1/2"
         )}>
           <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
             <div className="px-4 border-b shrink-0 bg-muted/10">
@@ -357,7 +357,7 @@ export default function MockInterviewPage() {
           "flex flex-col h-full bg-background transition-all duration-300 ease-in-out overflow-hidden",
           isCodePanelCollapsed ? "w-0" : "w-1/2"
         )}>
-          <div className="h-10 border-b flex items-center justify-between px-4 bg-muted/5 shrink-0">
+          <div className="h-12 border-b flex items-center justify-between px-4 bg-muted/5 shrink-0">
             <div className="flex items-center gap-4 text-xs font-semibold text-primary">
               <div className="flex items-center gap-2">
                 <Code2 className="h-3.5 w-3.5" />
@@ -465,7 +465,7 @@ export default function MockInterviewPage() {
             <div className="flex flex-col items-center gap-2">
               <ChevronLeft className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
               <div className="writing-mode-vertical text-xs font-semibold text-muted-foreground group-hover:text-primary transition-colors" style={{ writingMode: 'vertical-rl' }}>
-                Code Editor
+                Editor
               </div>
             </div>
           </button>
