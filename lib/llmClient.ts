@@ -34,7 +34,7 @@ export async function llmClient(
                     "Content-Type": "application/json",
                     ...(process.env.OPENROUTER_API_KEY && {
                         'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
-                        'X-Title': 'Mocky AI Interview Prep',
+                        'X-Title': 'CareerSpire AI Interview Prep',
                     }),
                 },
                 body: JSON.stringify({

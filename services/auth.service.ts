@@ -29,18 +29,24 @@ export const authService = {
 
   signOut: async (): Promise<void> => {
     await apiManager.post('/auth/signout');
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('auth_token');
-    }
   },
 
-  getCurrentUser: async (): Promise<User> => {
-    const response = await apiManager.get<User>('/auth/me');
-    if (response.error) {
-      throw new Error(typeof response.error === 'string' ? response.error : response.error.message);
+  getCurrentUser: async (): Promise<User | null> => {
+    try {
+      const response = await apiManager.get<User>('/auth/me');
+      if (response.error) {
+        const message = typeof response.error === 'string' ? response.error : response.error.message;
+        throw new Error(message);
+      }
+      if (!response.data) return null;
+      return response.data;
+    } catch (error: unknown) {
+      const statusCode = (error as { statusCode?: number })?.statusCode;
+      if (statusCode === 401 || statusCode === 403) {
+        return null;
+      }
+      throw error;
     }
-    if (!response.data) throw new Error('No user data returned');
-    return response.data;
   },
 
   updateProfile: async (data: Partial<User>): Promise<User> => {

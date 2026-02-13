@@ -14,10 +14,19 @@ import { QuestionCard } from '@/components/QuestionCard';
 
 export const dynamic = 'force-dynamic';
 
-export default async function TopicDetailsPage({ params }: { params: Promise<{ category: string; topic: string }> }) {
+export default async function TopicDetailsPage({
+    params,
+    searchParams
+}: {
+    params: Promise<{ category: string; topic: string }>,
+    searchParams: Promise<{ [key: string]: string | string[] | undefined }>
+}) {
     const { category, topic } = await params;
+    const { tab } = await searchParams;
     const decodedCategory = decodeURIComponent(category);
     const decodedTopic = decodeURIComponent(topic);
+
+    const activeTab = (typeof tab === 'string' && tab) || 'guide';
 
     // Fetch Guide and Questions
     const { guide, questions } = await getTopicDetails(decodedCategory, decodedTopic);
@@ -56,7 +65,7 @@ export default async function TopicDetailsPage({ params }: { params: Promise<{ c
             </div>
 
             {/* Main Content */}
-            <Tabs defaultValue="guide" className="w-full">
+            <Tabs key={activeTab} defaultValue={activeTab} className="w-full">
                 <TabsList className="w-full justify-start h-12 bg-transparent border-b rounded-none p-0 mb-8 gap-6">
                     <TabsTrigger
                         value="guide"

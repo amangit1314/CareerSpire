@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { dmSans, inter } from '@/lib/fonts';
 import { Github, Twitter, Linkedin, ArrowRight } from 'lucide-react';
-import { MockyLogo } from './MockyLogo';
+import { CareerSpireLogo } from './CareerSpireLogo';
 
 const footerLinks = [
     {
@@ -41,7 +41,7 @@ const footerLinks = [
     {
         title: 'Support',
         links: [
-            { name: 'Contact Us', href: 'mailto:support@Mocky.com' },
+            { name: 'Contact Us', href: 'mailto:support@CareerSpire.com' },
             { name: 'Help Center', href: '/faqs' },
             { name: 'Report Issue', href: '/report-issue' },
             { name: 'Give Feedback', href: '/feedback' },
@@ -64,7 +64,7 @@ export function Footer() {
                 <div className="flex flex-col lg:flex-row justify-between items-start gap-12 lg:gap-8 mb-16">
                     <div className="w-full lg:w-2/5">
                         <Link href="/" className="inline-flex items-center space-x-3 mb-6">
-                            <MockyLogo size="xl" />
+                            <CareerSpireLogo size="xl" />
                         </Link>
                         <p className={`${inter.className} text-lg text-muted-foreground/80 leading-relaxed max-w-md`}>
                             The intersection of artificial intelligence and career success.
@@ -121,7 +121,7 @@ export function Footer() {
                 {/* Bottom Section */}
                 <div className="pt-10 border-t border-border/50 flex flex-col md:flex-row justify-between items-center gap-6 text-center md:text-left">
                     <p className="text-base font-medium text-muted-foreground/60">
-                        &copy; {new Date().getFullYear()} Mocky. Crafted for excellence.
+                        &copy; {new Date().getFullYear()} CareerSpire. Crafted for excellence.
                     </p>
                     <div className="flex items-center space-x-8 text-base">
                         <span className="flex items-center">

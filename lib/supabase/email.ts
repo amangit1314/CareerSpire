@@ -111,12 +111,12 @@ export async function sendEmailTemplate(
 ): Promise<void> {
   const templates: Record<string, { subject: string; html: (data: any) => string }> = {
     welcome: {
-      subject: 'Welcome to Mocky!',
+      subject: 'Welcome to CareerSpire!',
       html: (d) => `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h1>Welcome to Mocky!</h1>
+          <h1>Welcome to CareerSpire!</h1>
           <p>Hi ${d.name || 'there'},</p>
-          <p>Thank you for joining Mocky! You now have <strong>2 free mock interviews</strong> to get started.</p>
+          <p>Thank you for joining CareerSpire! You now have <strong>2 free mock interviews</strong> to get started.</p>
           <p>Start practicing and improve your interview skills today!</p>
           <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard" style="display: inline-block; padding: 12px 24px; background: #3b82f6; color: white; text-decoration: none; border-radius: 6px; margin-top: 20px;">Go to Dashboard</a>
         </div>
@@ -135,7 +135,7 @@ export async function sendEmailTemplate(
       `,
     },
     'payment-success': {
-      subject: 'Payment Successful - Mocky',
+      subject: 'Payment Successful - CareerSpire',
       html: (d) => `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h1>Payment Successful!</h1>
@@ -147,7 +147,7 @@ export async function sendEmailTemplate(
       `,
     },
     'password-reset': {
-      subject: 'Reset Your Password - Mocky',
+      subject: 'Reset Your Password - CareerSpire',
       html: (d) => `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h1>Password Reset Request</h1>

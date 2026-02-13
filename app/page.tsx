@@ -7,7 +7,7 @@ import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/dist/ScrollTrigger';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { CheckCircle2, Code, TrendingUp, Zap, Target, Users, ArrowRight, Star } from 'lucide-react';
+import { CheckCircle2, Code, TrendingUp, Zap, Target, Users, ArrowRight, Star, Crosshair, BarChart3, RefreshCw } from 'lucide-react';
 import { dmSans, inter } from '@/lib/fonts';
 import { cn } from '@/lib/utils';
 import { Spotlight } from '@/components/ui/Spotlight';
@@ -82,9 +82,10 @@ export default function Home() {
           transition={{ duration: 0.8, ease: "easeOut" }}
           className="relative z-10 max-w-4xl mx-auto space-y-10"
         >
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass border-primary/20 text-xs font-medium text-primary mb-4 animate-in fade-in slide-in-from-bottom-5 duration-1000">
-            <Star className="h-3 w-3 fill-primary" />
-            <span>Trusted by 5,000+ Engineers</span>
+          <div className="relative inline-flex items-center gap-2 px-4 py-2 rounded-full glass text-xs font-medium text-primary mb-4 animate-in fade-in slide-in-from-bottom-5 duration-1000 overflow-hidden">
+            <span className="absolute inset-0 rounded-full p-px bg-[length:200%_200%] animate-[gradient-spin_3s_linear_infinite] bg-gradient-to-r from-primary via-primary/40 to-primary" style={{ WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)', WebkitMaskComposite: 'xor', maskComposite: 'exclude', padding: '1.5px' }} />
+            <Star className="h-3 w-3 fill-primary relative z-10" />
+            <span className="relative z-10">Trusted by 5,000+ Engineers</span>
           </div>
 
           <h1 className={`${dmSans.className} text-6xl md:text-8xl font-extrabold tracking-tight leading-[1.1] mb-6`}>
@@ -130,7 +131,7 @@ export default function Home() {
             whileInView={{ opacity: 1 }}
             className={`${dmSans.className} text-4xl md:text-5xl font-bold mb-6`}
           >
-            Why Choose Mocky?
+            Why Choose CareerSpire?
           </motion.h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto text-balance">
             We've revolutionized the preparation cycle with cutting-edge AI that simulates real-world high-stake interviews.

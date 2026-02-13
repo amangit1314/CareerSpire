@@ -9,7 +9,7 @@ import { Progress } from '@/components/ui/progress';
 import { AIInterviewer } from '@/components/AIInterviewer';
 import { VideoRecorder, VideoRecorderHandle } from '@/components/VideoRecorder';
 import { ChevronRight, Clock, CheckCircle2, Loader2, Share2, Lock, Unlock, Mic, MicOff } from 'lucide-react';
-import { saveVideoRecording, toggleVideoPublic } from '@/app/actions/video.actions';
+import { saveVideoRecording, toggleVideoPublic, submitVideoAnswer } from '@/app/actions/video.actions';
 import { getMockSessionAction } from '@/app/actions/mock.actions';
 import { createMediaUploadUrlAction } from '@/app/actions/media.actions';
 import { dmSans } from '@/lib/fonts';
@@ -19,6 +19,16 @@ import type { HRQuestion, MockSession } from '@/types';
 
 // Speech Recognition Type (for convenience)
 const Recognition = typeof window !== 'undefined' ? (window.SpeechRecognition || (window as any).webkitSpeechRecognition) : null;
+
+interface MappedQuestion extends HRQuestion {
+    id: string;
+}
+
+interface AnswerFeedback {
+    questionIndex: number;
+    score: number;
+    feedback: any;
+}
 
 export default function VideoInterviewSession() {
     const params = useParams();
@@ -39,6 +49,10 @@ export default function VideoInterviewSession() {
     const [transcript, setTranscript] = useState('');
     const [recognition, setRecognition] = useState<any>(null);
     const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const transcriptRef = useRef('');
+    const [questionStartTime, setQuestionStartTime] = useState(0);
+    const [answerFeedbacks, setAnswerFeedbacks] = useState<AnswerFeedback[]>([]);
+    const [isEvaluating, setIsEvaluating] = useState(false);
 
     const resetSilenceTimer = useCallback(() => {
         if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
@@ -59,15 +73,19 @@ export default function VideoInterviewSession() {
 
             rec.onresult = (event: any) => {
                 resetSilenceTimer();
-                let interims = '';
+                let finalText = '';
                 for (let i = event.resultIndex; i < event.results.length; i++) {
                     if (event.results[i].isFinal) {
-                        // We could handle final result here
-                    } else {
-                        interims += event.results[i][0].transcript;
+                        finalText += event.results[i][0].transcript + ' ';
                     }
                 }
-                setTranscript(prev => prev + interims);
+                if (finalText) {
+                    setTranscript(prev => {
+                        const updated = prev + finalText;
+                        transcriptRef.current = updated;
+                        return updated;
+                    });
+                }
             };
 
             rec.onend = () => {
@@ -106,9 +124,17 @@ export default function VideoInterviewSession() {
         loadSession();
     }, [sessionId, user, isAuthenticated, isAuthLoading, router]);
 
-    const questions = session?.questions || [];
-    const currentQuestion = (questions[currentQuestionIndex] as unknown) as HRQuestion | null;
-    const progress = questions.length > 0 ? ((currentQuestionIndex) / questions.length) * 100 : 0;
+    // Map DB questions to HRQuestion shape for VIDEO sessions
+    const rawQuestions = session?.questions || [];
+    const mappedQuestions: MappedQuestion[] = rawQuestions.map(q => ({
+        id: q.id,
+        question: q.description,
+        category: q.topic,
+        guidance: q.hints?.[0] || '',
+        expectedTimeMinutes: (q as any).expectedTimeMinutes || 10,
+    }));
+    const currentQuestion = mappedQuestions[currentQuestionIndex] || null;
+    const progress = mappedQuestions.length > 0 ? ((currentQuestionIndex) / mappedQuestions.length) * 100 : 0;
 
     // Timer
     useEffect(() => {
@@ -128,6 +154,7 @@ export default function VideoInterviewSession() {
     const handleSpeechComplete = () => {
         // AI finished asking, now user can answer
         setPhase('answering');
+        setQuestionStartTime(Date.now());
         if (isVoiceMode && recognition) {
             try {
                 recognition.start();
@@ -137,14 +164,40 @@ export default function VideoInterviewSession() {
 
     const handleRecordingComplete = useCallback((blob: Blob) => {
         setRecordedBlobs(prev => [...prev, blob]);
-        setTranscript('');
 
-        // Move to bridging phrase or complete
-        const isNextQuestion = currentQuestionIndex < questions.length - 1;
-        setPhase(isNextQuestion ? 'bridging' : 'complete');
+        // Capture transcript before clearing
+        const capturedTranscript = transcriptRef.current;
+        const qIndex = currentQuestionIndex;
+        const questionId = mappedQuestions[qIndex]?.id;
+        setTranscript('');
+        transcriptRef.current = '';
 
         if (recognition) {
             try { recognition.stop(); } catch (e) { }
+        }
+
+        // Move to bridging phrase or complete
+        const isNextQuestion = currentQuestionIndex < mappedQuestions.length - 1;
+        setPhase(isNextQuestion ? 'bridging' : 'complete');
+
+        // Evaluate answer in background (non-blocking)
+        if (user && questionId && capturedTranscript) {
+            const timeSpent = Math.round((Date.now() - questionStartTime) / 1000);
+            setIsEvaluating(true);
+            submitVideoAnswer(user.id, sessionId, questionId, capturedTranscript, timeSpent)
+                .then(result => {
+                    setAnswerFeedbacks(prev => [...prev, {
+                        questionIndex: qIndex,
+                        score: result.score,
+                        feedback: result.feedback,
+                    }]);
+                })
+                .catch(err => {
+                    console.error('Failed to evaluate answer:', err);
+                })
+                .finally(() => {
+                    setIsEvaluating(false);
+                });
         }
 
         if (isNextQuestion) {
@@ -154,7 +207,7 @@ export default function VideoInterviewSession() {
                 setPhase('question');
             }, 3000); // 3 seconds of bridging/AI response
         }
-    }, [currentQuestionIndex, questions.length, recognition]);
+    }, [currentQuestionIndex, mappedQuestions, recognition, user, sessionId, questionStartTime]);
 
     const handleFinishAnswer = () => {
         if (recorderRef.current) {
@@ -221,7 +274,7 @@ export default function VideoInterviewSession() {
         );
     }
 
-    if (!session || questions.length === 0 || !currentQuestion) {
+    if (!session || mappedQuestions.length === 0 || !currentQuestion) {
         return (
             <div className="min-h-screen mesh-gradient flex items-center justify-center">
                 <Card className="glass border-primary/20 max-w-md w-full mx-4">
@@ -243,6 +296,10 @@ export default function VideoInterviewSession() {
     }
 
     if (phase === 'complete') {
+        const avgScore = answerFeedbacks.length > 0
+            ? Math.round(answerFeedbacks.reduce((s, f) => s + f.score, 0) / answerFeedbacks.length)
+            : null;
+
         return (
             <div className="min-h-screen mesh-gradient flex items-center justify-center">
                 <motion.div
@@ -266,9 +323,53 @@ export default function VideoInterviewSession() {
                                     Interview Complete!
                                 </h2>
                                 <p className="text-muted-foreground">
-                                    Great job! You answered {questions.length} questions in {formatTime(elapsedTime)}.
+                                    Great job! You answered {mappedQuestions.length} questions in {formatTime(elapsedTime)}.
                                 </p>
                             </div>
+
+                            {/* AI Feedback Summary */}
+                            {answerFeedbacks.length > 0 && (
+                                <div className="space-y-3 text-left">
+                                    <h3 className="font-semibold text-center">Performance Summary</h3>
+                                    {avgScore !== null && (
+                                        <div className="text-center mb-2">
+                                            <span className={cn(
+                                                "text-3xl font-bold",
+                                                avgScore >= 70 ? "text-green-500" : avgScore >= 40 ? "text-yellow-500" : "text-red-500"
+                                            )}>
+                                                {avgScore}
+                                            </span>
+                                            <span className="text-muted-foreground">/100</span>
+                                        </div>
+                                    )}
+                                    {answerFeedbacks.map((af, i) => (
+                                        <div key={i} className="p-3 rounded-lg bg-muted/50 space-y-1">
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-sm font-medium">Q{af.questionIndex + 1}</span>
+                                                <span className={cn(
+                                                    "text-sm font-bold",
+                                                    af.score >= 70 ? "text-green-500" : af.score >= 40 ? "text-yellow-500" : "text-red-500"
+                                                )}>
+                                                    {af.score}/100
+                                                </span>
+                                            </div>
+                                            {af.feedback?.strengths?.length > 0 && (
+                                                <p className="text-xs text-green-600">+ {af.feedback.strengths[0]}</p>
+                                            )}
+                                            {af.feedback?.improvements?.length > 0 && (
+                                                <p className="text-xs text-orange-600">- {af.feedback.improvements[0]}</p>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {isEvaluating && (
+                                <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    Evaluating your last answer...
+                                </div>
+                            )}
 
                             {/* Visibility Toggle */}
                             <div className="p-4 rounded-xl bg-muted/50 space-y-3">
@@ -324,7 +425,7 @@ export default function VideoInterviewSession() {
                 <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-4">
                         <div className="text-sm text-muted-foreground">
-                            Question {currentQuestionIndex + 1} of {questions.length}
+                            Question {currentQuestionIndex + 1} of {mappedQuestions.length}
                         </div>
                         <Progress value={progress} className="w-32 h-2" />
                     </div>
@@ -376,7 +477,7 @@ export default function VideoInterviewSession() {
                                     {currentQuestion.guidance && (
                                         <div className="mt-3 pt-3 border-t border-border">
                                             <p className="text-xs text-muted-foreground">
-                                                💡 Tip: {currentQuestion.guidance}
+                                                Tip: {currentQuestion.guidance}
                                             </p>
                                         </div>
                                     )}

@@ -3,6 +3,7 @@
 import { prisma } from '@/lib/prisma';
 import { Difficulty, ProgrammingLanguage, QuestionType } from '@prisma/client';
 import { AppError } from '@/lib/errors';
+import { unstable_cache } from 'next/cache';
 
 export enum Framework {
     REACT = 'REACT',
@@ -53,9 +54,17 @@ export async function getResourceCategories(userId?: string): Promise<CategorySt
         let attempted = 0;
 
         if (userId) {
-            // This is a simplified count. For more accuracy we'd join with MockResults
-            // For now, let's just return 0s or implement basic counting if needed later
-            // To implement correctly we need to query MockResults for this user and these questions
+            const userResults = await prisma.mockResult.findMany({
+                where: {
+                    session: { userId },
+                    question: whereClause
+                },
+                select: { questionId: true }
+            });
+            const uniqueQuestions = new Set(userResults.map(r => r.questionId));
+            attempted = uniqueQuestions.size;
+            // For now, let's treat any attempt as completed in resources view
+            completed = attempted;
         }
 
         categories.push({
@@ -189,17 +198,30 @@ export async function getOrGenerateQuestionsForSkill(skillSlug: string) {
     };
 }
 
-export async function getTopicsForCategory(categorySlug: string) {
-    const { generateTopicSyllabus } = await import('@/lib/llm');
-    const topics = await generateTopicSyllabus(categorySlug);
-    return topics;
-}
+export const getTopicsForCategory = unstable_cache(
+    async (categorySlug: string) => {
+        const { generateTopicSyllabus } = await import('@/lib/llm');
+        const topics = await generateTopicSyllabus(categorySlug);
+        return topics;
+    },
+    ['topics-syllabus'],
+    { revalidate: 86400, tags: ['syllabus'] }
+);
+
+const getCachedTopicGuide = unstable_cache(
+    async (categorySlug: string, topicSlug: string) => {
+        const { generateTopicGuide } = await import('@/lib/llm');
+        return await generateTopicGuide(categorySlug, topicSlug);
+    },
+    ['topic-guide'],
+    { revalidate: 86400, tags: ['guide'] }
+);
 
 export async function getTopicDetails(categorySlug: string, topicSlug: string) {
-    const { generateTopicGuide, generateAIQuestions } = await import('@/lib/llm');
+    const { generateAIQuestions } = await import('@/lib/llm');
 
-    // 1. Get Guide (Theory)
-    const guide = await generateTopicGuide(categorySlug, topicSlug);
+    // 1. Get Guide (Theory) - Cached
+    const guide = await getCachedTopicGuide(categorySlug, topicSlug);
 
     // 2. Get Questions (Look for exact topic match first for uniqueness)
     let questions = await prisma.question.findMany({
@@ -296,7 +318,8 @@ export async function getTutorResponse(
         topic: string;
         expectedAnswerFormat?: string;
     },
-    userAnswer: string
+    userAnswer: string,
+    history: { role: 'ai' | 'user'; content: string }[] = []
 ) {
     try {
         const { generateFeedback } = await import('@/lib/llm');
@@ -309,7 +332,8 @@ export async function getTutorResponse(
             },
             userAnswer,
             { passed: 0, total: 0 },
-            0
+            0,
+            history
         );
         return feedback;
     } catch (error) {

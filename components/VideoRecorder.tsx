@@ -80,6 +80,14 @@ export const VideoRecorder = forwardRef<VideoRecorderHandle, VideoRecorderProps>
 
     const supportedMediaRecorder = useRef<MediaRecorder | null>(null);
 
+    const onRecordingCompleteRef = useRef(onRecordingComplete);
+    const autoStartRef = useRef(autoStart);
+
+    useEffect(() => {
+        onRecordingCompleteRef.current = onRecordingComplete;
+        autoStartRef.current = autoStart;
+    }, [onRecordingComplete, autoStart]);
+
     useImperativeHandle(ref, () => ({
         startRecording,
         stopRecording
@@ -125,6 +133,11 @@ export const VideoRecorder = forwardRef<VideoRecorderHandle, VideoRecorderProps>
         mediaRecorder.onstop = () => {
             const blob = new Blob(chunksRef.current, { type: 'video/webm' });
             setRecordedBlob(blob);
+            
+            // Auto submit if autoStart is true
+            if (autoStartRef.current) {
+                onRecordingCompleteRef.current(blob);
+            }
         };
 
         mediaRecorderRef.current = mediaRecorder;

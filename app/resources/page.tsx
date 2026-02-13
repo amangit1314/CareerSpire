@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { getResourceCategories, CategoryStats } from '@/app/actions/resource.actions';
 import { dmSans } from '@/lib/fonts';
 import { cn } from '@/lib/utils';
-import { BookOpen, Code2, Database, Terminal, Layout, Server, Sparkles } from 'lucide-react';
+import { BookOpen, Code2, Database, Terminal, Layout, Server, Sparkles, ArrowRight } from 'lucide-react';
 
 const ICONS: Record<string, any> = {
     'dsa': Database,
@@ -18,8 +18,10 @@ const ICONS: Record<string, any> = {
 };
 
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function ResourcesPage() {
+    const { user } = useAuth();
     const [categories, setCategories] = useState<CategoryStats[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
@@ -35,7 +37,7 @@ export default function ResourcesPage() {
     useEffect(() => {
         async function fetchData() {
             try {
-                const data = await getResourceCategories();
+                const data = await getResourceCategories(user?.id);
                 setCategories(data);
             } catch (error) {
                 console.error('Failed to fetch categories', error);
@@ -44,7 +46,7 @@ export default function ResourcesPage() {
             }
         }
         fetchData();
-    }, []);
+    }, [user?.id]);
 
     return (
         <div className="min-h-screen bg-background">
@@ -92,9 +94,9 @@ export default function ResourcesPage() {
                             categories.map((cat) => {
                                 const Icon = ICONS[cat.slug] || Sparkles;
                                 return (
-                                    <Link 
-                                        href={`/resources/${cat.slug}`} 
-                                        key={cat.slug} 
+                                    <Link
+                                        href={`/resources/${cat.slug}`}
+                                        key={cat.slug}
                                         className="block group focus:outline-none"
                                     >
                                         <Card className="h-full overflow-hidden transition-all hover:scale-[1.02] hover:border-primary/50 cursor-pointer border-muted rounded-xl relative">
@@ -114,10 +116,29 @@ export default function ResourcesPage() {
                                             </CardHeader>
 
                                             <CardContent className="relative z-10">
-                                                <div className="flex items-center justify-between text-sm text-muted-foreground mt-4">
-                                                    <span className="flex items-center gap-1 group-hover:translate-x-1 transition-transform text-primary font-medium">
-                                                        Start Practice
-                                                    </span>
+                                                <div className="space-y-4">
+                                                    <div className="flex items-center justify-between text-sm">
+                                                        <span className="text-muted-foreground">Progress</span>
+                                                        <span className="font-medium text-primary text-xs">
+                                                            {cat.stats.completedQuestions} / {cat.stats.totalQuestions} Solved
+                                                        </span>
+                                                    </div>
+                                                    <div className="h-1.5 w-full bg-primary/10 rounded-full overflow-hidden">
+                                                        <div
+                                                            className="h-full bg-primary transition-all duration-500"
+                                                            style={{
+                                                                width: `${cat.stats.totalQuestions > 0
+                                                                    ? (cat.stats.completedQuestions / cat.stats.totalQuestions) * 100
+                                                                    : 0}%`
+                                                            }}
+                                                        />
+                                                    </div>
+                                                    <div className="flex items-center justify-between text-sm pt-2">
+                                                        <span className="text-muted-foreground text-xs">{cat.stats.totalQuestions > 0 ? 'Curated Collection' : 'AI Generated'}</span>
+                                                        <span className="flex items-center gap-1 group-hover:translate-x-1 transition-transform text-primary font-medium">
+                                                            Practice <ArrowRight className="h-4 w-4" />
+                                                        </span>
+                                                    </div>
                                                 </div>
                                             </CardContent>
                                         </Card>

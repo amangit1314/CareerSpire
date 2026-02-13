@@ -87,7 +87,8 @@ export function InteractivePractice({ question, initialExplanation, category, to
                     topic: question.topic,
                     expectedAnswerFormat: question.expectedAnswerFormat,
                 },
-                userMessage
+                userMessage,
+                messages
             );
 
             let aiResponse = "";

@@ -7,7 +7,7 @@ import { inter, dmSans } from "@/lib/fonts";
 import NavbarWrapper from "@/components/NavbarWrapper";
 
 export const metadata: Metadata = {
-  title: "Mocky - AI-Powered Mock Interview Platform",
+  title: "CareerSpire - AI-Powered Mock Interview Platform",
   description: "Practice coding interviews with AI feedback. Get personalized insights and improve your skills.",
 };
 

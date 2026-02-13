@@ -83,6 +83,15 @@ export async function runTests(
   const testCases = (question.testCases || []) as any[];
   const lang = (language || 'javascript').toLowerCase();
 
+  if (testCases.length === 0) {
+    return {
+      passed: 0,
+      total: 0,
+      verdict: 'AC' as const,
+      details: [],
+    };
+  }
+
   try {
     switch (lang) {
       case 'javascript':

@@ -21,13 +21,6 @@ class ApiManager {
     // Request interceptor
     this.client.interceptors.request.use(
       (config: InternalAxiosRequestConfig) => {
-        // Add auth token if available
-        if (typeof window !== 'undefined') {
-          const token = localStorage.getItem('auth_token');
-          if (token && config.headers) {
-            config.headers.Authorization = `Bearer ${token}`;
-          }
-        }
         return config;
       },
       (error) => Promise.reject(error)
@@ -68,9 +61,9 @@ class ApiManager {
 
         // Handle specific error cases
         if (error.response?.status === 401) {
-          // Unauthorized - clear token
-          if (typeof window !== 'undefined') {
-            localStorage.removeItem('auth_token');
+          const requestUrl = error.config?.url || '';
+          const isAuthCheck = requestUrl.includes('/auth/me');
+          if (typeof window !== 'undefined' && !isAuthCheck) {
             const isAuthPage = window.location.pathname.startsWith('/auth/');
             if (!isAuthPage) {
               window.location.href = '/auth/login';

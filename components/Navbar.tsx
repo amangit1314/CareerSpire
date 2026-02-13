@@ -24,7 +24,7 @@ import {
   AvatarFallback,
   AvatarImage,
 } from "@/components/ui/avatar"
-import { MockyLogo } from './MockyLogo';
+import { CareerSpireLogo } from './CareerSpireLogo';
 
 export function Navbar() {
   const { user, signOut, isAuthenticated } = useAuth();
@@ -49,7 +49,7 @@ export function Navbar() {
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
           <Link href="/" className="flex items-center space-x-2 group">
-            <MockyLogo size="md" />
+            <CareerSpireLogo size="md" />
           </Link>
 
           <div className="hidden md:flex items-center space-x-8">

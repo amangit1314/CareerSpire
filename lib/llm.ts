@@ -30,7 +30,8 @@ export async function generateFeedback(
   },
   userAnswer: string,
   testResults: { passed: number; total: number },
-  timeSpent: number
+  timeSpent: number,
+  history: { role: 'ai' | 'user'; content: string }[] = []
 ): Promise<Feedback> {
   // Use OpenRouter or direct API
   const apiKey = process.env.OPENROUTER_API_KEY || process.env.OPENAI_API_KEY;
@@ -39,23 +40,24 @@ export async function generateFeedback(
 
   const isReasoning = question.expectedAnswerFormat === 'REASONING' || question.expectedAnswerFormat === 'SHORT_ANSWER';
 
-  const prompt = `You are a Senior Technical Interviewer and Mentor.
-Evaluate the user's submission for the following question.
+  const systemMessage = `You are a Senior Technical Interviewer and Mentor at a top tech company.
+Evaluate the user's submission rigorously but constructively. Act as a mentor.
+You MUST respond with a JSON object following the specified schema.`;
 
-### Question Details
+  const prompt = `### Question Details
 Title: ${question.title}
 Topic: ${question.topic}
 Description: ${question.description}
 ${question.codeSnippet ? `Reference Code Snippet Provided to User:\n\`\`\`\n${question.codeSnippet}\n\`\`\`` : ''}
 
-### User's Submission
+### User's NEW Submission
 Answer/Code:
 \`\`\`
 ${userAnswer}
 \`\`\`
 
 ### Context
-Test Cases Passed: ${testResults.passed}/${testResults.total} (Note: Only applicable for implementation tasks)
+Test Cases Passed: ${testResults.passed}/${testResults.total}
 Time Taken: ${timeSpent} seconds
 
 ### Evaluation Criteria:
@@ -77,9 +79,16 @@ Provide structured feedback in JSON format:
   "codeExplanation": [
     {"lineRange": "...", "explanation": "Detailed breakdown of the gold standard answer"}
   ]
-}
+}`;
 
-Be rigorous but constructive. Act like a mentor at a top tech company.`;
+  const messages = [
+    { role: 'system', content: systemMessage },
+    ...history.slice(-6).map(m => ({
+      role: m.role === 'ai' ? 'assistant' : 'user',
+      content: m.content
+    })),
+    { role: 'user', content: prompt }
+  ];
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 25000); // 25s timeout for more complex response
@@ -97,10 +106,10 @@ Be rigorous but constructive. Act like a mentor at a top tech company.`;
       },
       body: JSON.stringify({
         model,
-        messages: [{ role: 'user', content: prompt }],
+        messages,
         response_format: { type: 'json_object' },
         temperature: 0.3,
-        max_tokens: 2000, // Increased for code + explanations
+        max_tokens: 2000,
       }),
       signal: controller.signal,
     });
@@ -113,7 +122,13 @@ Be rigorous but constructive. Act like a mentor at a top tech company.`;
     }
 
     const data = await response.json();
-    const content = JSON.parse(data.choices[0].message.content);
+    let content;
+    try {
+      content = JSON.parse(data.choices[0].message.content);
+    } catch (parseError) {
+      console.error('[LLM] Failed to parse feedback JSON:', parseError);
+      throw new Error('AI returned invalid feedback format');
+    }
     return FeedbackSchema.parse(content);
   } catch (error) {
     console.error('LLM feedback generation error:', error);
@@ -352,9 +367,21 @@ ONLY RETURN JSON.
 `;
 
   const res = await llmClient(prompt, { response_format: "json_object" });
-  const data = JSON.parse(res);
+  let data: any;
+  try {
+    data = JSON.parse(res);
+  } catch (parseError) {
+    console.error('[LLM] Failed to parse DSA questions JSON:', parseError);
+    throw new Error('AI returned invalid response. Please try again.');
+  }
 
-  const questions = z.array(DSAQuestionSchema).parse(data.questions);
+  let questions;
+  try {
+    questions = z.array(DSAQuestionSchema).parse(data.questions);
+  } catch (validationError) {
+    console.error('[LLM] DSA questions failed validation:', validationError);
+    throw new Error('AI generated invalid question format. Please try again.');
+  }
   setCachedQuestions(cacheKey, questions);
   return questions;
 }
@@ -424,8 +451,19 @@ Generate a diverse mix of the following types:
 Return ONLY JSON: { "questions": [...] }
 `;
     const res = await llmClient(prompt, { response_format: "json_object" });
-    const data = JSON.parse(res);
-    return z.array(CodingQuestionSchema).parse(data.questions);
+    let data: any;
+    try {
+      data = JSON.parse(res);
+    } catch (parseError) {
+      console.error('[LLM] Failed to parse Coding questions JSON:', parseError);
+      return [];
+    }
+    try {
+      return z.array(CodingQuestionSchema).parse(data.questions);
+    } catch (validationError) {
+      console.error('[LLM] Coding questions failed validation:', validationError);
+      return [];
+    }
   }));
 
   const questions = results.flat().map((q, i) => ({ ...q, id: `coding_${Date.now()}_${i}` }));
@@ -469,8 +507,19 @@ Return only JSON:
 { "questions": [ ... ] }
 `;
     const res = await llmClient(prompt, { response_format: "json_object" });
-    const data = JSON.parse(res);
-    return z.array(HRQuestionSchema).parse(data.questions);
+    let data: any;
+    try {
+      data = JSON.parse(res);
+    } catch (parseError) {
+      console.error('[LLM] Failed to parse HR questions JSON:', parseError);
+      return [];
+    }
+    try {
+      return z.array(HRQuestionSchema).parse(data.questions);
+    } catch (validationError) {
+      console.error('[LLM] HR questions failed validation:', validationError);
+      return [];
+    }
   }));
 
   const questions = results.flat().map((q, i) => ({ ...q, id: `hr_${Date.now()}_${i}` }));

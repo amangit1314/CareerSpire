@@ -489,14 +489,7 @@ export async function submitSolutionAction(
     where: { sessionId: data.sessionId },
   });
 
-  let totalQuestionsCount = 0;
-  if (session.interviewType === 'DSA') {
-    totalQuestionsCount = session.questionIds.length;
-  } else if (session.interviewType === 'CODING') {
-    totalQuestionsCount = (session.codingQuestions as any[] || []).length;
-  } else if (session.interviewType === 'HR') {
-    totalQuestionsCount = (session.hrQuestions as any[] || []).length;
-  }
+  const totalQuestionsCount = session.questionIds?.length || 0;
 
   const isCompleted = allResults.length >= totalQuestionsCount && totalQuestionsCount > 0;
 
