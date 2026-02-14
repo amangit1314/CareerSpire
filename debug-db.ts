@@ -1,5 +1,14 @@
 import { PrismaClient } from '@prisma/client';
-const prisma = new PrismaClient();
+import { PrismaPg } from '@prisma/adapter-pg';
+import pg from 'pg';
+
+const connectionString = process.env.DIRECT_URL || process.env.DATABASE_URL || '';
+const pool = new pg.Pool({
+    connectionString,
+    ssl: { rejectUnauthorized: false }
+});
+const adapter = new PrismaPg(pool);
+const prisma = new PrismaClient({ adapter });
 
 async function main() {
     const sessions = await prisma.mockSession.findMany({

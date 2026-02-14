@@ -7,7 +7,7 @@ export default function RequestFeaturePage() {
     return (
         <StaticPageLayout
             title="Request a Feature"
-            subtitle="Have an idea that would make Mocky even better? We're listening."
+            subtitle="Have an idea that would make CareerSpire even better? We're listening."
         >
             <div className="p-8 md:p-12 rounded-3xl glass border border-primary/10 space-y-8">
                 <div className="space-y-2">

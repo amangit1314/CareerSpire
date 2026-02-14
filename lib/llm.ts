@@ -16,6 +16,7 @@ const FeedbackSchema = z.object({
   })).optional(),
   approachSummary: z.string().optional(), // High-level explanation of the correct approach
   isCodeCorrect: z.boolean().optional(), // Whether user's code was already correct
+  conversationalResponse: z.string().optional(), // Direct response if the user is just chatting or asking for help
 });
 
 export type Feedback = z.infer<typeof FeedbackSchema>;
@@ -40,45 +41,43 @@ export async function generateFeedback(
 
   const isReasoning = question.expectedAnswerFormat === 'REASONING' || question.expectedAnswerFormat === 'SHORT_ANSWER';
 
-  const systemMessage = `You are a Senior Technical Interviewer and Mentor at a top tech company.
-Evaluate the user's submission rigorously but constructively. Act as a mentor.
-You MUST respond with a JSON object following the specified schema.`;
+  const systemMessage = `You are an ELITE Senior Technical Interviewer and Tutor.
+The user is practicing a specific interview question.
+Your goal is to guide them, evaluate their submissions, and answer their questions about THIS topic/question only.
 
-  const prompt = `### Question Details
+STRICT RULES:
+1. If the user is ASKING for the answer, a hint, or has a general question about the concept, provide a detailed and helpful response in "conversationalResponse".
+2. If the user SUBMITS a code or a conceptual answer, evaluate it and fill in "score", "strengths", "improvements", etc.
+3. BE MINDFUL of the conversation history. If the user asks follow-up questions, answer them naturally.
+4. If providing a direct answer/solution, always explain the reasoning and wrap code in Markdown.
+5. You MUST respond with a JSON object.`;
+
+  const prompt = `### Current Question Context
 Title: ${question.title}
 Topic: ${question.topic}
 Description: ${question.description}
-${question.codeSnippet ? `Reference Code Snippet Provided to User:\n\`\`\`\n${question.codeSnippet}\n\`\`\`` : ''}
+${question.codeSnippet ? `Reference Code Snippet:\n\`\`\`\n${question.codeSnippet}\n\`\`\`` : ''}
 
-### User's NEW Submission
-Answer/Code:
-\`\`\`
-${userAnswer}
-\`\`\`
+### User's Input
+"${userAnswer}"
 
-### Context
-Test Cases Passed: ${testResults.passed}/${testResults.total}
-Time Taken: ${timeSpent} seconds
+### Evaluation Goal
+Is the user submitting a final answer, or just asking a question/seeking clarification/hint?
+- If asking a question/hint/direct answer: Provide a helpful and encouraging response in "conversationalResponse". Answer their query directly and accurately.
+- If submitting an answer: Evaluate it rigorously and provide feedback in the other fields.
 
-### Evaluation Criteria:
-${isReasoning
-      ? `This is a THEORETICAL/REASONING question. Evaluate the depth of understanding, correctness of concepts, and clarity of explanation. Check for common misconceptions.`
-      : `This is a CODING/IMPLEMENTATION task. Evaluate code quality, efficiency, edge cases, and correctness.`}
-
-Provide structured feedback in JSON format:
+JSON Schema to follow:
 {
   "score": 0-100,
-  "codeQuality": 0-100 (If theory, this represents 'Explanation Quality'),
-  "timeComplexity": "O(n) format (or 'N/A' for theory)",
-  "strengths": ["expert observation 1", "expert observation 2"],
-  "improvements": ["critical improvement 1", "critical improvement 2"],
-  "nextQuestion": "sophisticated follow-up topic",
-  "isCodeCorrect": true/false (Is the conceptual answer or code correct?),
-  "approachSummary": "A 2-3 sentence summary of the ideal professional answer/approach",
-  "correctedCode": "Provide the 'Gold Standard' answer here. If theory, provide a perfect explanation with examples. If code, provide optimized/corrected code wrapped in Markdown code blocks with inline comments.",
-  "codeExplanation": [
-    {"lineRange": "...", "explanation": "Detailed breakdown of the gold standard answer"}
-  ]
+  "codeQuality": 0-100,
+  "timeComplexity": "O(...) or N/A",
+  "strengths": ["..."],
+  "improvements": ["..."],
+  "isCodeCorrect": true/false,
+  "approachSummary": "Summary of the ideal approach (Keep this brief if conversationalResponse is used)",
+  "conversationalResponse": "Your direct message to the user if they are chatting/asking for help/seeking the answer",
+  "correctedCode": "The full 'Gold Standard' code or perfect theoretical explanation",
+  "codeExplanation": [{"lineRange": "...", "explanation": "..."}]
 }`;
 
   const messages = [

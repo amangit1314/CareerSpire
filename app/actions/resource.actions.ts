@@ -61,7 +61,7 @@ export async function getResourceCategories(userId?: string): Promise<CategorySt
                 },
                 select: { questionId: true }
             });
-            const uniqueQuestions = new Set(userResults.map(r => r.questionId));
+            const uniqueQuestions = new Set(userResults.map((r: any) => r.questionId));
             attempted = uniqueQuestions.size;
             // For now, let's treat any attempt as completed in resources view
             completed = attempted;
@@ -220,10 +220,20 @@ const getCachedTopicGuide = unstable_cache(
 export async function getTopicDetails(categorySlug: string, topicSlug: string) {
     const { generateAIQuestions } = await import('@/lib/llm');
 
-    // 1. Get Guide (Theory) - Cached
+    // 1. Get Syllabus to find topic difficulty
+    const syllabus = await getTopicsForCategory(categorySlug);
+    const topicInfo = syllabus.find(t => t.id === topicSlug);
+
+    // Map 'Beginner' -> 'EASY', 'Intermediate' -> 'MEDIUM', 'Advanced' -> 'HARD'
+    const syllabusDifficulty = topicInfo?.difficulty || 'Intermediate';
+    const mappedDifficulty =
+        syllabusDifficulty === 'Beginner' ? 'EASY' :
+            syllabusDifficulty === 'Advanced' ? 'HARD' : 'MEDIUM';
+
+    // 2. Get Guide (Theory) - Cached
     const guide = await getCachedTopicGuide(categorySlug, topicSlug);
 
-    // 2. Get Questions (Look for exact topic match first for uniqueness)
+    // 3. Get Questions (Look for exact topic match first for uniqueness)
     let questions = await prisma.question.findMany({
         where: {
             topic: { equals: topicSlug, mode: 'insensitive' }
@@ -231,11 +241,11 @@ export async function getTopicDetails(categorySlug: string, topicSlug: string) {
         take: 10
     });
 
-    // 3. Generate questions if missing or not enough unique ones
+    // 4. Generate questions if missing or not enough unique ones
     if (questions.length < 3) {
-        console.log(`Generating fresh questions for topic: ${topicSlug}`);
+        console.log(`Generating fresh questions for topic: ${topicSlug} with difficulty: ${mappedDifficulty}`);
         const aiQuestions = await generateAIQuestions({
-            difficulty: 'MEDIUM',
+            difficulty: mappedDifficulty,
             type: 'CODING',
             count: 3,
             topics: [`${categorySlug}: ${topicSlug}`] // Contextual prompt
@@ -250,8 +260,8 @@ export async function getTopicDetails(categorySlug: string, topicSlug: string) {
                             title: q.title,
                             description: q.description,
                             topic: topicSlug, // Tag with the specific topic slug
-                            difficulty: q.difficulty as Difficulty,
-                            type: q.type as QuestionType,
+                            difficulty: (q.difficulty as Difficulty) || mappedDifficulty as Difficulty,
+                            type: (q.type as QuestionType) || 'CODING',
                             testCases: q.testCases,
                             hints: q.hints,
                             expectedComplexity: q.expectedComplexity,

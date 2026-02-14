@@ -5,10 +5,10 @@ class ApiManager {
   private client: AxiosInstance;
 
   constructor() {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || '';
     this.client = axios.create({
-      baseURL: baseUrl.endsWith('/api') ? baseUrl : `${baseUrl}/api`,
+      baseURL: '/api/',
       timeout: 120000,
+      withCredentials: true,
       headers: {
         'Content-Type': 'application/json',
       },
@@ -18,9 +18,12 @@ class ApiManager {
   }
 
   private setupInterceptors() {
-    // Request interceptor
+    // Request interceptor to normalize URLs (remove leading slashes if baseURL is used)
     this.client.interceptors.request.use(
       (config: InternalAxiosRequestConfig) => {
+        if (config.url?.startsWith('/')) {
+          config.url = config.url.substring(1);
+        }
         return config;
       },
       (error) => Promise.reject(error)
@@ -29,40 +32,35 @@ class ApiManager {
     // Response interceptor
     this.client.interceptors.response.use(
       (response) => {
-        // Check if response is HTML when we expected JSON
         const contentType = response.headers['content-type'];
         if (contentType && contentType.includes('text/html')) {
-          const error: ApiError = {
-            message: 'Received HTML response instead of JSON. This usually means the API endpoint was not found or a page route was hit instead.',
-            code: 'INVALID_RESPONSE_FORMAT',
-            statusCode: response.status,
-          };
-          return Promise.reject(error);
+          const apiError = new Error('Received HTML response instead of JSON. Check if the API route exists.') as any;
+          apiError.code = 'INVALID_RESPONSE_FORMAT';
+          apiError.statusCode = response.status;
+          return Promise.reject(apiError);
         }
         return response;
       },
-      (error: AxiosError<ApiError>) => {
+      (error: AxiosError<any>) => {
         // Check if the error response itself is HTML
         if (error.response?.headers['content-type']?.includes('text/html')) {
-          const apiError: ApiError = {
-            message: 'Received HTML error page instead of JSON. Check backend logs.',
-            code: 'SERVER_ERROR_HTML',
-            statusCode: error.response?.status,
-          };
+          const apiError = new Error('Received HTML error page instead of JSON. Check backend logs.') as any;
+          apiError.code = 'SERVER_ERROR_HTML';
+          apiError.statusCode = error.response?.status;
           return Promise.reject(apiError);
         }
 
-        const responseData = error.response?.data as any;
-        const apiError: ApiError = {
-          message: responseData?.error?.message || responseData?.message || error.message || 'An error occurred',
-          code: responseData?.error?.code || responseData?.code,
-          statusCode: error.response?.status,
-        };
+        const responseData = error.response?.data;
+        const message = responseData?.error?.message || responseData?.message || error.message || 'An error occurred';
+
+        const apiError = new Error(message) as any;
+        apiError.code = responseData?.error?.code || responseData?.code || (error.code as string);
+        apiError.statusCode = error.response?.status;
 
         // Handle specific error cases
         if (error.response?.status === 401) {
           const requestUrl = error.config?.url || '';
-          const isAuthCheck = requestUrl.includes('/auth/me');
+          const isAuthCheck = requestUrl.includes('auth/me');
           if (typeof window !== 'undefined' && !isAuthCheck) {
             const isAuthPage = window.location.pathname.startsWith('/auth/');
             if (!isAuthPage) {

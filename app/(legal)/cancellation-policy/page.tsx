@@ -4,7 +4,7 @@ export default function CancellationPolicyPage() {
     return (
         <StaticPageLayout
             title="Cancellation Policy"
-            subtitle="How to manage and cancel your Mocky subscription."
+            subtitle="How to manage and cancel your CareerSpire subscription."
             lastUpdated="January 29, 2026"
         >
             <section>

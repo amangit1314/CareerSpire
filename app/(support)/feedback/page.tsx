@@ -7,7 +7,7 @@ export default function FeedbackPage() {
     return (
         <StaticPageLayout
             title="Give Feedback"
-            subtitle="How's your experience with Mocky? We'd love to hear your thoughts."
+            subtitle="How's your experience with CareerSpire? We'd love to hear your thoughts."
         >
             <div className="p-8 md:p-12 rounded-3xl glass border border-primary/10 space-y-8">
                 <div className="space-y-4">

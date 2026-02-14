@@ -92,14 +92,17 @@ export function InteractivePractice({ question, initialExplanation, category, to
             );
 
             let aiResponse = "";
-            if (feedback.isCodeCorrect || feedback.score > 70) {
+
+            if (feedback.conversationalResponse) {
+                aiResponse = feedback.conversationalResponse;
+            } else if (feedback.isCodeCorrect || feedback.score > 70) {
                 aiResponse = `**Fantastic job!** ${feedback.approachSummary}\n\n**Strengths:**\n- ${feedback.strengths.join('\n- ')}\n\n**Key Takeaways:**\n${feedback.correctedCode}`;
             } else {
                 aiResponse = `**Good attempt!** ${feedback.approachSummary}\n\n**Things to think about:**\n- ${feedback.improvements.join('\n- ')}\n\nWould you like to try refining your answer based on this?`;
             }
 
             // Ensure Corrected Code is wrapped in backticks if it's not (failsafe)
-            if (feedback.correctedCode && !feedback.correctedCode.includes('```') && isLikelyCode(feedback.correctedCode)) {
+            if (feedback.correctedCode && !feedback.correctedCode.includes('```') && isLikelyCode(feedback.correctedCode) && !feedback.conversationalResponse) {
                 aiResponse = aiResponse.replace(feedback.correctedCode, `\`\`\`${getLanguage()}\n${feedback.correctedCode}\n\`\`\``);
             }
 
@@ -138,21 +141,21 @@ export function InteractivePractice({ question, initialExplanation, category, to
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             className={cn(
-                                "flex gap-4",
+                                "flex gap-4 px-1",
                                 msg.role === 'user' ? "flex-row-reverse" : ""
                             )}
                         >
                             <div className={cn(
-                                "w-8 h-8 rounded-full flex items-center justify-center shrink-0 dark:text-white",
+                                "w-8 h-8 rounded-full flex items-center justify-center shrink-0 dark:text-white shadow-sm",
                                 msg.role === 'ai' ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
                             )}>
                                 {msg.role === 'ai' ? <Bot className="h-4 w-4" /> : <User className="h-4 w-4" />}
                             </div>
                             <div className={cn(
-                                "max-w-[80%] p-4 rounded-2xl text-sm leading-relaxed prose dark:prose-invert",
+                                "max-w-[75%] p-4 rounded-2xl text-sm leading-relaxed prose dark:prose-invert shadow-sm",
                                 msg.role === 'ai'
                                     ? "bg-primary/5 border border-primary/10 rounded-tl-none"
-                                    : "bg-primary text-primary-foreground rounded-tr-none shadow-lg shadow-primary/10 dark:text-white prose-p:text-primary-foreground prose-headings:text-primary-foreground prose-code:text-primary-foreground"
+                                    : "bg-primary text-primary-foreground rounded-tr-none dark:text-white prose-p:text-primary-foreground prose-headings:text-primary-foreground prose-code:text-primary-foreground"
                             )}>
                                 <ReactMarkdown components={{
                                     p: ({ node, ...props }) => <p className="mb-2 last:mb-0" {...props} />,

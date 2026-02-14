@@ -62,7 +62,7 @@ export async function middleware(request: NextRequest) {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',
-            maxAge: 15 * 60,
+            maxAge: 6 * 60 * 60, // 6 hours
             path: '/',
           });
           return response;
@@ -102,7 +102,7 @@ export const config = {
 // CORS headers configuration
 const corsHeaders = {
   'Access-Control-Allow-Origin': process.env.NODE_ENV === 'production'
-    ? 'https://mocky-nine.vercel.app'
+    ? (process.env.NEXT_LIVE_APP_URL || 'https://careerspire.vercel.app')
     : 'http://localhost:3000',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS, PATCH',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization, Cookie, X-Requested-With, Accept, Origin',

@@ -12,7 +12,7 @@ export default function ChangelogPage() {
                         Changelog
                     </h1>
                     <p className="text-xl text-muted-foreground">
-                        New updates and improvements to Mocky.
+                        New updates and improvements to CareerSpire.
                     </p>
                 </div>
 
@@ -67,7 +67,7 @@ export default function ChangelogPage() {
                                         <h2 className="text-xl font-bold">Public Launch</h2>
                                         <Badge variant="outline">Milestone</Badge>
                                     </div>
-                                    <p className="text-muted-foreground">Mocky is now live! Start practicing your interviews with AI feedback.</p>
+                                    <p className="text-muted-foreground">CareerSpire is now live! Start practicing your interviews with AI feedback.</p>
                                 </div>
                             </div>
                         </CardContent>

@@ -10,7 +10,7 @@ export default function PrivacyPage() {
                 <CardContent className="p-8 md:p-12 space-y-8">
                     <div className="space-y-4 text-center">
                         <h1 className={cn(dmSans.className, "text-4xl font-bold tracking-tight")}>
-                            Privacy at Mocky
+                            Privacy at CareerSpire
                         </h1>
                         <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
                             Your trust is our most valuable asset. We are committed to protecting your data.

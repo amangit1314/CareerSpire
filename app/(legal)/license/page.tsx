@@ -10,7 +10,7 @@ export default function LicensePage() {
             <section>
                 <h2>1. Grant of License</h2>
                 <p>
-                    Mocky granting you a personal, non-exclusive, non-transferable, limited license to use the platform in accordance with the terms of this agreement and our Terms of Service.
+                    CareerSpire granting you a personal, non-exclusive, non-transferable, limited license to use the platform in accordance with the terms of this agreement and our Terms of Service.
                 </p>
             </section>
 
@@ -29,14 +29,14 @@ export default function LicensePage() {
             <section>
                 <h2>3. Intellectual Property</h2>
                 <p>
-                    The platform and its original content, features, and functionality are and will remain the exclusive property of Mocky and its licensors.
+                    The platform and its original content, features, and functionality are and will remain the exclusive property of CareerSpire and its licensors.
                 </p>
             </section>
 
             <section>
                 <h2>4. Termination</h2>
                 <p>
-                    This License shall remain in effect until terminated by you or Mocky. The license will terminate immediately if you fail to comply with any term of this agreement.
+                    This License shall remain in effect until terminated by you or CareerSpire. The license will terminate immediately if you fail to comply with any term of this agreement.
                 </p>
             </section>
         </StaticPageLayout>

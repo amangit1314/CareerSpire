@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { Button } from './ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { NotificationBell } from './NotificationBell';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useState } from 'react';
 import { User, LogOut, Menu, X } from 'lucide-react';
 import { dmSans } from '@/lib/fonts';
@@ -25,11 +25,13 @@ import {
   AvatarImage,
 } from "@/components/ui/avatar"
 import { CareerSpireLogo } from './CareerSpireLogo';
+import { cn } from '@/lib/utils';
 
 export function Navbar() {
   const { user, signOut, isAuthenticated } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const router = useRouter();
+  const pathname = usePathname();
 
   const handleLogout = async () => {
     await signOut();
@@ -53,16 +55,28 @@ export function Navbar() {
           </Link>
 
           <div className="hidden md:flex items-center space-x-8">
-            {links.map((item) => (
-              <Link
-                key={item}
-                href={item === 'Dashboard' ? '/dashboard' : item === 'Community' ? '/community' : item === 'Pricing' ? '/pricing' : item === 'Resources' ? '/resources' : '#'}
-                className={`${dmSans.className} text-sm font-medium text-muted-foreground/80 hover:text-primary transition-colors relative group`}
-              >
-                {item}
-                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-primary transition-all group-hover:w-full" />
-              </Link>
-            ))}
+            {links.map((item) => {
+              const href = item === 'Dashboard' ? '/dashboard' : item === 'Pricing' ? '/pricing' : item === 'Resources' ? '/resources' : '/';
+              const isActive = pathname === href || (href !== '/' && pathname.startsWith(href));
+
+              return (
+                <Link
+                  key={item}
+                  href={href}
+                  className={cn(
+                    dmSans.className,
+                    "text-sm font-medium transition-colors relative group",
+                    isActive ? "text-primary font-bold" : "text-muted-foreground/80 hover:text-primary"
+                  )}
+                >
+                  {item}
+                  <span className={cn(
+                    "absolute -bottom-1 left-0 h-0.5 bg-primary transition-all duration-300",
+                    isActive ? "w-full" : "w-0 group-hover:w-full"
+                  )} />
+                </Link>
+              );
+            })}
 
             <div className="h-4 w-px bg-[var(--secondary-avg)] mr-2" />
 

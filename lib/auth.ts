@@ -6,7 +6,7 @@ import { AppError } from './errors';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || JWT_SECRET + '-refresh';
-const ACCESS_TOKEN_EXPIRY = '15m';
+const ACCESS_TOKEN_EXPIRY = '6h';
 const REFRESH_TOKEN_EXPIRY = '7d';
 
 export interface TokenPayload {
@@ -121,7 +121,7 @@ export async function setAuthCookies(
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
-    maxAge: 15 * 60, // 15 minutes
+    maxAge: 6 * 60 * 60, // 6 hours
     path: '/',
   });
 

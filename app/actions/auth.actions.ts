@@ -128,7 +128,7 @@ export async function signUpAction(data: SignUpRequest): Promise<AuthResponse> {
       session: {
         accessToken,
         refreshToken,
-        expiresAt: new Date(Date.now() + 15 * 60 * 1000),
+        expiresAt: new Date(Date.now() + 6 * 60 * 60 * 1000), // 6 hours
       },
     };
     console.log('signUpAction: Success! Returning response.');
@@ -193,7 +193,7 @@ export async function signInAction(data: SignInRequest): Promise<AuthResponse> {
       session: {
         accessToken,
         refreshToken,
-        expiresAt: new Date(Date.now() + 15 * 60 * 1000),
+        expiresAt: new Date(Date.now() + 6 * 60 * 60 * 1000), // 6 hours
       },
     };
   } catch (error) {

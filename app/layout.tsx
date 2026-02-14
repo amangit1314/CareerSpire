@@ -5,6 +5,7 @@ import { Footer } from "@/components/Footer";
 import { Providers } from "./providers";
 import { inter, dmSans } from "@/lib/fonts";
 import NavbarWrapper from "@/components/NavbarWrapper";
+import PageWrapper from "@/components/PageWrapper";
 
 export const metadata: Metadata = {
   title: "CareerSpire - AI-Powered Mock Interview Platform",
@@ -20,11 +21,11 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} ${dmSans.variable} ${inter.className} antialiased min-h-screen flex flex-col`}>
         <Providers>
-          {/* <Navbar /> */}
-
           <NavbarWrapper />
           <main className="flex-grow">
-            {children}
+            <PageWrapper>
+              {children}
+            </PageWrapper>
           </main>
           <Footer />
         </Providers>
@@ -32,5 +33,3 @@ export default function RootLayout({
     </html>
   );
 }
-
-

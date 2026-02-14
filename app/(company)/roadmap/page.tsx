@@ -4,7 +4,7 @@ export default function RoadmapPage() {
     return (
         <StaticPageLayout
             title="Roadmap"
-            subtitle="See what we're working on and what's coming next to Mocky."
+            subtitle="See what we're working on and what's coming next to CareerSpire."
         >
             <div className="space-y-12">
                 <section>
