@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import { Question } from '@/types';
+import { aiChat } from './ai';
+import { Difficulty, QuestionType, ProgrammingLanguage, Framework, QuestionFormat, AnswerFormat } from '@/types/enums';
 
 const FeedbackSchema = z.object({
   score: z.number().min(0).max(100),
@@ -8,15 +9,14 @@ const FeedbackSchema = z.object({
   strengths: z.array(z.string()),
   improvements: z.array(z.string()),
   nextQuestion: z.string().optional(),
-  // New fields for corrected code with comments
-  correctedCode: z.string().optional(), // Full corrected code with inline comments
+  correctedCode: z.string().optional(),
   codeExplanation: z.array(z.object({
-    lineRange: z.string(), // e.g., "1-3" or "5"
-    explanation: z.string(), // What this section does
+    lineRange: z.string(),
+    explanation: z.string(),
   })).optional(),
-  approachSummary: z.string().optional(), // High-level explanation of the correct approach
-  isCodeCorrect: z.boolean().optional(), // Whether user's code was already correct
-  conversationalResponse: z.string().optional(), // Direct response if the user is just chatting or asking for help
+  approachSummary: z.string().optional(),
+  isCodeCorrect: z.boolean().optional(),
+  conversationalResponse: z.string().optional(),
 });
 
 export type Feedback = z.infer<typeof FeedbackSchema>;
@@ -34,14 +34,7 @@ export async function generateFeedback(
   timeSpent: number,
   history: { role: 'ai' | 'user'; content: string }[] = []
 ): Promise<Feedback> {
-  // Use OpenRouter or direct API
-  const apiKey = process.env.OPENROUTER_API_KEY || process.env.OPENAI_API_KEY;
-  const apiUrl = process.env.OPENROUTER_API_URL || 'https://api.openai.com/v1/chat/completions';
-  const model = process.env.LLM_MODEL || 'openai/gpt-4o-mini';
-
-  const isReasoning = question.expectedAnswerFormat === 'REASONING' || question.expectedAnswerFormat === 'SHORT_ANSWER';
-
-  const systemMessage = `You are an ELITE Senior Technical Interviewer and Tutor.
+  const prompt = `You are an ELITE Senior Technical Interviewer and Tutor.
 The user is practicing a specific interview question.
 Your goal is to guide them, evaluate their submissions, and answer their questions about THIS topic/question only.
 
@@ -50,14 +43,15 @@ STRICT RULES:
 2. If the user SUBMITS a code or a conceptual answer, evaluate it and fill in "score", "strengths", "improvements", etc.
 3. BE MINDFUL of the conversation history. If the user asks follow-up questions, answer them naturally.
 4. If providing a direct answer/solution, always explain the reasoning and wrap code in Markdown.
-5. You MUST respond with a JSON object.`;
+5. You MUST respond with a JSON object.
 
-  const prompt = `### Current Question Context
+### Current Question Context
 Title: ${question.title}
 Topic: ${question.topic}
 Description: ${question.description}
 ${question.codeSnippet ? `Reference Code Snippet:\n\`\`\`\n${question.codeSnippet}\n\`\`\`` : ''}
 
+${history.length > 0 ? `### Conversation History\n${history.slice(-6).map(m => `${m.role === 'ai' ? 'Assistant' : 'User'}: ${m.content}`).join('\n')}\n` : ''}
 ### User's Input
 "${userAnswer}"
 
@@ -66,7 +60,7 @@ Is the user submitting a final answer, or just asking a question/seeking clarifi
 - If asking a question/hint/direct answer: Provide a helpful and encouraging response in "conversationalResponse". Answer their query directly and accurately.
 - If submitting an answer: Evaluate it rigorously and provide feedback in the other fields.
 
-JSON Schema to follow:
+Return ONLY valid JSON. No markdown. No backticks. No explanation. No preamble.
 {
   "score": 0-100,
   "codeQuality": 0-100,
@@ -74,66 +68,26 @@ JSON Schema to follow:
   "strengths": ["..."],
   "improvements": ["..."],
   "isCodeCorrect": true/false,
-  "approachSummary": "Summary of the ideal approach (Keep this brief if conversationalResponse is used)",
-  "conversationalResponse": "Your direct message to the user if they are chatting/asking for help/seeking the answer",
-  "correctedCode": "The full 'Gold Standard' code or perfect theoretical explanation",
+  "approachSummary": "Summary of the ideal approach",
+  "conversationalResponse": "Your direct message to the user if they are chatting/asking for help",
+  "correctedCode": "The full corrected code or perfect theoretical explanation",
   "codeExplanation": [{"lineRange": "...", "explanation": "..."}]
 }`;
 
-  const messages = [
-    { role: 'system', content: systemMessage },
-    ...history.slice(-6).map(m => ({
-      role: m.role === 'ai' ? 'assistant' : 'user',
-      content: m.content
-    })),
-    { role: 'user', content: prompt }
-  ];
-
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 25000); // 25s timeout for more complex response
-
   try {
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-        ...(process.env.OPENROUTER_API_KEY && {
-          'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || '',
-          'X-Title': 'Mocky AI Interview Prep',
-        }),
-      },
-      body: JSON.stringify({
-        model,
-        messages,
-        response_format: { type: 'json_object' },
-        temperature: 0.3,
-        max_tokens: 2000,
-      }),
-      signal: controller.signal,
+    const result = await aiChat(prompt, {
+      temperature: 0.1,
+      responseFormat: 'json_object',
+      maxTokens: 2000,
     });
 
-    clearTimeout(timeoutId);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`LLM API error: ${response.statusText} - ${errorText}`);
-    }
-
-    const data = await response.json();
-    let content;
-    try {
-      content = JSON.parse(data.choices[0].message.content);
-    } catch (parseError) {
-      console.error('[LLM] Failed to parse feedback JSON:', parseError);
-      throw new Error('AI returned invalid feedback format');
-    }
+    const content = JSON.parse(result.content);
     return FeedbackSchema.parse(content);
   } catch (error) {
-    console.error('LLM feedback generation error:', error);
-    // Fallback feedback
+    console.error('Feedback generation error:', error);
+    const total = testResults.total || 1;
     return {
-      score: Math.round((testResults.passed / testResults.total) * 100),
+      score: Math.round((testResults.passed / total) * 100),
       codeQuality: 60,
       timeComplexity: 'Unknown',
       strengths: ['Code submitted successfully'],
@@ -143,10 +97,6 @@ JSON Schema to follow:
     };
   }
 }
-
-// --------------------------------------------------------------------------------------------
-import { Difficulty, QuestionType, ProgrammingLanguage, Framework, QuestionFormat, AnswerFormat } from '@/types/enums';
-import { llmClient } from './llmClient';
 
 
 const AISchema = z.object({
@@ -170,10 +120,6 @@ const AISchema = z.object({
 export async function generateAIQuestions(
   options: { difficulty: string; type: string; count: number; topics: string[] }
 ): Promise<any[]> {
-  const apiKey = process.env.OPENROUTER_API_KEY || process.env.OPENAI_API_KEY;
-  const apiUrl = process.env.OPENROUTER_API_URL || 'https://api.openai.com/v1/chat/completions';
-  const model = process.env.LLM_MODEL || 'openai/gpt-4o-mini';
-
   const prompt = `Generate ${options.count} ${options.difficulty} ${options.type} interview questions.
 Topics to cover: ${options.topics.join(', ') || 'Any common interview topics'}.
 
@@ -190,33 +136,15 @@ For each question, provide:
 
 Ensure the questions cover a mix of problem-solving and core language concepts (e.g. for JavaScript: hoisting, closures, event loop; for Python: tuples, decorators, classes), dynamically adapted to the requested topic.
 
-Format the output as a valid JSON object with a "questions" array. Ensure strict JSON syntax.`;
-
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 25000); // 25s timeout
+Format the output as a valid JSON object with a "questions" array. Ensure strict JSON syntax.
+Return ONLY valid JSON. No markdown. No backticks. No explanation. No preamble.`;
 
   try {
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model,
-        messages: [{ role: 'user', content: prompt }],
-        response_format: { type: 'json_object' },
-        temperature: 0.7,
-      }),
-      signal: controller.signal,
+    const result = await aiChat(prompt, {
+      temperature: 0.3,
+      responseFormat: 'json_object',
     });
-
-    clearTimeout(timeoutId);
-
-    if (!response.ok) throw new Error(`LLM Error: ${response.statusText}`);
-
-    const data = await response.json();
-    const content = JSON.parse(data.choices[0].message.content);
+    const content = JSON.parse(result.content);
     return AISchema.parse(content).questions;
   } catch (error) {
     console.error('Failed to generate AI questions:', error);
@@ -365,10 +293,10 @@ Format example:
 ONLY RETURN JSON.
 `;
 
-  const res = await llmClient(prompt, { response_format: "json_object" });
+  const result = await aiChat(prompt, { temperature: 0.3, responseFormat: 'json_object' });
   let data: any;
   try {
-    data = JSON.parse(res);
+    data = JSON.parse(result.content);
   } catch (parseError) {
     console.error('[LLM] Failed to parse DSA questions JSON:', parseError);
     throw new Error('AI returned invalid response. Please try again.');
@@ -449,10 +377,10 @@ Generate a diverse mix of the following types:
 
 Return ONLY JSON: { "questions": [...] }
 `;
-    const res = await llmClient(prompt, { response_format: "json_object" });
+    const aiResult = await aiChat(prompt, { temperature: 0.3, responseFormat: 'json_object' });
     let data: any;
     try {
-      data = JSON.parse(res);
+      data = JSON.parse(aiResult.content);
     } catch (parseError) {
       console.error('[LLM] Failed to parse Coding questions JSON:', parseError);
       return [];
@@ -505,10 +433,10 @@ For each include:
 Return only JSON:
 { "questions": [ ... ] }
 `;
-    const res = await llmClient(prompt, { response_format: "json_object" });
+    const aiResult = await aiChat(prompt, { temperature: 0.3, responseFormat: 'json_object' });
     let data: any;
     try {
-      data = JSON.parse(res);
+      data = JSON.parse(aiResult.content);
     } catch (parseError) {
       console.error('[LLM] Failed to parse HR questions JSON:', parseError);
       return [];
@@ -539,11 +467,7 @@ const SyllabusSchema = z.object({
 });
 
 export async function generateTopicSyllabus(skill: string): Promise<z.infer<typeof SyllabusSchema>['topics']> {
-  const apiKey = process.env.OPENROUTER_API_KEY || process.env.OPENAI_API_KEY;
-  const apiUrl = process.env.OPENROUTER_API_URL || 'https://api.openai.com/v1/chat/completions';
-  const model = process.env.LLM_MODEL || 'openai/gpt-4o-mini';
-
-  const prompt = `Generate a comprehensive study syllabus for "${skill}". 
+  const prompt = `Generate a comprehensive study syllabus for "${skill}".
 List 9-12 essential topics (chapters) that cover everything from basics to advanced concepts.
 For example, if skill is "JavaScript", include topics like "Variables & Scope", "Hoisting", "Closures", "Promises", "Event Loop", etc.
 
@@ -553,27 +477,12 @@ For each topic provide:
 - description (Short summary of what is covered)
 - difficulty (Beginner, Intermediate, or Advanced)
 
-Format as JSON object with "topics" array.`;
+Format as JSON object with "topics" array.
+Return ONLY valid JSON. No markdown. No backticks. No explanation. No preamble.`;
 
   try {
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model,
-        messages: [{ role: 'user', content: prompt }],
-        response_format: { type: 'json_object' },
-        temperature: 0.5,
-      }),
-    });
-
-    if (!response.ok) throw new Error(`LLM Error: ${response.statusText}`);
-
-    const data = await response.json();
-    const content = JSON.parse(data.choices[0].message.content);
+    const result = await aiChat(prompt, { temperature: 0.3, responseFormat: 'json_object' });
+    const content = JSON.parse(result.content);
     return SyllabusSchema.parse(content).topics;
   } catch (error) {
     console.error('Failed to generate syllabus:', error);
@@ -591,44 +500,25 @@ const GuideSchema = z.object({
 });
 
 export async function generateTopicGuide(skill: string, topic: string): Promise<z.infer<typeof GuideSchema>> {
-  const apiKey = process.env.OPENROUTER_API_KEY || process.env.OPENAI_API_KEY;
-  const apiUrl = process.env.OPENROUTER_API_URL || 'https://api.openai.com/v1/chat/completions';
-  const model = process.env.LLM_MODEL || 'openai/gpt-4o-mini';
-
   const prompt = `Create a comprehensive deep-dive study guide for the topic "${topic}" in the context of "${skill}".
-  
-  The output should include:
-  1. A clear, in-depth explanation of the concept (using Markdown).
-  2. Code examples demonstrating the concept (using Markdown code blocks).
-  3. Common pitfalls or interview "gotchas".
-  4. Real-world use cases.
-  
-  Format as JSON:
-  {
-    "title": "Topic Title",
-    "content": "Full markdown content string...",
-    "keyTakeaways": ["point 1", "point 2", ...]
-  }`;
+
+The output should include:
+1. A clear, in-depth explanation of the concept (using Markdown).
+2. Code examples demonstrating the concept (using Markdown code blocks).
+3. Common pitfalls or interview "gotchas".
+4. Real-world use cases.
+
+Format as JSON:
+{
+  "title": "Topic Title",
+  "content": "Full markdown content string...",
+  "keyTakeaways": ["point 1", "point 2", ...]
+}
+Return ONLY valid JSON. No markdown. No backticks. No explanation. No preamble.`;
 
   try {
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model,
-        messages: [{ role: 'user', content: prompt }],
-        response_format: { type: 'json_object' },
-        temperature: 0.5,
-      }),
-    });
-
-    if (!response.ok) throw new Error(`LLM Error: ${response.statusText}`);
-
-    const data = await response.json();
-    const content = JSON.parse(data.choices[0].message.content);
+    const result = await aiChat(prompt, { temperature: 0.3, responseFormat: 'json_object' });
+    const content = JSON.parse(result.content);
     return GuideSchema.parse(content);
   } catch (error) {
     console.error('Failed to generate guide:', error);

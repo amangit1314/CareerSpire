@@ -423,11 +423,28 @@ model InterviewExperience {
   isPublic      Boolean    @default(true)
   likes         Int        @default(0)
   createdAt     DateTime   @default(now())
-  
+
   user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
   @@index([company])
   @@index([userId])
   @@index([isPublic])
   @@map("interview_experiences")
+}
+
+// ============ Question Bank (AI Cache — Core Differentiator) ============
+
+model SkillQuestionBank {
+  id         String   @id @default(cuid())
+  skill      String   @unique  // "NestJS", "UPSC Polity", "System Design"
+  niche      String            // programming | hr | government
+  topics     Json              // array of all topics in this skill
+  questions  Json              // array of 30+ questions
+  hitCount   Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([skill])
+  @@index([niche])
+  @@map("skill_question_banks")
 }

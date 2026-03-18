@@ -2,7 +2,15 @@
   "permissions": {
     "allow": [
       "Bash(dir:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx -p typescript tsc --noEmit)",
+      "Bash(npm install:*)",
+      "Bash(ls /Users/amanic/Developer/Personal/CareerSpire/lib/env*)"
     ]
-  }
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "claude-flow"
+  ]
 }

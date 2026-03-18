@@ -143,9 +143,10 @@ async function runJavaScriptTests(userCode: string, testCases: any[], entryName?
     if (entryName && typeof context[entryName] === 'function') {
       entryPoint = context[entryName];
     } else {
-      // Fallback: search for any function
-      for (const key in context) {
-        if (typeof context[key] === 'function') {
+      // Fallback: search for user-defined functions (skip built-in context keys)
+      const builtinKeys = new Set(['console', 'process', 'Buffer', 'require']);
+      for (const key of Object.getOwnPropertyNames(context)) {
+        if (!builtinKeys.has(key) && typeof context[key] === 'function') {
           entryPoint = context[key];
           break;
         }
@@ -167,21 +168,24 @@ async function runJavaScriptTests(userCode: string, testCases: any[], entryName?
         } else if (typeof tc.input === 'string') {
           const trimmed = tc.input.trim();
           try {
-            // Try as a single JSON array
-            if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
-              args = JSON.parse(trimmed);
-              if (!Array.isArray(args)) args = [args];
+            // Try wrapping the whole string as a JSON array of arguments
+            // e.g. "[2,7,11,15], 9" → [[2,7,11,15], 9]
+            // e.g. "[1,2,3]" → [[1,2,3]] (single array arg)
+            // e.g. "5, 3" → [5, 3]
+            const parsed = JSON.parse(`[${trimmed}]`);
+            if (Array.isArray(parsed)) {
+              args = parsed;
             } else {
-              // Try parsing as multiple JSON arguments separated by commas (carefully)
-              // Simple split for now, but better would be a proper parser
-              try {
-                args = JSON.parse(`[${trimmed}]`);
-              } catch {
-                args = [trimmed]; // Fallback to raw string
-              }
+              args = [parsed];
             }
           } catch {
-            args = [tc.input];
+            // If the whole string is a single JSON value (e.g. "[1,2,3]")
+            try {
+              const singleParsed = JSON.parse(trimmed);
+              args = [singleParsed];
+            } catch {
+              args = [trimmed]; // Fallback to raw string
+            }
           }
         } else {
           args = [tc.input];
@@ -278,7 +282,8 @@ for tc in test_cases:
             args = [inp]
 
         actual = target(*args)
-        results.append({"actual": actual, "passed": True})
+        expected = tc.get('expectedOutput', tc.get('output', tc.get('expected', None)))
+        results.append({"actual": actual, "expected": expected, "passed": True})
     except Exception as e:
         results.append({"error": str(e), "passed": False})
 

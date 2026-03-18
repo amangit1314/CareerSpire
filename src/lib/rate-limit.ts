@@ -94,4 +94,9 @@ export const RATE_LIMITS = {
     maxRequests: 60,
     keyPrefix: 'api',
   },
+  QUESTION_BANK_SEARCH: {
+    windowMs: 24 * 60 * 60 * 1000, // 24 hours
+    maxRequests: 5,
+    keyPrefix: 'qbank:search',
+  },
 } as const;
