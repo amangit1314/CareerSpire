@@ -5,6 +5,7 @@ import { Pool } from 'pg';
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
   pgPool: Pool | undefined;
+  keepAliveInterval: ReturnType<typeof setInterval> | undefined;
 };
 
 const getPrismaClient = () => {
@@ -23,8 +24,15 @@ const getPrismaClient = () => {
     connectionString,
     ssl: isLocal ? false : { rejectUnauthorized: false },
     max: 10,
-    idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 10000, // Increase connection timeout
+    idleTimeoutMillis: 60000,
+    connectionTimeoutMillis: 15000,
+    keepAlive: true,
+    keepAliveInitialDelayMillis: 10000,
+  });
+
+  // Handle pool errors gracefully to prevent unhandled rejections
+  pool.on('error', (err) => {
+    console.error('Unexpected PostgreSQL pool error:', err.message);
   });
 
   const adapter = new PrismaPg(pool);
@@ -35,6 +43,22 @@ const getPrismaClient = () => {
 
   globalForPrisma.pgPool = pool;
   globalForPrisma.prisma = prisma;
+
+  // Keep-alive ping every 4 minutes to prevent Supabase/Neon from sleeping
+  if (!globalForPrisma.keepAliveInterval) {
+    globalForPrisma.keepAliveInterval = setInterval(async () => {
+      try {
+        await pool.query('SELECT 1');
+      } catch {
+        // Connection lost — pool will reconnect on next query
+      }
+    }, 4 * 60 * 1000);
+
+    // Don't prevent Node.js process from exiting
+    if (globalForPrisma.keepAliveInterval.unref) {
+      globalForPrisma.keepAliveInterval.unref();
+    }
+  }
 
   return prisma;
 };

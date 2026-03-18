@@ -6,7 +6,10 @@
       "Bash(npx tsc:*)",
       "Bash(npx -p typescript tsc --noEmit)",
       "Bash(npm install:*)",
-      "Bash(ls /Users/amanic/Developer/Personal/CareerSpire/lib/env*)"
+      "Bash(ls /Users/amanic/Developer/Personal/CareerSpire/lib/env*)",
+      "Bash(ls:*)",
+      "Bash(npx prisma:*)",
+      "Bash(pkill -f \"prisma migrate\")"
     ]
   },
   "enableAllProjectMcpServers": true,

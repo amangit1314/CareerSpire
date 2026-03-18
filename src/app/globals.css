@@ -2,7 +2,7 @@
 @plugin "tailwindcss-animate";
 @import "tw-animate-css";
 @custom-variant dark (&:is(.dark *));
-@config "../tailwind.config.ts";
+@config "../../tailwind.config.ts";
 
 /* =============================================================================
    THEME INLINE - Maps CSS variables to Tailwind color tokens
