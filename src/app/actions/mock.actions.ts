@@ -2,40 +2,78 @@
 
 import { prisma } from '@/lib/prisma';
 import { Difficulty, QuestionType, MockSessionStatus, ProgrammingLanguage, Framework, QuestionFormat, AnswerFormat } from '@/types/enums';
-import type { StartMockRequest, MockSession, SubmitSolutionRequest } from '@/types';
+import type { StartMockRequest, MockSession, SubmitSolutionRequest, TestCase, Question as AppQuestion } from '@/types';
 import { generateDSAQuestions, generateCodingQuestions, generateHRQuestions, generateFeedback, normalizeEnum } from '@/lib/llm';
 import { AppError } from '@/lib/errors';
 import { runTests } from '@/lib/code-runner';
+import type { TestResult } from '@/lib/code-runner';
 import { getSignedUrl } from '@/lib/supabase/storage';
 import { generateAndCacheQuestionBank, getQuestionsFromBank } from '@/lib/question-bank';
 import type { MockResult } from '@/types';
+import type { Feedback } from '@/lib/llm';
+import type {
+  User as PrismaUser,
+  Question as PrismaQuestion,
+  MockSession as PrismaMockSession,
+  MockResult as PrismaMockResult,
+  Prisma,
+} from '@prisma/client';
+
+// Prisma MockResult with nested question included
+type PrismaMockResultWithQuestion = PrismaMockResult & {
+  question?: PrismaQuestion;
+};
+
+/** Shape of a question from the SkillQuestionBank cache */
+interface BankQuestion {
+  question?: string;
+  answer_guide?: string;
+  topic?: string;
+  difficulty?: string;
+  testCases?: TestCase[];
+  test_cases?: TestCase[];
+  examples?: Array<{ input: string; output: string; explanation?: string }>;
+  entryFunctionName?: string;
+  entry_function_name?: string;
+  starterCode?: string;
+  starter_code?: string;
+}
 
 // ============ Shared Helpers (DRY) ============
 
 /** Map a Prisma question record to the typed Question shape */
-function mapQuestion(q: any) {
+function mapQuestion(q: PrismaQuestion): AppQuestion {
   return {
-    ...q,
+    id: q.id,
+    title: q.title,
+    description: q.description,
+    topic: q.topic,
     difficulty: q.difficulty as unknown as Difficulty,
     type: q.type as unknown as QuestionType,
     language: q.language as unknown as ProgrammingLanguage | null,
     framework: q.framework as unknown as Framework | null,
     questionFormat: q.questionFormat as unknown as QuestionFormat,
     expectedAnswerFormat: q.expectedAnswerFormat as unknown as AnswerFormat,
-    testCases: (q.testCases || []) as any[],
+    codeSnippet: q.codeSnippet,
+    starterCode: q.starterCode,
+    entryFunctionName: q.entryFunctionName,
+    testCases: (q.testCases as TestCase[] | null) || [],
+    expectedComplexity: q.expectedComplexity,
+    hints: q.hints,
+    createdAt: q.createdAt,
   };
 }
 
 /** Map a Prisma mock result + nested question to the typed MockResult shape */
-function mapMockResult(r: any): MockResult {
+function mapMockResult(r: PrismaMockResultWithQuestion): MockResult {
   return {
     id: r.id,
     sessionId: r.sessionId,
     questionId: r.questionId,
     userCode: r.userCode,
-    testResults: r.testResults as any,
+    testResults: r.testResults as unknown as MockResult['testResults'],
     score: r.score,
-    feedback: r.feedback as any,
+    feedback: r.feedback as unknown as MockResult['feedback'],
     timeSpent: r.timeSpent,
     submittedAt: r.submittedAt,
     ...(r.question && { question: mapQuestion(r.question) }),
@@ -43,7 +81,7 @@ function mapMockResult(r: any): MockResult {
 }
 
 /** Deduct one free mock if user is on free tier */
-async function deductFreeMock(userId: string, user: any): Promise<void> {
+async function deductFreeMock(userId: string, user: PrismaUser): Promise<void> {
   if (user.subscriptionTier === 'FREE' && user.freeMocksRemaining > 0) {
     await prisma.user.update({
       where: { id: userId },
@@ -55,20 +93,22 @@ async function deductFreeMock(userId: string, user: any): Promise<void> {
 /** Create a MockSession and return the typed response */
 async function createMockSession(
   userId: string,
-  interviewType: string,
-  questions: any[],
-  user: any,
-  opts?: { difficulty?: Difficulty; language?: any; framework?: any }
+  interviewType: QuestionType,
+  questions: PrismaQuestion[],
+  user: PrismaUser,
+  opts?: { difficulty?: Difficulty; language?: ProgrammingLanguage | null; framework?: Framework | null }
 ): Promise<MockSession> {
+  const questionIds = questions.map((q) => q.id);
+
   const session = await prisma.mockSession.create({
     data: {
       userId,
       status: 'IN_PROGRESS',
       interviewType,
-      questionIds: questions.map((q: any) => q.id),
-      ...(opts?.difficulty && { difficulty: opts.difficulty as any }),
-      ...(opts?.language && { language: opts.language as any }),
-      ...(opts?.framework && { framework: opts.framework as any }),
+      questionIds,
+      ...(opts?.difficulty && { difficulty: opts.difficulty }),
+      ...(opts?.language && { language: opts.language }),
+      ...(opts?.framework && { framework: opts.framework }),
     },
   });
 
@@ -77,48 +117,66 @@ async function createMockSession(
   return {
     id: session.id,
     userId,
-    questionIds: questions.map((q: any) => q.id),
+    questionIds,
     status: session.status as MockSessionStatus,
     startedAt: session.startedAt,
     completedAt: session.completedAt,
-    type: interviewType as QuestionType,
+    type: interviewType,
     questions: questions.map(mapQuestion),
     results: [],
   };
 }
 
 /** Filter cached questions by difficulty, pick random subset */
-function selectFromPool(questions: any[], difficulty: Difficulty, count: number): any[] {
+function selectFromPool(questions: BankQuestion[], difficulty: Difficulty, count: number): BankQuestion[] {
   const byDifficulty = questions.filter(
-    (q: any) => q.difficulty?.toLowerCase() === difficulty.toLowerCase()
+    (q) => q.difficulty?.toLowerCase() === difficulty.toLowerCase()
   );
   const pool = byDifficulty.length >= count ? byDifficulty : questions;
   return pool.sort(() => Math.random() - 0.5).slice(0, count);
 }
 
+/** Convert bank question examples/testCases to JSON-compatible array for Prisma */
+function extractTestCases(q: BankQuestion): Prisma.InputJsonValue {
+  const existing = q.testCases || q.test_cases || [];
+  if (existing.length > 0) {
+    return JSON.parse(JSON.stringify(existing)) as Prisma.InputJsonValue;
+  }
+
+  const fromExamples = (q.examples || []).map((ex) => ({
+    input: ex.input,
+    expectedOutput: ex.output,
+    isHidden: false,
+  }));
+  return fromExamples as unknown as Prisma.InputJsonValue;
+}
+
 /** Save question bank items as Question records in DB, returns saved records */
 async function saveBankQuestionsToDb(
-  questions: any[],
-  type: string,
+  questions: BankQuestion[],
+  type: QuestionType,
   difficulty: Difficulty,
-  opts?: { language?: any; framework?: any }
-): Promise<any[]> {
-  const saved = [];
+  opts?: { language?: ProgrammingLanguage | null; framework?: Framework | null }
+): Promise<PrismaQuestion[]> {
+  const saved: PrismaQuestion[] = [];
   for (const q of questions) {
     const record = await prisma.question.create({
       data: {
         title: q.question?.substring(0, 100) || `${type} Question`,
         description: q.question || q.answer_guide || '',
         topic: q.topic || type,
-        difficulty: difficulty as any,
+        difficulty: difficulty,
         type,
-        ...(opts?.language && { language: opts.language as any }),
-        ...(opts?.framework && { framework: opts.framework as any || 'NONE' }),
-        tags: [q.topic].filter(Boolean),
+        ...(opts?.language && { language: opts.language }),
+        ...(opts?.framework && { framework: opts.framework || 'NONE' }),
+        tags: [q.topic].filter((t): t is string => Boolean(t)),
         hints: [],
+        testCases: extractTestCases(q),
+        entryFunctionName: q.entryFunctionName || q.entry_function_name || null,
+        starterCode: q.starterCode || q.starter_code || null,
         expectedTimeMinutes: 10,
         source: 'AI',
-      } as any,
+      },
     }).catch(() => null);
     if (record) saved.push(record);
   }
@@ -163,7 +221,7 @@ export async function startMockAction(
 async function startDSAMock(
   userId: string,
   difficulty: Difficulty,
-  user: any
+  user: PrismaUser
 ): Promise<MockSession> {
   const QUESTION_COUNT = 3;
 
@@ -171,17 +229,17 @@ async function startDSAMock(
   const cachedQuestions = await getQuestionsFromBank('DSA');
   if (cachedQuestions && cachedQuestions.length >= 15) {
     const selected = selectFromPool(cachedQuestions, difficulty, QUESTION_COUNT);
-    const savedFromBank = await saveBankQuestionsToDb(selected, 'DSA', difficulty);
+    const savedFromBank = await saveBankQuestionsToDb(selected, QuestionType.DSA, difficulty);
 
     if (savedFromBank.length >= QUESTION_COUNT) {
       console.log(`[MockAction] Used ${savedFromBank.length} questions from SkillQuestionBank for DSA mock`);
-      return createMockSession(userId, 'DSA', savedFromBank, user);
+      return createMockSession(userId, QuestionType.DSA, savedFromBank, user);
     }
   }
 
   // 2. Fallback: existing DB questions
   let questions = await prisma.question.findMany({
-    where: { type: QuestionType.DSA, difficulty: difficulty as any },
+    where: { type: QuestionType.DSA, difficulty },
     take: 10,
   });
 
@@ -196,20 +254,20 @@ async function startDSAMock(
           title: q.title,
           description: formatDSADescription(q),
           topic: q.tags[0] || 'DSA',
-          difficulty: difficulty as any,
-          type: 'DSA',
+          difficulty,
+          type: 'DSA' as QuestionType,
           tags: q.tags,
-          testCases: q.examples.map((ex: any) => ({
+          testCases: q.examples.map((ex: { input: string; output: string }) => ({
             input: ex.input,
             expectedOutput: ex.output,
             isHidden: false,
-          })),
+          })) as Prisma.InputJsonValue,
           expectedComplexity: q.expectedComplexity.time,
           hints: q.hints || [],
           starterCode: q.starterCode,
           entryFunctionName: q.entryFunctionName,
-        } as any,
-      }).catch((err: any) => {
+        },
+      }).catch((err: unknown) => {
         console.error('Failed to save AI question:', err);
         return null;
       });
@@ -222,14 +280,20 @@ async function startDSAMock(
   }
 
   const selected = questions.sort(() => Math.random() - 0.5).slice(0, QUESTION_COUNT);
-  return createMockSession(userId, 'DSA', selected, user);
+  return createMockSession(userId, QuestionType.DSA, selected, user);
 }
 
-function formatDSADescription(q: any): string {
+interface DSAQuestion {
+  statement: string;
+  examples: Array<{ input: string; output: string; explanation: string }>;
+  constraints?: string[];
+}
+
+function formatDSADescription(q: DSAQuestion): string {
   const examples = q.examples
-    .map((ex: any, i: number) => `**Example ${i + 1}:**\n- **Input:** ${ex.input}\n- **Output:** ${ex.output}\n- **Explanation:** ${ex.explanation}`)
+    .map((ex, i) => `**Example ${i + 1}:**\n- **Input:** ${ex.input}\n- **Output:** ${ex.output}\n- **Explanation:** ${ex.explanation}`)
     .join('\n\n');
-  const constraints = q.constraints?.map((c: string) => `- ${c}`).join('\n') || 'None';
+  const constraints = q.constraints?.map((c) => `- ${c}`).join('\n') || 'None';
   return `${q.statement}\n\n### Examples\n${examples}\n\n### Constraints\n${constraints}`;
 }
 
@@ -239,7 +303,7 @@ async function startCodingMock(
   userId: string,
   difficulty: Difficulty,
   data: StartMockRequest,
-  user: any
+  user: PrismaUser
 ): Promise<MockSession> {
   const QUESTION_COUNT = 12;
   const sessionOpts = { difficulty, language: data.language, framework: data.framework };
@@ -252,14 +316,14 @@ async function startCodingMock(
   const cachedQuestions = await getQuestionsFromBank(skillName);
   if (cachedQuestions && cachedQuestions.length >= 15) {
     const selected = selectFromPool(cachedQuestions, difficulty, QUESTION_COUNT);
-    const savedFromBank = await saveBankQuestionsToDb(selected, 'CODING', difficulty, {
+    const savedFromBank = await saveBankQuestionsToDb(selected, QuestionType.CODING, difficulty, {
       language: data.language,
       framework: data.framework,
     });
 
     if (savedFromBank.length >= 5) {
       console.log(`[MockAction] Used ${savedFromBank.length} questions from SkillQuestionBank for Coding mock`);
-      return createMockSession(userId, 'CODING', savedFromBank, user, sessionOpts);
+      return createMockSession(userId, QuestionType.CODING, savedFromBank, user, sessionOpts);
     }
   }
 
@@ -285,20 +349,26 @@ async function startCodingMock(
         title: q.title || `${lang} ${fw !== 'NONE' ? fw : ''} Coding Task`,
         description: formatCodingDescription(q),
         topic: q.tags?.[0] || 'Coding',
-        difficulty: (normalizeEnum(q.difficulty, Difficulty) || difficulty) as any,
-        type: 'CODING',
-        language: lang as any,
-        framework: fw as any,
-        questionFormat: q.questionFormat as any,
-        expectedAnswerFormat: q.expectedAnswerFormat as any,
+        difficulty: normalizeEnum(q.difficulty, Difficulty) || difficulty,
+        type: 'CODING' as QuestionType,
+        language: lang as ProgrammingLanguage,
+        framework: fw as Framework,
+        questionFormat: q.questionFormat as QuestionFormat,
+        expectedAnswerFormat: q.expectedAnswerFormat as AnswerFormat,
         codeSnippet: q.codeSnippet,
         tags: q.tags || [],
         hints: q.followUps || [],
+        testCases: (q.examples || []).map((ex: { input: string; output?: string; expectedOutput?: string }) => ({
+          input: ex.input,
+          expectedOutput: ex.output || ex.expectedOutput,
+          isHidden: false,
+        })) as Prisma.InputJsonValue,
+        entryFunctionName: q.entryFunctionName || null,
         expectedTimeMinutes: q.expectedTimeMinutes || 10,
         source: 'AI',
       },
-    }).catch((err: any) => {
-      console.error('[MockAction] Failed to save coding question:', err.message);
+    }).catch((err: unknown) => {
+      console.error('[MockAction] Failed to save coding question:', err instanceof Error ? err.message : err);
       return null;
     });
     if (saved) savedQuestions.push(saved);
@@ -308,16 +378,22 @@ async function startCodingMock(
     throw new AppError('AI unable to generate valid questions. Please try again.', 'AI_GENERATION_FAILED', 503);
   }
 
-  return createMockSession(userId, 'CODING', savedQuestions, user, sessionOpts);
+  return createMockSession(userId, QuestionType.CODING, savedQuestions, user, sessionOpts);
 }
 
-function formatCodingDescription(q: any): string {
+interface CodingQuestionInput {
+  question: string;
+  examples?: Array<{ input: string; output: string; explanation: string }>;
+  constraints?: string[];
+}
+
+function formatCodingDescription(q: CodingQuestionInput): string {
   let desc = q.question;
-  if (q.examples?.length > 0) {
-    desc += `\n\n### Examples\n${q.examples.map((ex: any, i: number) => `**Example ${i + 1}:**\n- **Input:** ${ex.input}\n- **Output:** ${ex.output}\n- **Explanation:** ${ex.explanation}`).join('\n\n')}`;
+  if (q.examples?.length) {
+    desc += `\n\n### Examples\n${q.examples.map((ex, i) => `**Example ${i + 1}:**\n- **Input:** ${ex.input}\n- **Output:** ${ex.output}\n- **Explanation:** ${ex.explanation}`).join('\n\n')}`;
   }
-  if (q.constraints?.length > 0) {
-    desc += `\n\n### Constraints\n${q.constraints.map((c: string) => `- ${c}`).join('\n')}`;
+  if (q.constraints?.length) {
+    desc += `\n\n### Constraints\n${q.constraints.map((c) => `- ${c}`).join('\n')}`;
   }
   return desc;
 }
@@ -327,7 +403,7 @@ function formatCodingDescription(q: any): string {
 async function startHRMock(
   userId: string,
   difficulty: Difficulty,
-  user: any
+  user: PrismaUser
 ): Promise<MockSession> {
   const QUESTION_COUNT = 7;
 
@@ -342,14 +418,14 @@ async function startHRMock(
         title: `${q.category || 'Behavioral'} Question`,
         description: q.question,
         topic: q.category || 'HR',
-        difficulty: difficulty as any,
-        type: 'HR',
+        difficulty,
+        type: 'HR' as QuestionType,
         hints: [q.guidance].filter(Boolean),
         expectedTimeMinutes: q.expectedTimeMinutes || 10,
         source: 'AI',
       },
-    }).catch((err: any) => {
-      console.error('[MockAction] Failed to save HR question:', err.message);
+    }).catch((err: unknown) => {
+      console.error('[MockAction] Failed to save HR question:', err instanceof Error ? err.message : err);
       return null;
     });
     if (saved) savedQuestions.push(saved);
@@ -359,7 +435,7 @@ async function startHRMock(
     throw new AppError('AI unable to generate behavioral questions. Please try again.', 'AI_GENERATION_FAILED', 503);
   }
 
-  return createMockSession(userId, 'HR', savedQuestions, user);
+  return createMockSession(userId, QuestionType.HR, savedQuestions, user);
 }
 
 // ============ Get Session ============
@@ -368,7 +444,7 @@ export async function getMockSessionAction(
   userId: string,
   sessionId: string
 ): Promise<MockSession> {
-  const session: any = await prisma.mockSession.findFirst({
+  const session = await prisma.mockSession.findFirst({
     where: { id: sessionId, userId },
     include: { results: { include: { question: true } } },
   });
@@ -381,8 +457,8 @@ export async function getMockSessionAction(
 
   // Maintain order by questionIds
   const questions = session.questionIds
-    .map((id: string) => dbQuestions.find((q: any) => q.id === id))
-    .filter(Boolean)
+    .map((id) => dbQuestions.find((q) => q.id === id))
+    .filter((q): q is PrismaQuestion => q !== undefined)
     .map(mapQuestion);
 
   return {
@@ -394,13 +470,13 @@ export async function getMockSessionAction(
     completedAt: session.completedAt,
     type: session.interviewType as QuestionType,
     questions,
-    hrQuestions: session.hrQuestions as any,
-    codingQuestions: session.codingQuestions as any,
+    hrQuestions: session.hrQuestions as unknown as MockSession['hrQuestions'],
+    codingQuestions: session.codingQuestions as unknown as MockSession['codingQuestions'],
     videoRecordingUrl: session.videoRecordingUrl
       ? await getSignedUrl(session.videoRecordingUrl).catch(() => undefined)
       : undefined,
     isPublic: session.isPublic,
-    results: session.results.map(mapMockResult),
+    results: (session.results as PrismaMockResultWithQuestion[]).map(mapMockResult),
   };
 }
 
@@ -410,7 +486,7 @@ export async function submitSolutionAction(
   userId: string,
   data: SubmitSolutionRequest
 ): Promise<MockResult> {
-  const session: any = await prisma.mockSession.findFirst({
+  const session = await prisma.mockSession.findFirst({
     where: { id: data.sessionId, userId },
   });
   if (!session) throw new AppError('Session not found', 'NOT_FOUND', 404);
@@ -423,10 +499,10 @@ export async function submitSolutionAction(
   const question = mapQuestion(questionRecord);
 
   // Run tests (only for DSA/CODING with language)
-  let testResults: any = { passed: 0, total: 0, verdict: 'AC', details: [] };
+  let testResults: TestResult = { passed: 0, total: 0, verdict: 'AC', details: [] };
   if (question.type === 'DSA' || (question.type === 'CODING' && (question.language || data.language))) {
-    const lang = (data.language || question.language || 'JAVASCRIPT').toLowerCase();
-    testResults = await runTests(data.code, question, lang as any);
+    const lang = (data.language || question.language || 'JAVASCRIPT').toLowerCase() as 'javascript' | 'python' | 'java' | 'cpp';
+    testResults = await runTests(data.code, question, lang);
   }
 
   // Generate feedback
@@ -458,9 +534,9 @@ export async function submitSolutionAction(
       sessionId: data.sessionId,
       questionId: data.questionId,
       userCode: data.code,
-      testResults: testResults as any,
+      testResults: JSON.parse(JSON.stringify(testResults)) as Prisma.InputJsonValue,
       score: finalScore,
-      feedback: feedback as any,
+      feedback: JSON.parse(JSON.stringify(feedback)) as Prisma.InputJsonValue,
       timeSpent: data.timeSpent || 0,
     },
   });
@@ -482,12 +558,12 @@ export async function submitSolutionAction(
     sessionId: result.sessionId,
     questionId: result.questionId,
     userCode: result.userCode,
-    testResults: result.testResults as any,
+    testResults: result.testResults as unknown as MockResult['testResults'],
     score: result.score,
-    feedback: result.feedback as any,
+    feedback: result.feedback as unknown as MockResult['feedback'],
     timeSpent: result.timeSpent,
     submittedAt: result.submittedAt,
-    question: mapQuestion(question),
+    question,
   };
 }
 
@@ -495,8 +571,8 @@ export async function submitSolutionAction(
 async function handleMockCompletion(
   sessionId: string,
   userId: string,
-  allResults: any[],
-  feedback: any
+  allResults: PrismaMockResult[],
+  feedback: Feedback
 ): Promise<void> {
   await prisma.mockSession.update({
     where: { id: sessionId },
@@ -504,13 +580,13 @@ async function handleMockCompletion(
   });
 
   const avgScore = Math.round(
-    allResults.reduce((sum: number, r: any) => sum + r.score, 0) / allResults.length
+    allResults.reduce((sum, r) => sum + r.score, 0) / allResults.length
   );
 
   // Award XP
   try {
     const { awardXP } = await import('./gamification.actions');
-    const totalTime = allResults.reduce((sum: number, r: any) => sum + r.timeSpent, 0);
+    const totalTime = allResults.reduce((sum, r) => sum + r.timeSpent, 0);
     const rewards = await awardXP(userId, avgScore, totalTime);
     console.log(`[Gamification] User ${userId} earned ${rewards.xpEarned} XP, badges: ${rewards.newBadges.join(', ')}`);
   } catch (err) {
