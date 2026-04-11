@@ -56,6 +56,9 @@ export async function createSignedUploadUrl(
   const extension = fileName.split('.').pop();
   const path = `${userId}/${timestamp}-${randomId}.${extension}`;
 
+  // Ensure bucket exists before uploading
+  await ensureBucketExists();
+
   // Create signed upload URL
   const { data, error } = await supabase.storage
     .from(MEDIA_BUCKET)
@@ -67,19 +70,11 @@ export async function createSignedUploadUrl(
     throw new Error(`Failed to create upload URL: ${error.message}`);
   }
 
-  // Create signed download URL
-  const { data: downloadData, error: downloadError } = await supabase.storage
-    .from(MEDIA_BUCKET)
-    .createSignedUrl(path, SIGNED_URL_EXPIRY);
-
-  if (downloadError) {
-    throw new Error(`Failed to create download URL: ${downloadError.message}`);
-  }
-
   return {
     uploadUrl: data.signedUrl,
     path,
-    signedUrl: downloadData.signedUrl,
+    // Download URL will be generated after upload via getSignedUrl
+    signedUrl: '',
   };
 }
 

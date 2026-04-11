@@ -14,6 +14,7 @@ export interface VideoRecorderHandle {
 interface VideoRecorderProps {
     onRecordingComplete: (blob: Blob) => void;
     maxDuration?: number; // in seconds
+    minDuration?: number; // minimum seconds before allowing stop (default 60)
     className?: string;
     autoStart?: boolean;
 }
@@ -21,6 +22,7 @@ interface VideoRecorderProps {
 export const VideoRecorder = forwardRef<VideoRecorderHandle, VideoRecorderProps>(({
     onRecordingComplete,
     maxDuration = 300, // 5 minutes default
+    minDuration = 60, // 1 minute minimum before allowing stop
     className,
     autoStart = false
 }, ref) => {
@@ -88,9 +90,19 @@ export const VideoRecorder = forwardRef<VideoRecorderHandle, VideoRecorderProps>
         autoStartRef.current = autoStart;
     }, [onRecordingComplete, autoStart]);
 
+    const durationRef = useRef(0);
+    useEffect(() => { durationRef.current = duration; }, [duration]);
+    const minDurationRef = useRef(minDuration);
+    useEffect(() => { minDurationRef.current = minDuration; }, [minDuration]);
+
     useImperativeHandle(ref, () => ({
         startRecording,
-        stopRecording
+        stopRecording: () => {
+            // Allow stop from parent only after minimum duration
+            if (durationRef.current >= minDurationRef.current) {
+                stopRecording();
+            }
+        },
     }));
 
     useEffect(() => {
@@ -191,6 +203,7 @@ export const VideoRecorder = forwardRef<VideoRecorderHandle, VideoRecorderProps>
     };
 
     const progressPercentage = (duration / maxDuration) * 100;
+    const hasReachedMinDuration = duration >= minDuration;
 
     if (error) {
         return (
@@ -282,9 +295,13 @@ export const VideoRecorder = forwardRef<VideoRecorderHandle, VideoRecorderProps>
                             variant="destructive"
                             size="lg"
                             className="gap-2"
+                            disabled={!hasReachedMinDuration}
                         >
                             <Square className="h-5 w-5" />
-                            Stop
+                            {hasReachedMinDuration
+                                ? 'Stop'
+                                : `Min ${formatTime(minDuration - duration)}`
+                            }
                         </Button>
                     </>
                 )}

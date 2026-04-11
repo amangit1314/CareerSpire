@@ -1,0 +1,2 @@
+id,email,passwordHash,emailVerified,name,image,level,freeMocksRemaining,subscriptionTier,subscriptionEndsAt,weakTopics,lastLoginAt,createdAt,updatedAt,badges,currentStreak,lastPracticeAt,longestStreak,totalMocksCompleted,xp
+2b74f433-5f22-4106-85b9-3e8585cf03ad,aman@test.com,$2b$12$uY1mJd2Erhd1tdzflGaRZe6fx3W4ZRC9iRqCNkM7Ew43tHL3l8N4K,,,,FRESHER,2,FREE,,{},2026-03-18 13:56:39.311,2026-03-18 13:56:39.319,2026-03-18 13:56:39.319,{},0,,0,0,0

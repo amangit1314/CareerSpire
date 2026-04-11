@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bot, Volume2, VolumeX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -23,10 +23,20 @@ export function AIInterviewer({
     const [isMuted, setIsMuted] = useState(false);
     const [currentWord, setCurrentWord] = useState('');
 
+    // Use a ref for onSpeechComplete to avoid re-creating speak on every parent render
+    const onSpeechCompleteRef = useRef(onSpeechComplete);
+    onSpeechCompleteRef.current = onSpeechComplete;
+
+    // Track the current question being spoken to prevent cancel-triggered onend loops
+    const activeQuestionRef = useRef<string | null>(null);
+
     // Speak the question using Web Speech API
     const speak = useCallback((text: string) => {
         if ('speechSynthesis' in window && !isMuted) {
             window.speechSynthesis.cancel(); // Cancel any ongoing speech
+
+            // Mark this question as active — only fire onSpeechComplete for this one
+            activeQuestionRef.current = text;
 
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.rate = 0.95;
@@ -45,11 +55,17 @@ export function AIInterviewer({
                 utterance.voice = preferredVoice;
             }
 
+            const spokenText = text;
             utterance.onstart = () => setIsSpeaking(true);
             utterance.onend = () => {
                 setIsSpeaking(false);
                 setCurrentWord('');
-                onSpeechComplete?.();
+                // Only fire callback if this utterance is still the active one
+                // (prevents cancelled utterances from triggering the callback)
+                if (activeQuestionRef.current === spokenText) {
+                    activeQuestionRef.current = null;
+                    onSpeechCompleteRef.current?.();
+                }
             };
 
             // Highlight current word (approximate)
@@ -62,7 +78,7 @@ export function AIInterviewer({
 
             window.speechSynthesis.speak(utterance);
         }
-    }, [isMuted, onSpeechComplete]);
+    }, [isMuted]); // No longer depends on onSpeechComplete
 
     // Auto-speak when question changes
     useEffect(() => {

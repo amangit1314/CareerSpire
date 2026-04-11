@@ -54,12 +54,20 @@ export default function VideoInterviewSession() {
     const [answerFeedbacks, setAnswerFeedbacks] = useState<AnswerFeedback[]>([]);
     const [isEvaluating, setIsEvaluating] = useState(false);
 
+    const questionStartTimeRef = useRef(0);
+    useEffect(() => { questionStartTimeRef.current = questionStartTime; }, [questionStartTime]);
+
     const resetSilenceTimer = useCallback(() => {
         if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
         if (isVoiceMode && phase === 'answering') {
             silenceTimerRef.current = setTimeout(() => {
-                console.log('Silence detected - auto-finishing answer');
-                handleFinishAnswer();
+                // Only auto-finish if at least 60 seconds have passed
+                const elapsed = (Date.now() - questionStartTimeRef.current) / 1000;
+                if (elapsed >= 60) {
+                    console.log('Silence detected after 1min+ — auto-finishing answer');
+                    handleFinishAnswer();
+                }
+                // Otherwise ignore silence — user is still within minimum time
             }, 3500); // 3.5 seconds of silence
         }
     }, [isVoiceMode, phase]);
@@ -131,10 +139,15 @@ export default function VideoInterviewSession() {
         question: q.description,
         category: q.topic,
         guidance: q.hints?.[0] || '',
-        expectedTimeMinutes: (q as any).expectedTimeMinutes || 10,
+        expectedTimeMinutes: (q as any).expectedTimeMinutes || 3,
     }));
     const currentQuestion = mappedQuestions[currentQuestionIndex] || null;
     const progress = mappedQuestions.length > 0 ? ((currentQuestionIndex) / mappedQuestions.length) * 100 : 0;
+
+    // Extract round metadata from session (stored in codingQuestions)
+    const interviewMeta = (session?.codingQuestions as unknown as Array<{ mode?: string; rounds?: Array<{ name: string; type: string; startIndex: number; count: number }> }>)?.[0];
+    const rounds = interviewMeta?.rounds || [];
+    const currentRound = rounds.find(r => currentQuestionIndex >= r.startIndex && currentQuestionIndex < r.startIndex + r.count);
 
     // Timer
     useEffect(() => {
@@ -151,7 +164,7 @@ export default function VideoInterviewSession() {
         return `${mins}:${secs.toString().padStart(2, '0')}`;
     };
 
-    const handleSpeechComplete = () => {
+    const handleSpeechComplete = useCallback(() => {
         // AI finished asking, now user can answer
         setPhase('answering');
         setQuestionStartTime(Date.now());
@@ -160,7 +173,7 @@ export default function VideoInterviewSession() {
                 recognition.start();
             } catch (e) { console.error('Recognition error:', e); }
         }
-    };
+    }, [isVoiceMode, recognition]);
 
     const handleRecordingComplete = useCallback((blob: Blob) => {
         setRecordedBlobs(prev => [...prev, blob]);
@@ -219,34 +232,42 @@ export default function VideoInterviewSession() {
         if (!user) return;
         setIsUploading(true);
         try {
-            // Combine all blobs into one video
-            const combinedBlob = new Blob(recordedBlobs, { type: 'video/webm' });
+            // Try to upload video recording (optional — scores are already saved per-question)
+            if (recordedBlobs.length > 0) {
+                try {
+                    const combinedBlob = new Blob(recordedBlobs, { type: 'video/webm' });
 
-            // 1. Get signed upload URL
-            const { uploadUrl, path } = await createMediaUploadUrlAction({
-                fileName: `interview-${sessionId}.webm`,
-                contentType: 'video/webm',
-                size: combinedBlob.size
-            });
+                    const { uploadUrl, path } = await createMediaUploadUrlAction({
+                        fileName: `interview-${sessionId}.webm`,
+                        contentType: 'video/webm',
+                        size: combinedBlob.size
+                    });
 
-            // 2. Upload to Supabase Storage
-            const uploadRes = await fetch(uploadUrl, {
-                method: 'PUT',
-                body: combinedBlob,
-                headers: {
-                    'Content-Type': 'video/webm'
+                    const uploadRes = await fetch(uploadUrl, {
+                        method: 'PUT',
+                        body: combinedBlob,
+                        headers: { 'Content-Type': 'video/webm' }
+                    });
+
+                    if (uploadRes.ok) {
+                        await saveVideoRecording(user.id, sessionId, path);
+                    } else {
+                        console.warn('Video upload failed, saving session without recording');
+                        await saveVideoRecording(user.id, sessionId, '');
+                    }
+                } catch (uploadError) {
+                    console.warn('Video storage unavailable, saving session without recording:', uploadError);
+                    // Still mark session as completed even without video
+                    await saveVideoRecording(user.id, sessionId, '');
                 }
-            });
+            } else {
+                // No video recorded — just mark session complete
+                await saveVideoRecording(user.id, sessionId, '');
+            }
 
-            if (!uploadRes.ok) throw new Error('Upload failed');
-
-            // 3. Save resulting path to session
-            await saveVideoRecording(user.id, sessionId, path);
-
-            // Redirect to dashboard
             router.push(`/dashboard`);
         } catch (error) {
-            console.error('Failed to save recording:', error);
+            console.error('Failed to save interview:', error);
             alert('Failed to save interview. Please try again.');
         } finally {
             setIsUploading(false);
@@ -424,6 +445,11 @@ export default function VideoInterviewSession() {
                 {/* Header */}
                 <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-4">
+                        {currentRound && (
+                            <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-primary/10 text-primary">
+                                {currentRound.name}
+                            </span>
+                        )}
                         <div className="text-sm text-muted-foreground">
                             Question {currentQuestionIndex + 1} of {mappedQuestions.length}
                         </div>
@@ -518,6 +544,7 @@ export default function VideoInterviewSession() {
                                             ref={recorderRef}
                                             onRecordingComplete={handleRecordingComplete}
                                             maxDuration={currentQuestion.expectedTimeMinutes * 60}
+                                            minDuration={60}
                                             autoStart={true}
                                         />
 
@@ -539,8 +566,8 @@ export default function VideoInterviewSession() {
                                 <div className="mt-4 text-center">
                                     <p className="text-xs text-muted-foreground mb-4">
                                         {isVoiceMode
-                                            ? "Speak naturally. The AI will transition automatically when you stop."
-                                            : "Click 'Submit Recording' once you've finished answering."
+                                            ? "Speak naturally. After 1 min, the AI will auto-advance when you pause."
+                                            : "Answer for at least 1 minute, then click Stop to submit."
                                         }
                                     </p>
                                     {!isVoiceMode && (

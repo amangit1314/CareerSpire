@@ -1,0 +1,2 @@
+id,sessionToken,refreshTokenHash,userId,expires,createdAt,revokedAt
+999cd158-341c-4975-9b82-504eacf74e7d,session-1773842200335,$2b$12$1v5jqB/D3dwTyXZ1kRIr3u8pGztx/a9JlO7LPwcWniejdkncrUlwy,2b74f433-5f22-4106-85b9-3e8585cf03ad,2026-03-25 13:56:40.335,2026-03-18 13:56:40.336,

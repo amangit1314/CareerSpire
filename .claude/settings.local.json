@@ -9,7 +9,17 @@
       "Bash(ls /Users/amanic/Developer/Personal/CareerSpire/lib/env*)",
       "Bash(ls:*)",
       "Bash(npx prisma:*)",
-      "Bash(pkill -f \"prisma migrate\")"
+      "Bash(pkill -f \"prisma migrate\")",
+      "Bash(npx next:*)",
+      "Bash(./node_modules/.bin/next build:*)",
+      "Bash(grep -A 5 'QuestionPayload$scalars' node_modules/.prisma/client/index.d.ts)",
+      "Bash(git diff-index:*)",
+      "Bash(git check-ignore:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(pg_dump --version)",
+      "Bash(PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION=\"yes\" npx prisma:*)",
+      "Bash(psql $DB_URL:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

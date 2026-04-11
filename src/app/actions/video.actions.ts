@@ -2,65 +2,253 @@
 
 import { prisma } from '@/lib/prisma';
 import { MockSessionStatus, QuestionType, Difficulty, ProgrammingLanguage, Framework, QuestionFormat, AnswerFormat } from '@/types/enums';
-import type { MockSession, HRQuestion } from '@/types';
-import { generateHRQuestions, generateFeedback } from '@/lib/llm';
+import type { MockSession } from '@/types';
+import { generateHRQuestions, generateCodingQuestions, generateFeedback } from '@/lib/llm';
+import { aiChat } from '@/lib/ai';
 import { AppError } from '@/lib/errors';
 import { getSignedUrl } from '@/lib/supabase/storage';
+import type { Question as PrismaQuestion, User as PrismaUser, Prisma } from '@prisma/client';
 
-// Start a video mock interview session
+// ============ Interview Config ============
+
+export type InterviewMode = 'technical' | 'non-technical' | 'mixed';
+export type TechnicalFocus = 'language-concepts' | 'system-design' | 'dsa' | 'all';
+export type NonTechnicalCategory = 'hr' | 'aptitude' | 'situational';
+
+export interface VideoInterviewConfig {
+    mode: InterviewMode;
+    difficulty: Difficulty;
+    // Technical options
+    language?: ProgrammingLanguage;
+    framework?: Framework;
+    technicalFocus?: TechnicalFocus;
+    // Non-technical options
+    nonTechnicalCategory?: NonTechnicalCategory;
+}
+
+/** Round structure for the interview */
+interface InterviewRound {
+    name: string;
+    type: 'hr' | 'technical' | 'system-design';
+    count: number;
+}
+
+function getInterviewRounds(config: VideoInterviewConfig): InterviewRound[] {
+    switch (config.mode) {
+        case 'technical':
+            return [
+                { name: 'Intro', type: 'hr', count: 1 },
+                { name: 'Technical', type: 'technical', count: config.difficulty === 'HARD' ? 5 : config.difficulty === 'EASY' ? 3 : 4 },
+                { name: 'Wrap-up', type: 'hr', count: 1 },
+            ];
+        case 'non-technical':
+            return [
+                { name: 'Behavioral', type: 'hr', count: config.difficulty === 'HARD' ? 7 : config.difficulty === 'EASY' ? 3 : 5 },
+            ];
+        case 'mixed':
+        default:
+            return [
+                { name: 'HR Intro', type: 'hr', count: 2 },
+                { name: 'Technical Round', type: 'technical', count: config.difficulty === 'HARD' ? 4 : 3 },
+                { name: 'System Design', type: 'system-design', count: config.difficulty === 'EASY' ? 1 : 2 },
+                { name: 'HR Wrap-up', type: 'hr', count: 1 },
+            ];
+    }
+}
+
+// ============ Question Generators (Video-specific) ============
+
+async function generateTechnicalVideoQuestions(
+    config: VideoInterviewConfig,
+    count: number
+): Promise<Array<{ title: string; question: string; topic: string; hints: string[]; expectedTimeMinutes: number }>> {
+    const lang = config.language || 'JAVASCRIPT';
+    const fw = config.framework && config.framework !== 'NONE' ? config.framework : null;
+    const focus = config.technicalFocus || 'all';
+
+    const focusInstruction = focus === 'dsa'
+        ? 'Focus on data structures and algorithms. Ask the candidate to explain their approach verbally.'
+        : focus === 'system-design'
+            ? 'Focus on system design. Ask about architecture, scalability, trade-offs.'
+            : focus === 'language-concepts'
+                ? `Focus on ${lang}${fw ? ` / ${fw}` : ''} internals, gotchas, and best practices.`
+                : `Mix of ${lang}${fw ? ` / ${fw}` : ''} concepts, problem-solving, and practical scenarios.`;
+
+    const prompt = `You are a Senior Technical Interviewer at a top tech company.
+Generate ${count} technical interview questions for a VIDEO interview (verbal answers only, no code editor).
+
+Language: ${lang}
+${fw ? `Framework: ${fw}` : ''}
+Difficulty: ${config.difficulty}
+${focusInstruction}
+
+These are VERBAL questions — the candidate explains their thinking out loud. Questions should be:
+- Conceptual depth (explain how X works under the hood)
+- Trade-off analysis (when would you use X vs Y?)
+- Problem-solving walkthrough (how would you approach building X?)
+- Debugging scenario (here's a bug description, how would you diagnose it?)
+
+Return JSON: { "questions": [{ "title": "short title", "question": "full question text the AI interviewer will read aloud", "topic": "topic area", "hints": ["hint1"], "expectedTimeMinutes": 3 }] }
+Return ONLY valid JSON.`;
+
+    try {
+        const result = await aiChat(prompt, { temperature: 0.3, responseFormat: 'json_object' });
+        const data = JSON.parse(result.content);
+        return data.questions || [];
+    } catch (err) {
+        console.error('[VideoAction] Failed to generate technical questions:', err);
+        return [];
+    }
+}
+
+async function generateSystemDesignQuestions(
+    config: VideoInterviewConfig,
+    count: number
+): Promise<Array<{ title: string; question: string; topic: string; hints: string[]; expectedTimeMinutes: number }>> {
+    const prompt = `You are a Principal Engineer interviewing a candidate.
+Generate ${count} system design interview questions for a VIDEO interview (verbal discussion).
+
+Difficulty: ${config.difficulty}
+${config.language ? `Context: The candidate works with ${config.language}${config.framework && config.framework !== 'NONE' ? ` / ${config.framework}` : ''}.` : ''}
+
+Questions should ask the candidate to:
+- Design a system (e.g., "Design a real-time notification system")
+- Discuss trade-offs, scaling, database choices
+- Walk through their architecture decisions verbally
+
+Return JSON: { "questions": [{ "title": "short title", "question": "full question for AI to read aloud", "topic": "System Design", "hints": ["Think about scalability"], "expectedTimeMinutes": 5 }] }
+Return ONLY valid JSON.`;
+
+    try {
+        const result = await aiChat(prompt, { temperature: 0.3, responseFormat: 'json_object' });
+        const data = JSON.parse(result.content);
+        return data.questions || [];
+    } catch (err) {
+        console.error('[VideoAction] Failed to generate system design questions:', err);
+        return [];
+    }
+}
+
+// ============ Start Video Interview ============
+
 export async function startVideoMock(
     userId: string,
-    difficulty: Difficulty = Difficulty.MEDIUM
+    config: VideoInterviewConfig
 ): Promise<MockSession> {
-    const user: any = await prisma.user.findUnique({ where: { id: userId } });
-
-    if (!user) {
-        throw new AppError('User not found', 'USER_NOT_FOUND', 404);
-    }
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new AppError('User not found', 'USER_NOT_FOUND', 404);
 
     if (user.subscriptionTier === 'FREE' && user.freeMocksRemaining <= 0) {
         throw new AppError('No mocks remaining. Please upgrade your plan.', 'NO_MOCKS_REMAINING', 403);
     }
 
-    // Generate HR/behavioral questions for video interview
-    const aiQuestions = await generateHRQuestions({
-        difficulty: difficulty as any,
-        count: 5
-    });
+    const rounds = getInterviewRounds(config);
+    const allSavedQuestions: PrismaQuestion[] = [];
+    const roundMetadata: Array<{ name: string; type: string; startIndex: number; count: number }> = [];
 
-    // Save each question to DB (matching startHRMock pattern)
-    const savedQuestions = [];
-    for (const q of aiQuestions) {
-        const saved = await prisma.question.create({
-            data: {
-                title: `${q.category || 'Behavioral'} Question`,
-                description: q.question,
-                topic: q.category || 'HR',
-                difficulty: difficulty as any,
-                type: 'VIDEO',
-                hints: [q.guidance].filter(Boolean),
-                expectedTimeMinutes: q.expectedTimeMinutes || 10,
-                source: 'AI'
+    // Generate questions for each round in parallel
+    const roundResults = await Promise.all(rounds.map(async (round) => {
+        switch (round.type) {
+            case 'hr': {
+                const hrQuestions = await generateHRQuestions({ difficulty: config.difficulty, count: round.count });
+                return hrQuestions.map((q: { category?: string; question: string; guidance?: string; expectedTimeMinutes?: number }) => ({
+                    title: `${q.category || 'Behavioral'} Question`,
+                    description: q.question,
+                    topic: q.category || 'HR',
+                    type: 'VIDEO' as const,
+                    hints: [q.guidance].filter((h): h is string => Boolean(h)),
+                    expectedTimeMinutes: q.expectedTimeMinutes || 3,
+                    roundName: round.name,
+                }));
             }
-        }).catch(err => {
-            console.error('[VideoAction] Failed to save question:', err.message);
-            return null;
+            case 'technical': {
+                const techQuestions = await generateTechnicalVideoQuestions(config, round.count);
+                return techQuestions.map(q => ({
+                    title: q.title,
+                    description: q.question,
+                    topic: q.topic || config.language || 'Technical',
+                    type: 'VIDEO' as const,
+                    hints: q.hints || [],
+                    expectedTimeMinutes: q.expectedTimeMinutes || 3,
+                    roundName: round.name,
+                }));
+            }
+            case 'system-design': {
+                const sdQuestions = await generateSystemDesignQuestions(config, round.count);
+                return sdQuestions.map(q => ({
+                    title: q.title,
+                    description: q.question,
+                    topic: 'System Design',
+                    type: 'VIDEO' as const,
+                    hints: q.hints || [],
+                    expectedTimeMinutes: q.expectedTimeMinutes || 5,
+                    roundName: round.name,
+                }));
+            }
+        }
+    }));
+
+    // Save all questions to DB in order
+    let questionIndex = 0;
+    for (let i = 0; i < rounds.length; i++) {
+        const roundQuestions = roundResults[i];
+        const startIndex = questionIndex;
+
+        for (const q of roundQuestions) {
+            const saved = await prisma.question.create({
+                data: {
+                    title: q.title,
+                    description: q.description,
+                    topic: q.topic,
+                    difficulty: config.difficulty,
+                    type: 'VIDEO',
+                    hints: q.hints,
+                    expectedTimeMinutes: q.expectedTimeMinutes,
+                    source: 'AI',
+                    ...(config.language && { language: config.language }),
+                    ...(config.framework && config.framework !== 'NONE' && { framework: config.framework }),
+                },
+            }).catch((err: unknown) => {
+                console.error('[VideoAction] Failed to save question:', err instanceof Error ? err.message : err);
+                return null;
+            });
+            if (saved) {
+                allSavedQuestions.push(saved);
+                questionIndex++;
+            }
+        }
+
+        roundMetadata.push({
+            name: rounds[i].name,
+            type: rounds[i].type,
+            startIndex,
+            count: questionIndex - startIndex,
         });
-        if (saved) savedQuestions.push(saved);
     }
 
-    if (savedQuestions.length === 0) {
+    if (allSavedQuestions.length === 0) {
         throw new AppError('Failed to generate interview questions. Please try again.', 'AI_GENERATION_FAILED', 503);
     }
+
+    // Store round metadata + config in the session's codingQuestions JSON field (reused for metadata)
+    const interviewMeta = {
+        mode: config.mode,
+        language: config.language || null,
+        framework: config.framework || null,
+        technicalFocus: config.technicalFocus || null,
+        rounds: roundMetadata,
+    };
 
     const session = await prisma.mockSession.create({
         data: {
             userId,
             status: MockSessionStatus.IN_PROGRESS,
             interviewType: QuestionType.VIDEO,
-            difficulty: difficulty as any,
-            questionIds: savedQuestions.map(q => q.id),
-            hrQuestions: aiQuestions,
+            difficulty: config.difficulty,
+            questionIds: allSavedQuestions.map(q => q.id),
+            codingQuestions: interviewMeta as unknown as Prisma.InputJsonValue,
+            ...(config.language && { language: config.language }),
+            ...(config.framework && config.framework !== 'NONE' && { framework: config.framework }),
         },
     });
 
@@ -75,22 +263,28 @@ export async function startVideoMock(
     return {
         id: session.id,
         userId,
-        questionIds: savedQuestions.map(q => q.id),
+        questionIds: allSavedQuestions.map(q => q.id),
         status: session.status as MockSessionStatus,
         startedAt: session.startedAt,
         completedAt: session.completedAt,
         type: QuestionType.VIDEO,
-        questions: savedQuestions.map(q => ({
-            ...q,
+        questions: allSavedQuestions.map(q => ({
+            id: q.id,
+            title: q.title,
+            description: q.description,
+            topic: q.topic,
             difficulty: q.difficulty as unknown as Difficulty,
             type: q.type as unknown as QuestionType,
             language: q.language as unknown as ProgrammingLanguage | null,
             framework: q.framework as unknown as Framework | null,
             questionFormat: q.questionFormat as unknown as QuestionFormat,
             expectedAnswerFormat: q.expectedAnswerFormat as unknown as AnswerFormat,
-            testCases: (q.testCases || []) as any[],
+            testCases: [],
+            expectedComplexity: q.expectedComplexity,
+            hints: q.hints,
+            createdAt: q.createdAt,
         })),
-        hrQuestions: aiQuestions as any,
+        codingQuestions: [interviewMeta] as unknown as MockSession['codingQuestions'],
         results: [],
     };
 }
@@ -113,8 +307,8 @@ export async function saveVideoRecording(
     await prisma.mockSession.update({
         where: { id: sessionId },
         data: {
-            videoRecordingUrl: videoUrl, // This is now the path
-            videoThumbnailUrl: thumbnailUrl,
+            ...(videoUrl ? { videoRecordingUrl: videoUrl } : {}),
+            ...(thumbnailUrl ? { videoThumbnailUrl: thumbnailUrl } : {}),
             status: MockSessionStatus.COMPLETED,
             completedAt: new Date(),
         },
