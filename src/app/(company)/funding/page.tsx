@@ -36,13 +36,13 @@ export default function FundingPage() {
             <section className="space-y-6 max-w-2xl mx-auto text-center">
                 <h2>Our Mission</h2>
                 <p className="text-lg">
-                    We believe that every talented engineer deserves a fair shot at their dream job. We're building Mocky to ensure that preparation is accessible, realistic, and effective for everyone, regardless of their background.
+                    We believe that every talented engineer deserves a fair shot at their dream job. We're building CareerSpire to ensure that preparation is accessible, realistic, and effective for everyone, regardless of their background.
                 </p>
                 <p className="text-muted-foreground">
                     Interested in joining our journey as an investor or partner? We'd love to hear from you.
                 </p>
                 <a
-                    href="mailto:invest@Mocky.com"
+                    href="mailto:invest@careerspire.com"
                     className="inline-flex items-center px-8 py-4 rounded-2xl bg-primary text-primary-foreground font-bold hover:scale-105 transition-transform shadow-xl shadow-primary/20 dark:text-white"
                 >
                     Get in Touch

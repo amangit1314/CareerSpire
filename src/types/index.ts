@@ -117,6 +117,7 @@ export interface Question {
   testCases: TestCase[];
   expectedComplexity: string | null;
   hints: string[];
+  expectedTimeMinutes: number;
   createdAt: Date;
 }
 

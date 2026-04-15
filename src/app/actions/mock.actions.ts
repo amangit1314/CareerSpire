@@ -60,6 +60,7 @@ function mapQuestion(q: PrismaQuestion): AppQuestion {
     testCases: (q.testCases as TestCase[] | null) || [],
     expectedComplexity: q.expectedComplexity,
     hints: q.hints,
+    expectedTimeMinutes: q.expectedTimeMinutes,
     createdAt: q.createdAt,
   };
 }

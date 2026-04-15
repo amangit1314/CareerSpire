@@ -18,8 +18,11 @@ export default function PressKitPage() {
                         <h4 className="font-bold uppercase tracking-widest text-xs mb-4 text-muted-foreground">Quick Facts</h4>
                         <ul className="space-y-2 text-sm font-medium">
                             <li>Founded: 2025</li>
+                            <li>Launched: January 2026</li>
                             <li>Headquarters: Remote-First</li>
-                            <li>Platform: AI & Career Success</li>
+                            <li>Platform: AI-Powered Mock Interviews</li>
+                            <li>Languages: JavaScript, Python</li>
+                            <li>Question Bank: 1,000+ curated questions</li>
                         </ul>
                     </div>
                 </section>
@@ -40,9 +43,17 @@ export default function PressKitPage() {
             </div>
 
             <section className="mt-16">
-                <h2>Recent Coverage</h2>
-                <div className="p-6 rounded-2xl border border-dashed border-border italic text-muted-foreground text-center">
-                    "The most realistic AI interviewer I've seen in years." — TechCrunch (Mock Quote)
+                <h2>Product Highlights</h2>
+                <div className="grid gap-4 mt-4">
+                    <div className="p-6 rounded-2xl border border-primary/10 bg-primary/5">
+                        <p className="font-medium">1,000+ curated interview questions across DSA, System Design, Coding, HR, and Behavioral topics</p>
+                    </div>
+                    <div className="p-6 rounded-2xl border border-primary/10 bg-primary/5">
+                        <p className="font-medium">AI-powered mock interviews with real-time code execution and instant feedback</p>
+                    </div>
+                    <div className="p-6 rounded-2xl border border-primary/10 bg-primary/5">
+                        <p className="font-medium">Video recording and community sharing for collaborative interview preparation</p>
+                    </div>
                 </div>
             </section>
         </StaticPageLayout>

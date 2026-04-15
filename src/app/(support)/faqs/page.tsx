@@ -17,7 +17,7 @@ const faqs = [
     },
     {
         question: "Which programming languages are supported?",
-        answer: "Currently, we fully support JavaScript and Python for DSA interviews. Support for Java and C++ is on our roadmap for Q2 2026."
+        answer: "We fully support JavaScript and Python for DSA and coding interviews, with a dynamic test engine that generates and runs test cases in real time. Java and C++ support is currently in development."
     },
     {
         question: "Is there a free trial?",
@@ -26,6 +26,14 @@ const faqs = [
     {
         question: "Can I use CareerSpire for mobile interview prep?",
         answer: "Yes, our platform is fully responsive. However, for the best coding experience, we recommend using a desktop browser."
+    },
+    {
+        question: "How does the community feature work?",
+        answer: "You can record your mock interviews and share them with the community. Other users can browse, like, and learn from shared videos filtered by company, difficulty, and topic."
+    },
+    {
+        question: "What subscription plans are available?",
+        answer: "We offer a Free tier with limited mock interviews, a Starter plan for regular practice, and a Pro plan with unlimited interviews and advanced AI feedback. We also offer pay-as-you-go mock packs and voice interview add-ons."
     }
 ];
 

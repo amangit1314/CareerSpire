@@ -8,7 +8,7 @@ export default function RoadmapPage() {
         >
             <div className="space-y-12">
                 <section>
-                    <h2 className="text-primary">Q1 2026: The Foundation (Current)</h2>
+                    <h2 className="text-primary">Q1 2026: The Foundation (Completed)</h2>
                     <div className="grid gap-4 mt-4">
                         <div className="p-4 rounded-xl bg-primary/5 border border-primary/10">
                             <h4 className="font-bold">✅ LeetCode-style Execution Engine</h4>
@@ -16,21 +16,41 @@ export default function RoadmapPage() {
                         </div>
                         <div className="p-4 rounded-xl bg-primary/5 border border-primary/10">
                             <h4 className="font-bold">✅ Video Interview Preflight</h4>
-                            <p className="text-sm text-muted-foreground mt-1">Comprehensive hardware and connection checks for a seamless experience. (In Progress)</p>
+                            <p className="text-sm text-muted-foreground mt-1">Comprehensive hardware and connection checks for a seamless experience.</p>
+                        </div>
+                        <div className="p-4 rounded-xl bg-primary/5 border border-primary/10">
+                            <h4 className="font-bold">✅ Dynamic Test Engine</h4>
+                            <p className="text-sm text-muted-foreground mt-1">Real-time test case generation and execution during mock interviews.</p>
+                        </div>
+                        <div className="p-4 rounded-xl bg-primary/5 border border-primary/10">
+                            <h4 className="font-bold">✅ Community Hub</h4>
+                            <p className="text-sm text-muted-foreground mt-1">Video interview sharing, likes, and community browsing with filters.</p>
+                        </div>
+                        <div className="p-4 rounded-xl bg-primary/5 border border-primary/10">
+                            <h4 className="font-bold">✅ Billing & Subscriptions</h4>
+                            <p className="text-sm text-muted-foreground mt-1">Full billing dashboard with invoice history and subscription management.</p>
+                        </div>
+                        <div className="p-4 rounded-xl bg-primary/5 border border-primary/10">
+                            <h4 className="font-bold">✅ Authentication Overhaul</h4>
+                            <p className="text-sm text-muted-foreground mt-1">Secure sign-in, user profiles, and refresh token session management.</p>
                         </div>
                     </div>
                 </section>
 
                 <section>
-                    <h2>Q2 2026: Scaling Excellence</h2>
-                    <div className="grid gap-4 mt-4 text-muted-foreground">
-                        <div className="p-4 rounded-xl border border-dashed border-border">
+                    <h2 className="text-primary">Q2 2026: Scaling Excellence (Current)</h2>
+                    <div className="grid gap-4 mt-4">
+                        <div className="p-4 rounded-xl border border-dashed border-primary/30">
                             <h4 className="font-bold">Next-Gen AI Feedback</h4>
-                            <p className="text-sm mt-1">More granular scoring and line-by-line code suggestions.</p>
+                            <p className="text-sm text-muted-foreground mt-1">More granular scoring and line-by-line code suggestions.</p>
                         </div>
-                        <div className="p-4 rounded-xl border border-dashed border-border">
+                        <div className="p-4 rounded-xl border border-dashed border-primary/30">
                             <h4 className="font-bold">Java & C++ Support</h4>
-                            <p className="text-sm mt-1">Expanding our execution engine to support more languages.</p>
+                            <p className="text-sm text-muted-foreground mt-1">Expanding our execution engine to support more languages.</p>
+                        </div>
+                        <div className="p-4 rounded-xl border border-dashed border-primary/30">
+                            <h4 className="font-bold">Interview Experience Sharing</h4>
+                            <p className="text-sm text-muted-foreground mt-1">Write and share detailed interview experiences with the community.</p>
                         </div>
                     </div>
                 </section>

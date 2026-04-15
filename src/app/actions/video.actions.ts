@@ -282,6 +282,7 @@ export async function startVideoMock(
             testCases: [],
             expectedComplexity: q.expectedComplexity,
             hints: q.hints,
+            expectedTimeMinutes: q.expectedTimeMinutes,
             createdAt: q.createdAt,
         })),
         codingQuestions: [interviewMeta] as unknown as MockSession['codingQuestions'],
