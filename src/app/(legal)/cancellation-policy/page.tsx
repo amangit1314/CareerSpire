@@ -4,41 +4,61 @@ export default function CancellationPolicyPage() {
     return (
         <StaticPageLayout
             title="Cancellation Policy"
-            subtitle="How to manage and cancel your CareerSpire subscription."
-            lastUpdated="January 29, 2026"
+            subtitle="How to cancel your subscription and what happens next."
+            lastUpdated="April 18, 2026"
         >
             <section>
-                <h2>1. Self-Service Cancellation</h2>
+                <h2>1. How to Cancel</h2>
                 <p>
-                    You can cancel your subscription at any time through your Account Settings. No need to call or email—you have full control over your billing.
+                    You can cancel your subscription at any time from <strong>Dashboard &rarr; Billing</strong>. No need to email or call &mdash; cancellation is instant and self-service. You will receive a confirmation email when your cancellation is processed.
                 </p>
             </section>
 
             <section>
-                <h2>2. Effect of Cancellation</h2>
+                <h2>2. What Happens After Cancellation</h2>
                 <p>
-                    Upon cancellation, you will retain access to your premium features until the end of your current paid billing period. At that point, your account will revert to the Free tier.
+                    When you cancel, you keep access to all premium features (additional mocks, video interviews, extended AI tutor limits) until the end of your current billing period. After that, your account reverts to the Free tier:
+                </p>
+                <ul>
+                    <li>3 AI mock interviews per month.</li>
+                    <li>10 AI tutor messages per day.</li>
+                    <li>Full access to the Practice Hub, learning tracks, and community.</li>
+                    <li>Your XP, coins, streak, badges, and leaderboard position are preserved.</li>
+                </ul>
+            </section>
+
+            <section>
+                <h2>3. Your Data Is Preserved</h2>
+                <p>
+                    Cancellation does not delete your data. Your interview history, mock results, practice submissions, video recordings, and progress stats remain intact. You can re-subscribe at any time to restore premium limits without losing anything.
                 </p>
             </section>
 
             <section>
-                <h2>3. Data Retention</h2>
+                <h2>4. Pay-As-You-Go Credits</h2>
                 <p>
-                    When you cancel, we do not immediately delete your data. You can re-subscribe later to regain access to your previous interview history and progress.
+                    Unused mock pack and voice interview pack credits do not expire when you cancel a subscription. They remain available regardless of your subscription status and can be used on the Free tier.
                 </p>
             </section>
 
             <section>
-                <h2>4. No Pro-rated Refunds for Early Cancellation</h2>
+                <h2>5. No Pro-Rated Refunds</h2>
                 <p>
-                    Except as provided in our Refund Policy, we do not provide pro-rated refunds for the remaining time in your billing period if you decide to cancel early.
+                    Cancelling mid-cycle does not generate a pro-rated refund for the remaining days. If you believe you are eligible for a refund, see our <a href="/refund-billing">Refund &amp; Billing Policy</a> for the refund window and conditions.
                 </p>
             </section>
 
             <section>
-                <h2>5. Account Deletion</h2>
+                <h2>6. Permanent Account Deletion</h2>
                 <p>
-                    If you wish to permanently delete your account and all associated data, please use the "Delete Account" option in your settings or contact our support team.
+                    If you want to permanently delete your account and all associated data (interview recordings, submissions, progress, payment records), you can do so from <strong>Profile &rarr; Delete Account</strong> or by emailing <a href="mailto:support@careerspire.com">support@careerspire.com</a>. This action is irreversible and cannot be undone.
+                </p>
+            </section>
+
+            <section>
+                <h2>7. Re-Subscribing</h2>
+                <p>
+                    You can re-subscribe to any plan at any time. A new billing cycle starts on the day you re-subscribe. If your previous plan is no longer available, you will be offered the closest current equivalent.
                 </p>
             </section>
         </StaticPageLayout>

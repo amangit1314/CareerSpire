@@ -1,16 +1,9 @@
-'use client';
-
-import { motion } from 'framer-motion';
-
+// Lightweight wrapper — no framer-motion import (saves ~40KB from every page).
+// CSS transition handles the fade-in without JavaScript animation overhead.
 export default function PageWrapper({ children }: { children: React.ReactNode }) {
     return (
-        <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.4, ease: "easeOut" }}
-        >
+        <div className="animate-in fade-in slide-in-from-bottom-1 duration-300">
             {children}
-        </motion.div>
+        </div>
     );
 }

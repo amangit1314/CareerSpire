@@ -116,7 +116,7 @@ export async function sendEmailTemplate(
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h1>Welcome to CareerSpire!</h1>
           <p>Hi ${d.name || 'there'},</p>
-          <p>Thank you for joining CareerSpire! You now have <strong>2 free mock interviews</strong> to get started.</p>
+          <p>Thank you for joining CareerSpire! You now have <strong>3 free mock interviews every month</strong> to get started.</p>
           <p>Start practicing and improve your interview skills today!</p>
           <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard" style="display: inline-block; padding: 12px 24px; background: #3b82f6; color: white; text-decoration: none; border-radius: 6px; margin-top: 20px;">Go to Dashboard</a>
         </div>

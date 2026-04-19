@@ -2,7 +2,7 @@
 
 import { Editor, OnMount } from '@monaco-editor/react';
 import { useTheme } from 'next-themes';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from './ui/button';
 import { Play, Loader2, Check, AlertTriangle, CheckCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -18,6 +18,7 @@ interface CodeEditorProps {
   height?: string;
   readOnly?: boolean;
   className?: string;
+  hideToolbar?: boolean;
 }
 
 export function CodeEditor({
@@ -29,11 +30,15 @@ export function CodeEditor({
   height = '500px',
   readOnly = false,
   className,
+  hideToolbar = false,
 }: CodeEditorProps) {
   const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
   const monacoTheme = resolvedTheme === 'dark' ? 'vs-dark' : 'light';
   const editorRef = useRef<MonacoEditor.IStandaloneCodeEditor | null>(null);
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  useEffect(() => { setMounted(true); }, []);
 
   const showToast = useCallback((type: 'success' | 'error', message: string) => {
     setToast({ type, message });
@@ -87,45 +92,47 @@ export function CodeEditor({
 
   return (
     <div className={cn(
-      "relative border rounded-lg overflow-hidden flex flex-col",
-      resolvedTheme === 'dark' ? "bg-[#1e1e1e]" : "bg-white",
+      "relative border rounded-lg overflow-hidden flex flex-col h-full",
+      "bg-white dark:bg-[#1e1e1e]",
       className,
     )}>
-      <div className={cn(
-        "flex items-center justify-between px-4 py-2 border-b",
-        resolvedTheme === 'dark' ? "bg-[#252526]" : "bg-muted/50"
-      )}>
-        <span className="text-sm text-muted-foreground font-mono">
-          {language}
-        </span>
-        {onRun && (
-          <Button
-            size="sm"
-            onClick={onRun}
-            disabled={isRunning}
-            className="bg-primary hover:bg-primary/90"
-          >
-            {isRunning ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Running...
-              </>
-            ) : (
-              <>
-                <Play className="mr-2 h-4 w-4" />
-                Run Code
-              </>
-            )}
-          </Button>
-        )}
-      </div>
+      {!hideToolbar && (
+        <div className={cn(
+          "flex items-center justify-between px-4 py-2 border-b",
+          "bg-muted/50 dark:bg-[#252526]"
+        )}>
+          <span className="text-sm text-muted-foreground font-mono">
+            {language}
+          </span>
+          {onRun && (
+            <Button
+              size="sm"
+              onClick={onRun}
+              disabled={isRunning}
+              className="bg-primary hover:bg-primary/90"
+            >
+              {isRunning ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Running...
+                </>
+              ) : (
+                <>
+                  <Play className="mr-2 h-4 w-4" />
+                  Run Code
+                </>
+              )}
+            </Button>
+          )}
+        </div>
+      )}
       <div className="flex-1 min-h-0 relative">
         <Editor
           height={height}
           language={language}
           value={value}
           onChange={onChange}
-          theme={monacoTheme}
+          theme={mounted ? monacoTheme : 'vs-dark'}
           onMount={handleMount}
           options={{
             readOnly,

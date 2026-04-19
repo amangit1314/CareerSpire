@@ -4,75 +4,125 @@ export default function PrivacyPolicyPage() {
     return (
         <StaticPageLayout
             title="Privacy Policy"
-            subtitle="Last updated: January 29, 2026"
-            lastUpdated="January 29, 2026"
+            subtitle="How CareerSpire collects, uses, and protects your data."
+            lastUpdated="April 18, 2026"
         >
             <section>
                 <h2>1. Introduction</h2>
                 <p>
-                    At CareerSpire, we take your privacy seriously. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our platform.
+                    CareerSpire (&quot;we&quot;, &quot;us&quot;, &quot;our&quot;) is an AI-powered interview preparation platform. This Privacy Policy explains how we collect, use, store, and protect your personal information when you use our website and services at careerspire.vercel.app.
+                </p>
+                <p>
+                    By creating an account or using CareerSpire, you agree to the practices described in this policy.
                 </p>
             </section>
 
             <section>
                 <h2>2. Information We Collect</h2>
-                <h3>Personal Data</h3>
+
+                <h3>Account Information</h3>
                 <p>
-                    We collect information that you provide directly to us, such as your name, email address, and professional background when you create an account.
+                    When you sign up, we collect your name, email address, and a hashed password. If you sign in via Google or GitHub, we receive your name, email, and profile picture from the OAuth provider.
                 </p>
-                <h3>Usage Data</h3>
+
+                <h3>Interview &amp; Practice Data</h3>
                 <p>
-                    We automatically collect certain information when you visit, use, or navigate the platform. This information does not reveal your specific identity but may include device and usage information, such as your IP address, browser, and device characteristics.
+                    When you use our platform, we collect and store:
                 </p>
-                <h3>Interview Data</h3>
+                <ul>
+                    <li>Your code submissions, answers, and test results from mock interviews and the Practice Hub.</li>
+                    <li>AI-generated feedback scores, weak-topic analysis, and performance history.</li>
+                    <li>Video and audio recordings if you use the Video Interview feature, stored securely in Supabase Storage.</li>
+                    <li>Your XP, coins, streak data, badges, and leaderboard position.</li>
+                </ul>
+
+                <h3>Usage &amp; Device Data</h3>
                 <p>
-                    We record and process your interview sessions, including video, audio, and code submissions, to provide AI-powered feedback and improve our algorithms.
+                    We automatically collect your IP address, browser type, device information, and pages visited. This helps us maintain security and improve the platform. We do not use third-party tracking pixels or advertising cookies.
+                </p>
+
+                <h3>Payment Data</h3>
+                <p>
+                    Payments are processed by <strong>Razorpay</strong>. We store your Razorpay order ID, payment status, and subscription tier. We never store your card number, CVV, or bank details on our servers.
                 </p>
             </section>
 
             <section>
                 <h2>3. How We Use Your Information</h2>
-                <p>
-                    We use your information to provide, operate, and maintain our platform, including:
-                </p>
                 <ul>
-                    <li>Generating AI feedback for your interviews.</li>
-                    <li>Processing your transactions and managing your subscription.</li>
-                    <li>Sending you technical notices, updates, and support messages.</li>
-                    <li>Improving our AI models and platform features.</li>
+                    <li><strong>Delivering the service</strong> &mdash; Generating AI mock interviews, running your code against test cases, providing AI tutor responses, and tracking your learning progress.</li>
+                    <li><strong>Personalisation</strong> &mdash; Identifying your weak topics, adjusting question difficulty, and recommending learning tracks.</li>
+                    <li><strong>Billing</strong> &mdash; Processing subscription payments and mock/voice pack purchases via Razorpay.</li>
+                    <li><strong>Communication</strong> &mdash; Sending transactional emails (welcome, mock results, password resets) through Supabase Edge Functions. You can disable email notifications in your settings.</li>
+                    <li><strong>Platform improvement</strong> &mdash; Aggregating anonymised usage patterns to improve our AI question generation and feedback quality.</li>
                 </ul>
             </section>
 
             <section>
-                <h2>4. Data Sharing and Disclosure</h2>
+                <h2>4. AI Processing</h2>
                 <p>
-                    We do not sell your personal data. We may share information with:
+                    Your code submissions and interview answers are sent to AI providers (<strong>Groq</strong> and <strong>Google Gemini</strong>) for real-time evaluation and feedback generation. We do not use your submissions to train third-party AI models. The AI providers process data under their respective data processing agreements and do not retain your inputs beyond the API call.
+                </p>
+            </section>
+
+            <section>
+                <h2>5. Data Sharing</h2>
+                <p>
+                    We do not sell your personal data. We share data only with:
                 </p>
                 <ul>
-                    <li>**Service Providers**: Third-party vendors who perform services for us (e.g., payment processing, cloud hosting).</li>
-                    <li>**AI Partners**: Securely processing data for feedback generation.</li>
-                    <li>**Legal Obligations**: If required by law or to protect our rights.</li>
+                    <li><strong>Razorpay</strong> &mdash; Payment processing (order creation, payment verification, webhook events).</li>
+                    <li><strong>Supabase</strong> &mdash; Database hosting, file storage (video recordings), and transactional email delivery.</li>
+                    <li><strong>Groq &amp; Google</strong> &mdash; AI inference for question generation, code evaluation, and tutor chat responses.</li>
+                    <li><strong>Law enforcement</strong> &mdash; Only if legally required by a valid court order or regulatory obligation.</li>
                 </ul>
             </section>
 
             <section>
-                <h2>5. Data Security</h2>
+                <h2>6. Data Storage &amp; Security</h2>
                 <p>
-                    We implement appropriate technical and organizational security measures to protect the security of any personal information we process. However, please also remember that we cannot guarantee that the internet itself is 100% secure.
+                    Your data is stored in a PostgreSQL database hosted on Supabase (AWS Asia-Pacific region). Video recordings are stored in Supabase Storage with signed URLs that expire after 1 hour.
+                </p>
+                <p>
+                    We protect your data with hashed passwords (bcrypt, 12 rounds), HTTP-only secure cookies for authentication, JWT-based session management, and rate limiting on authentication endpoints.
                 </p>
             </section>
 
             <section>
-                <h2>6. Your Privacy Rights</h2>
+                <h2>7. Community &amp; Public Content</h2>
                 <p>
-                    Depending on your location, you may have certain rights regarding your personal information, including the right to access, correct, or delete your data.
+                    If you make a video interview public or share an interview experience, that content (including your display name and profile picture) becomes visible to all CareerSpire users. You can toggle visibility or delete shared content at any time.
                 </p>
             </section>
 
             <section>
-                <h2>7. Contact Us</h2>
+                <h2>8. Your Rights</h2>
+                <ul>
+                    <li><strong>Access &amp; export</strong> &mdash; View your profile, interview history, and practice stats from your Dashboard.</li>
+                    <li><strong>Correction</strong> &mdash; Update your name, email, or profile picture from your Profile page.</li>
+                    <li><strong>Deletion</strong> &mdash; Permanently delete your account and all associated data from Settings, or email us. This action is irreversible.</li>
+                    <li><strong>Opt out</strong> &mdash; Disable email notifications from Notification Preferences without deleting your account.</li>
+                </ul>
+            </section>
+
+            <section>
+                <h2>9. Data Retention</h2>
                 <p>
-                    If you have questions or comments about this policy, you may email us at **support@CareerSpire.com**.
+                    We retain your account data for as long as your account is active. If you delete your account, all personal data, interview recordings, submissions, and progress are permanently removed within 30 days. Anonymised, aggregated statistics (e.g. &quot;X users solved this problem&quot;) may be retained indefinitely.
+                </p>
+            </section>
+
+            <section>
+                <h2>10. Changes to This Policy</h2>
+                <p>
+                    We may update this policy from time to time. Material changes will be communicated via email or an in-app notification at least 14 days before taking effect. Continued use of CareerSpire after the effective date constitutes acceptance.
+                </p>
+            </section>
+
+            <section>
+                <h2>11. Contact</h2>
+                <p>
+                    For privacy-related questions, data access requests, or concerns, email us at <a href="mailto:support@careerspire.com">support@careerspire.com</a>.
                 </p>
             </section>
         </StaticPageLayout>

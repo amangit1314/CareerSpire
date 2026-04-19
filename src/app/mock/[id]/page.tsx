@@ -20,6 +20,7 @@ import { dmSans } from '@/lib/fonts';
 import { cn } from '@/lib/utils';
 import ReactMarkdown from 'react-markdown';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { CareerSpireLogo } from '@/components/CareerSpireLogo';
 import { constants } from '@/lib/utils/constants';
 import { formatCodeAsync } from '@/lib/utils/formatCode';
 
@@ -343,10 +344,8 @@ export default function MockInterviewPage() {
       {/* Top Navbar */}
       <header className="h-14 border-b flex items-center justify-between px-4 shrink-0 bg-muted/30">
         <div className="flex items-center gap-6">
-          <div className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-primary" />
-            <h1 className={cn(dmSans.className, "font-bold text-lg")}>{constants.APP_NAME}</h1>
-          </div>
+          <CareerSpireLogo size="sm" />
+
           <div className="h-6 w-px bg-border mx-2" />
 
           {/* Question Navigation */}
@@ -406,7 +405,7 @@ export default function MockInterviewPage() {
           </div>
 
           <ThemeToggle />
-          <Button variant="ghost" size="sm" onClick={() => router.push('/dashboard')}>
+          <Button variant="ghost" size="sm" onClick={() => router.push('/dashboard')} className="hover:bg-red-500/10 hover:text-red-500 transition-colors">
             Exit Session
           </Button>
         </div>

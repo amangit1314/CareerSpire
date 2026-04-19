@@ -7,41 +7,51 @@ export default function ReportIssuePage() {
     return (
         <StaticPageLayout
             title="Report an Issue"
-            subtitle="Found a bug? Let us know and we'll squash it as soon as possible."
+            subtitle="Found a bug in the code editor, mock interviews, or anywhere else? Let us know."
         >
-            <div className="p-8 md:p-12 rounded-3xl glass border border-primary/10 space-y-8">
-                <div className="grid md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                        <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Name</label>
-                        <Input placeholder="Your name" className="bg-muted/30" />
+            <div className="p-6 sm:p-8 rounded-xl border border-border bg-card/50 space-y-6">
+                <div className="grid sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                        <label className="text-xs font-semibold text-muted-foreground">Name</label>
+                        <Input placeholder="Your name" />
                     </div>
-                    <div className="space-y-2">
-                        <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Email</label>
-                        <Input placeholder="Your email" className="bg-muted/30" />
+                    <div className="space-y-1.5">
+                        <label className="text-xs font-semibold text-muted-foreground">Email</label>
+                        <Input placeholder="Your email" />
                     </div>
                 </div>
 
-                <div className="space-y-2">
-                    <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Issue Type</label>
-                    <select className="flex h-10 w-full rounded-md border border-input bg-muted/30 px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
-                        <option>Bug</option>
-                        <option>Performance Issue</option>
-                        <option>Typos/UI Glitch</option>
+                <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-muted-foreground">Area</label>
+                    <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                        <option>Mock Interview (Text)</option>
+                        <option>Mock Interview (Video)</option>
+                        <option>Practice Hub / Code Editor</option>
+                        <option>AI Tutor Chat</option>
+                        <option>Learning Tracks / Resources</option>
+                        <option>Billing / Payments</option>
+                        <option>Authentication / Account</option>
+                        <option>Community / Sharing</option>
+                        <option>UI / Display Issue</option>
                         <option>Other</option>
                     </select>
                 </div>
 
-                <div className="space-y-2">
-                    <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Description</label>
+                <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-muted-foreground">Description</label>
                     <Textarea
-                        placeholder="Please describe the issue in detail..."
-                        className="min-h-[150px] bg-muted/30"
+                        placeholder="What happened? What did you expect? Include the browser you're using and any error messages you saw."
+                        className="min-h-[140px]"
                     />
                 </div>
 
-                <Button className="w-full py-6 text-md font-bold shadow-xl shadow-primary/10 dark:text-white">
+                <Button className="w-full font-semibold">
                     Submit Report
                 </Button>
+
+                <p className="text-[0.6875rem] text-muted-foreground text-center">
+                    You can also email us directly at <a href="mailto:support@careerspire.com" className="text-primary font-medium">support@careerspire.com</a>.
+                </p>
             </div>
         </StaticPageLayout>
     );

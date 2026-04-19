@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { dmSans, inter } from '@/lib/fonts';
-import { Github, Twitter, Linkedin, ArrowRight } from 'lucide-react';
+import { Github, Twitter, Linkedin, ArrowRight, X, Instagram } from 'lucide-react';
 import { CareerSpireLogo } from './CareerSpireLogo';
 
 const footerLinks = [
@@ -10,8 +10,7 @@ const footerLinks = [
             { name: 'Mock Interview', href: '/mock/new' },
             { name: 'Pricing', href: '/pricing' },
             { name: 'Resources', href: '/resources' },
-            // { name: 'AI Feedback', href: '/dashboard', upcoming: true },
-            { name: 'Practice', href: '/practice', upcoming: true },
+            { name: 'Practice', href: '/practice' },
             { name: 'Community', href: '/community' },
         ],
     },
@@ -51,35 +50,37 @@ const footerLinks = [
 ];
 
 const socialLinks = [
-    { name: 'GitHub', icon: Github, href: 'https://github.com' },
-    { name: 'Twitter', icon: Twitter, href: 'https://twitter.com' },
-    { name: 'LinkedIn', icon: Linkedin, href: 'https://linkedin.com' },
+    // { name: 'GitHub', icon: Github, href: 'https://github.com' },
+    { name: 'X', icon: X, href: 'https://x.com' },
+     { name: 'Instagram', icon: Instagram, href: 'https://instagram.com' },
+    // { name: 'LinkedIn', icon: Linkedin, href: 'https://linkedin.com' },
 ];
 
 export function Footer() {
     return (
-        <footer className="relative border-t glass py-12 md:py-16 overflow-hidden w-full">
-            <div className="container mx-auto px-4 md:px-6 relative z-10">
+        <footer className="relative border-t glass py-10 sm:py-12 md:py-16 overflow-hidden w-full">
+            <div className="mx-auto w-full max-w-[88rem] px-3 sm:px-4 lg:px-6 relative z-10">
                 {/* Logo and Brand Section */}
-                <div className="flex flex-col lg:flex-row justify-between items-start gap-12 lg:gap-8 mb-16">
+                <div className="flex flex-col lg:flex-row justify-between items-start gap-10 sm:gap-12 lg:gap-8 mb-10 sm:mb-14 lg:mb-16">
                     <div className="w-full lg:w-2/5">
-                        <Link href="/" className="inline-flex items-center space-x-3 mb-6">
+                        <Link href="/" className="inline-flex items-center space-x-3 mb-4 sm:mb-6">
                             <CareerSpireLogo size="xl" />
                         </Link>
-                        <p className={`${inter.className} text-lg text-muted-foreground/80 leading-relaxed max-w-md`}>
+                        <p className={`${inter.className} text-sm sm:text-base lg:text-lg text-muted-foreground/80 leading-relaxed max-w-md`}>
                             The intersection of artificial intelligence and career success.
                             Join the elite circle of prepared engineers.
                         </p>
-                        <div className="flex items-center space-x-4 mt-8">
+                        <div className="flex items-center gap-3 sm:gap-4 mt-6 sm:mt-8">
                             {socialLinks.map((social) => (
                                 <Link
                                     key={social.name}
                                     href={social.href}
-                                    className="p-3 rounded-xl bg-muted/50 text-muted-foreground hover:text-primary hover:bg-primary/5 transition-all duration-300 hover:scale-105"
+                                    aria-label={social.name}
+                                    className="p-2.5 sm:p-3 rounded-xl bg-muted/50 text-muted-foreground hover:text-primary hover:bg-primary/5 transition-all duration-300 hover:scale-105"
                                     target="_blank"
                                     rel="noopener noreferrer"
                                 >
-                                    <social.icon className="h-6 w-6" />
+                                    <social.icon className="h-5 w-5 sm:h-6 sm:w-6" />
                                     <span className="sr-only">{social.name}</span>
                                 </Link>
                             ))}
@@ -88,23 +89,23 @@ export function Footer() {
 
                     {/* Links Grid */}
                     <div className="w-full lg:w-3/5">
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-8">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-8 sm:gap-6 lg:gap-8">
                             {footerLinks.map((group) => (
-                                <div key={group.title} className="space-y-6">
-                                    <h3 className={`${dmSans.className} text-sm font-bold text-foreground uppercase tracking-[0.2em]`}>
+                                <div key={group.title} className="space-y-4 sm:space-y-6 min-w-0">
+                                    <h3 className={`${dmSans.className} text-xs sm:text-sm font-bold text-foreground uppercase tracking-[0.2em]`}>
                                         {group.title}
                                     </h3>
-                                    <ul className="space-y-4">
+                                    <ul className="space-y-3 sm:space-y-4">
                                         {group.links.map((link) => (
                                             <li key={link.name}>
                                                 <Link
                                                     href={link.href}
-                                                    className="text-sm text-muted-foreground/70 hover:text-primary transition-all flex justify-start items-center group/link hover:translate-x-1"
+                                                    className="text-xs sm:text-sm text-muted-foreground/70 hover:text-primary transition-all flex flex-wrap justify-start items-center gap-y-1 group/link hover:translate-x-1 break-words"
                                                 >
-                                                    <ArrowRight className="h-4 w-4 mr-3 opacity-0 -ml-7 group-hover/link:opacity-100 group-hover/link:ml-0 transition-all duration-300 hidden md:block" />
-                                                    {link.name}
-                                                    {link.upcoming && (
-                                                        <span className="ml-2 rounded-full bg-primary/10 text-primary text-[10px] px-2 py-0.5">
+                                                    <ArrowRight className="h-4 w-4 mr-3 opacity-0 -ml-7 group-hover/link:opacity-100 group-hover/link:ml-0 transition-all duration-300 hidden md:block flex-shrink-0" />
+                                                    <span>{link.name}</span>
+                                                    {('upcoming' in link && link.upcoming === true) && (
+                                                        <span className="ml-2 rounded-full bg-primary/10 text-primary text-[0.625rem] px-2 py-0.5 whitespace-nowrap flex-shrink-0">
                                                             Soon
                                                         </span>
                                                     )}
@@ -119,11 +120,11 @@ export function Footer() {
                 </div>
 
                 {/* Bottom Section */}
-                <div className="pt-10 border-t border-border/50 flex flex-col md:flex-row justify-between items-center gap-6 text-center md:text-left">
-                    <p className="text-base font-medium text-muted-foreground/60">
+                <div className="pt-6 sm:pt-8 lg:pt-10 border-t border-border/50 flex flex-col sm:flex-row justify-between items-center gap-3 sm:gap-6 text-center sm:text-left">
+                    <p className="text-xs sm:text-sm md:text-base font-medium text-muted-foreground/60">
                         &copy; {new Date().getFullYear()} CareerSpire. Crafted for excellence.
                     </p>
-                    <div className="flex items-center space-x-8 text-base">
+                    <div className="flex items-center text-xs sm:text-sm md:text-base">
                         <span className="flex items-center">
                             <span className='text-muted-foreground/60'>By</span>{' '}
                             <Link
@@ -138,8 +139,8 @@ export function Footer() {
             </div>
 
             {/* Decorative elements */}
-            <div className="absolute top-1/4 left-1/4 w-[200px] md:w-[500px] h-[200px] md:h-[500px] bg-primary/5 rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute bottom-1/4 right-1/4 w-[150px] md:w-[300px] h-[150px] md:h-[300px] bg-secondary/5 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute top-1/4 left-1/4 w-[12.5rem] md:w-[31.25rem] h-[12.5rem] md:h-[31.25rem] bg-primary/5 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute bottom-1/4 right-1/4 w-[9.375rem] md:w-[18.75rem] h-[9.375rem] md:h-[18.75rem] bg-secondary/5 rounded-full blur-3xl pointer-events-none" />
         </footer>
     );
 }

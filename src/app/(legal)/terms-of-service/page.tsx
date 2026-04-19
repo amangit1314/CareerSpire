@@ -4,69 +4,123 @@ export default function TermsOfServicePage() {
     return (
         <StaticPageLayout
             title="Terms of Service"
-            subtitle="Please read these terms carefully before using our platform."
-            lastUpdated="January 29, 2026"
+            subtitle="Please read these terms carefully before using CareerSpire."
+            lastUpdated="April 18, 2026"
         >
             <section>
                 <h2>1. Acceptance of Terms</h2>
                 <p>
-                    By accessing or using CareerSpire, you agree to be bound by these Terms of Service and all applicable laws and regulations. If you do not agree with any of these terms, you are prohibited from using or accessing this site.
+                    By creating an account or using CareerSpire, you agree to these Terms of Service. If you do not agree, do not use the platform. These terms apply to all users including free-tier, paid subscribers, and visitors.
                 </p>
             </section>
 
             <section>
-                <h2>2. Use License</h2>
+                <h2>2. What CareerSpire Provides</h2>
                 <p>
-                    Permission is granted to temporarily download one copy of the materials (information or software) on CareerSpire's website for personal, non-commercial transitory viewing only.
+                    CareerSpire is an AI-powered interview preparation platform that offers:
                 </p>
-                <p>This is the grant of a license, not a transfer of title, and under this license you may not:</p>
                 <ul>
-                    <li>Modify or copy the materials.</li>
-                    <li>Use the materials for any commercial purpose, or for any public display.</li>
-                    <li>Attempt to decompile or reverse engineer any software contained on CareerSpire's website.</li>
-                    <li>Remove any copyright or other proprietary notations from the materials.</li>
+                    <li>AI mock interviews (text-based and video) with automated scoring and feedback.</li>
+                    <li>A Practice Hub with DSA coding problems, an in-browser code editor, and test runner.</li>
+                    <li>AI Tutor chat for on-demand learning assistance across programming topics.</li>
+                    <li>Curated and AI-generated learning tracks for interview preparation.</li>
+                    <li>A community space for sharing interview experiences and video recordings.</li>
+                    <li>Gamification features including XP, coins, streaks, badges, and leaderboards.</li>
                 </ul>
             </section>
 
             <section>
                 <h2>3. User Accounts</h2>
                 <p>
-                    When you create an account with us, you must provide information that is accurate, complete, and current at all times. Failure to do so constitutes a breach of the Terms, which may result in immediate termination of your account.
+                    You must provide a valid email address and create a password (at least 6 characters) to register. You are responsible for maintaining the confidentiality of your credentials. You must not share your account or let others access the platform through your login.
+                </p>
+                <p>
+                    We reserve the right to suspend or terminate accounts that violate these terms, engage in abusive behaviour, or attempt to exploit the platform.
                 </p>
             </section>
 
             <section>
-                <h2>4. Subscription and Payments</h2>
+                <h2>4. Subscriptions &amp; Payments</h2>
                 <p>
-                    Some parts of the Service are billed on a subscription basis. You will be billed in advance on a recurring and periodic basis. Billing cycles are set on a monthly or annual basis.
+                    CareerSpire offers a free tier and paid plans (Pro at &#8377;499/month, Placement at &#8377;999/month). All payments are processed in Indian Rupees (INR) through <strong>Razorpay</strong>. Paid subscriptions auto-renew at the end of each billing cycle unless cancelled.
+                </p>
+                <p>
+                    Pay-as-you-go mock packs and voice interview packs are one-time purchases and do not auto-renew. Pricing is subject to change with 30 days&apos; notice.
                 </p>
             </section>
 
             <section>
-                <h2>5. Content</h2>
+                <h2>5. Acceptable Use</h2>
+                <p>You agree not to:</p>
+                <ul>
+                    <li>Submit malicious code designed to compromise our servers, other users, or external services through the code editor.</li>
+                    <li>Attempt to reverse-engineer, scrape, or bulk-download questions, AI-generated content, or user data.</li>
+                    <li>Share offensive, discriminatory, or illegal content in community posts, video interviews, or comments.</li>
+                    <li>Create multiple accounts to exploit free-tier limits or referral systems.</li>
+                    <li>Use automated bots or scripts to interact with the platform.</li>
+                </ul>
+            </section>
+
+            <section>
+                <h2>6. Code Execution</h2>
                 <p>
-                    Our Service allows you to post, link, store, share and otherwise make available certain information, text, graphics, videos, or other material. You are responsible for the Content that you post to the Service.
+                    CareerSpire runs user-submitted code (JavaScript, Python, Java) in a restricted server-side environment for the purpose of evaluating solutions against test cases. Code execution is subject to a 3-second time limit and 256MB memory cap. We reserve the right to reject or terminate execution of code that appears malicious.
                 </p>
             </section>
 
             <section>
-                <h2>6. Limitation of Liability</h2>
+                <h2>7. AI-Generated Content</h2>
                 <p>
-                    In no event shall CareerSpire, nor its directors, employees, partners, agents, suppliers, or affiliates, be liable for any indirect, incidental, special, consequential or punitive damages.
+                    Interview questions, feedback, tutor responses, and learning guides are generated by AI (Groq and Google Gemini). While we strive for accuracy, AI outputs may occasionally contain errors. CareerSpire is a preparation tool, not a guarantee of interview success. You should verify technical advice independently.
                 </p>
             </section>
 
             <section>
-                <h2>7. Governing Law</h2>
+                <h2>8. Your Content</h2>
                 <p>
-                    These Terms shall be governed and construed in accordance with the laws of the jurisdiction in which CareerSpire operates, without regard to its conflict of law provisions.
+                    You retain ownership of code you write, answers you submit, and interview experiences you share. By making content public (e.g. video interviews, community experiences), you grant CareerSpire a non-exclusive licence to display that content on the platform. You can revoke this by making the content private or deleting it.
                 </p>
             </section>
 
             <section>
-                <h2>8. Changes</h2>
+                <h2>9. Intellectual Property</h2>
                 <p>
-                    We reserve the right, at our sole discretion, to modify or replace these Terms at any time. If a revision is material we will try to provide at least 30 days notice prior to any new terms taking effect.
+                    The CareerSpire platform, its design, brand, logo (the CS monogram), AI question bank, and curated learning tracks are the intellectual property of CareerSpire. You may not copy, redistribute, or commercially use any part of the platform without written permission.
+                </p>
+            </section>
+
+            <section>
+                <h2>10. Limitation of Liability</h2>
+                <p>
+                    CareerSpire is provided &quot;as is&quot; without warranty of any kind. We are not liable for interview outcomes, hiring decisions, data loss due to force majeure, or AI-generated content inaccuracies. Our total liability is limited to the amount you have paid us in the 12 months preceding a claim.
+                </p>
+            </section>
+
+            <section>
+                <h2>11. Account Termination</h2>
+                <p>
+                    You may delete your account at any time from Settings or by emailing us. We may terminate or suspend your access for violations of these terms. Upon termination, your data is handled as described in our Privacy Policy.
+                </p>
+            </section>
+
+            <section>
+                <h2>12. Governing Law</h2>
+                <p>
+                    These terms are governed by the laws of India. Any disputes shall be subject to the exclusive jurisdiction of the courts in New Delhi, India.
+                </p>
+            </section>
+
+            <section>
+                <h2>13. Changes to These Terms</h2>
+                <p>
+                    We may update these terms with at least 30 days&apos; notice via email or in-app notification. Continued use after the effective date constitutes acceptance. If you disagree with changes, you may cancel your subscription and delete your account before they take effect.
+                </p>
+            </section>
+
+            <section>
+                <h2>14. Contact</h2>
+                <p>
+                    Questions about these terms? Email us at <a href="mailto:support@careerspire.com">support@careerspire.com</a>.
                 </p>
             </section>
         </StaticPageLayout>

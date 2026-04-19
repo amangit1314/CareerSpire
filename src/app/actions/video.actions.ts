@@ -138,8 +138,22 @@ export async function startVideoMock(
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new AppError('User not found', 'USER_NOT_FOUND', 404);
 
-    if (user.subscriptionTier === 'FREE' && user.freeMocksRemaining <= 0) {
-        throw new AppError('No mocks remaining. Please upgrade your plan.', 'NO_MOCKS_REMAINING', 403);
+    // Video interviews have their OWN quota, separate from regular mocks
+    if (user.subscriptionTier === 'FREE') {
+        if (user.videoMocksRemaining <= 0) {
+            throw new AppError('No video interview credits remaining. Buy a voice pack or upgrade your plan.', 'NO_VIDEO_MOCKS_REMAINING', 403);
+        }
+    } else {
+        // Paid tier — enforce video-specific monthly quota
+        const { getPlanByTier } = await import('@/lib/pricing');
+        const plan = getPlanByTier(user.subscriptionTier as any);
+        if (user.videoMocksUsedThisCycle >= plan.videoMocksPerMonth) {
+            throw new AppError(
+                `You've used all ${plan.videoMocksPerMonth} video mocks this month. Buy a voice pack or upgrade.`,
+                'NO_VIDEO_MOCKS_REMAINING',
+                403,
+            );
+        }
     }
 
     const rounds = getInterviewRounds(config);
@@ -252,11 +266,16 @@ export async function startVideoMock(
         },
     });
 
-    // Decrement free mocks
-    if (user.subscriptionTier === 'FREE' && user.freeMocksRemaining > 0) {
+    // Deduct video mock credit (separate from regular mock quota)
+    if (user.subscriptionTier === 'FREE') {
         await prisma.user.update({
             where: { id: userId },
-            data: { freeMocksRemaining: user.freeMocksRemaining - 1 },
+            data: { videoMocksRemaining: Math.max(0, user.videoMocksRemaining - 1) },
+        });
+    } else {
+        await prisma.user.update({
+            where: { id: userId },
+            data: { videoMocksUsedThisCycle: user.videoMocksUsedThisCycle + 1 },
         });
     }
 
@@ -446,8 +465,14 @@ export async function addVideoComment(
     sessionId: string,
     content: string
 ): Promise<{ id: string; content: string; createdAt: Date }> {
+    // Sanitize: strip HTML tags, limit length
+    const sanitized = content.replace(/<[^>]*>/g, '').trim().slice(0, 2000);
+    if (!sanitized) {
+        throw new AppError('Comment cannot be empty', 'VALIDATION_ERROR', 400);
+    }
+
     const comment = await prisma.videoComment.create({
-        data: { sessionId, userId, content },
+        data: { sessionId, userId, content: sanitized },
     });
 
     return {

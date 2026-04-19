@@ -94,7 +94,6 @@ export default function NewExperiencePage() {
         setIsSubmitting(true);
         try {
             await createInterviewExperience({
-                userId: user.id,
                 company,
                 role,
                 interviewType,

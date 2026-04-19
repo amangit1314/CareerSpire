@@ -1,47 +1,45 @@
-import { Card, CardContent } from "@/components/ui/card";
+import Link from "next/link";
 import { dmSans } from "@/lib/fonts";
 import { cn } from "@/lib/utils";
-import { Shield, Lock, Eye } from "lucide-react";
+import { Shield, Lock, Eye, ArrowRight } from "lucide-react";
 
 export default function PrivacyPage() {
     return (
-        <div className="min-h-screen mesh-gradient flex items-center justify-center py-20 px-4">
-            <Card className="glass border-primary/20 max-w-4xl w-full">
-                <CardContent className="p-8 md:p-12 space-y-8">
-                    <div className="space-y-4 text-center">
-                        <h1 className={cn(dmSans.className, "text-4xl font-bold tracking-tight")}>
-                            Privacy at CareerSpire
-                        </h1>
-                        <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-                            Your trust is our most valuable asset. We are committed to protecting your data.
-                        </p>
-                    </div>
+        <div className="min-h-screen bg-background">
+            <div className="mx-auto w-full max-w-[88rem] px-3 sm:px-4 lg:px-6 py-16 sm:py-24">
+                <div className="max-w-3xl mx-auto text-center mb-12">
+                    <h1 className={cn(dmSans.className, "text-3xl sm:text-4xl font-bold tracking-tight mb-3")}>
+                        Privacy at CareerSpire
+                    </h1>
+                    <p className="text-base text-muted-foreground max-w-xl mx-auto">
+                        Your trust is our most valuable asset. Here&apos;s how we protect your data.
+                    </p>
+                </div>
 
-                    <div className="grid md:grid-cols-3 gap-6 pt-8">
-                        <div className="space-y-4 text-center p-6 rounded-xl bg-primary/5">
-                            <Shield className="h-8 w-8 mx-auto text-primary" />
-                            <h3 className="font-bold">Secure by Design</h3>
-                            <p className="text-sm text-muted-foreground">Encryption at rest and in transit for all your interview data.</p>
+                <div className="grid sm:grid-cols-3 gap-4 max-w-3xl mx-auto mb-12">
+                    {[
+                        { icon: Shield, title: "Secure by Design", desc: "Bcrypt-hashed passwords, HTTP-only JWT cookies, and rate-limited auth endpoints." },
+                        { icon: Lock, title: "You Own Your Data", desc: "We never sell your information. Delete your account anytime and all data is wiped." },
+                        { icon: Eye, title: "No Tracking", desc: "No advertising cookies, no third-party analytics pixels, no cross-site tracking." },
+                    ].map((item) => (
+                        <div key={item.title} className="p-5 rounded-xl border border-border bg-card/50 space-y-3">
+                            <item.icon className="h-5 w-5 text-primary" />
+                            <h3 className={cn(dmSans.className, "font-bold text-sm")}>{item.title}</h3>
+                            <p className="text-xs text-muted-foreground leading-relaxed">{item.desc}</p>
                         </div>
-                        <div className="space-y-4 text-center p-6 rounded-xl bg-primary/5">
-                            <Lock className="h-8 w-8 mx-auto text-primary" />
-                            <h3 className="font-bold">You Own Your Data</h3>
-                            <p className="text-sm text-muted-foreground">We never sell your personal information to third parties.</p>
-                        </div>
-                        <div className="space-y-4 text-center p-6 rounded-xl bg-primary/5">
-                            <Eye className="h-8 w-8 mx-auto text-primary" />
-                            <h3 className="font-bold">Transparent</h3>
-                            <p className="text-sm text-muted-foreground">Clear and simple privacy practices without the legalese.</p>
-                        </div>
-                    </div>
+                    ))}
+                </div>
 
-                    <div className="text-center pt-8">
-                        <a href="/privacy-policy" className="text-primary hover:underline font-medium">
-                            Read our full Privacy Policy &rarr;
-                        </a>
-                    </div>
-                </CardContent>
-            </Card>
+                <div className="text-center">
+                    <Link
+                        href="/privacy-policy"
+                        className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:text-primary/80 transition-colors"
+                    >
+                        Read the full Privacy Policy
+                        <ArrowRight className="h-3.5 w-3.5" />
+                    </Link>
+                </div>
+            </div>
         </div>
     );
 }

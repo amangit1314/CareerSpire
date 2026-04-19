@@ -81,6 +81,7 @@ enum NotificationType {
   PAYMENT
   REMINDER
   SECURITY
+  ACHIEVEMENT
 }
 
 enum EmailStatus {
@@ -90,41 +91,148 @@ enum EmailStatus {
 }
 
 model User {
-  id                    String          @id @default(uuid())
-  email                 String          @unique
-  passwordHash          String?
-  emailVerified         DateTime?
-  name                  String?
-  image                 String?
-  level                 UserLevel       @default(FRESHER)
-  freeMocksRemaining    Int             @default(2)
-  subscriptionTier       SubscriptionTier? @default(FREE)
-  subscriptionEndsAt    DateTime?
-  weakTopics            String[]        @default([])
-  lastLoginAt           DateTime?
-  
-  // Gamification fields
-  xp                    Int             @default(0)
-  currentStreak         Int             @default(0)
-  longestStreak         Int             @default(0)
-  lastPracticeAt        DateTime?
-  badges                String[]        @default([])
-  totalMocksCompleted   Int             @default(0)
-  
-  createdAt             DateTime        @default(now())
-  updatedAt             DateTime        @updatedAt
+  id                 String            @id @default(uuid())
+  email              String            @unique
+  passwordHash       String?
+  emailVerified      DateTime?
+  name               String?
+  image              String?
+  level              UserLevel         @default(FRESHER)
+  freeMocksRemaining      Int               @default(3)
+  videoMocksRemaining     Int               @default(0)
+  mocksUsedThisCycle      Int               @default(0)
+  videoMocksUsedThisCycle Int               @default(0)
+  billingCycleStart       DateTime?
+  subscriptionTier        SubscriptionTier? @default(FREE)
+  subscriptionEndsAt      DateTime?
+  weakTopics              String[]          @default([])
+  lastLoginAt             DateTime?
 
-  accounts              Account[]
-  sessions              Session[]
-  mockSessions          MockSession[]
-  payments              Payment[]
-  notifications         Notification[]
+  // Gamification fields
+  xp                  Int       @default(0)
+  coins               Int       @default(0)
+  currentStreak       Int       @default(0)
+  longestStreak       Int       @default(0)
+  lastPracticeAt      DateTime?
+  badges              String[]  @default([])
+  totalMocksCompleted Int       @default(0)
+  problemsSolvedCount Int       @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  accounts               Account[]
+  sessions               Session[]
+  mockSessions           MockSession[]
+  payments               Payment[]
+  notifications          Notification[]
   notificationPreference NotificationPreference?
-  emailLogs             EmailLog[]
-  mediaObjects          MediaObject[]
-  interviewExperiences  InterviewExperience[]
+  emailLogs              EmailLog[]
+  mediaObjects           MediaObject[]
+  interviewExperiences   InterviewExperience[]
+  roadmaps               UserRoadmap[]
+  problemProgress        UserProblemProgress[]
+  practiceSubmissions    PracticeSubmission[]
+  coinTransactions       CoinTransaction[]
 
   @@map("users")
+}
+
+/// Custom roadmaps a user has started (AI-generated skill tracks outside
+/// the curated catalog). Engagement signals (visits, tutor messages) live
+/// here so "Your Roadmaps" can surface them on the Resources hub.
+model UserRoadmap {
+  userId          String
+  slug            String // normalized skill slug, e.g. "rust", "nest.js"
+  displayName     String // "Rust", "Nest.js"
+  startedAt       DateTime @default(now())
+  lastVisitedAt   DateTime @default(now())
+  tutorMessages   Int      @default(0)
+  questionsViewed Int      @default(0)
+  isPinned        Boolean  @default(false)
+  isArchived      Boolean  @default(false)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, slug])
+  @@index([userId, isArchived, lastVisitedAt])
+  @@map("user_roadmaps")
+}
+
+// ============ Practice Hub ============
+
+enum ProblemStatus {
+  TODO
+  ATTEMPTED
+  SOLVED
+}
+
+/// Per-user per-problem progress. Joined to `Question.id` (no FK — Question
+/// is the shared bag and problems are a subset filtered by type=DSA).
+model UserProblemProgress {
+  userId           String
+  questionId       String
+  status           ProblemStatus @default(TODO)
+  firstSolvedAt    DateTime?
+  lastAttemptAt    DateTime      @default(now())
+  attemptCount     Int           @default(0)
+  isBookmarked     Boolean       @default(false)
+  bestSubmissionId String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, questionId])
+  @@index([userId, status])
+  @@index([userId, isBookmarked])
+  @@index([questionId, status])
+  @@map("user_problem_progress")
+}
+
+/// Practice-hub submissions (independent of MockSession).
+model PracticeSubmission {
+  id          String   @id @default(uuid())
+  userId      String
+  questionId  String
+  code        String   @db.Text
+  language    String // javascript | typescript | python | java
+  verdict     String // AC | WA | TLE | RE | CE | UNKNOWN
+  testsPassed Int
+  testsTotal  Int
+  runtimeMs   Int?
+  submittedAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, submittedAt])
+  @@index([userId, questionId, submittedAt])
+  @@index([questionId, verdict])
+  @@map("practice_submissions")
+}
+
+/// The problem chosen as "today's challenge". One row per day. Keyed by date.
+model DailyChallenge {
+  date       DateTime   @id @db.Date
+  questionId String     @unique
+  difficulty Difficulty
+  createdAt  DateTime   @default(now())
+
+  @@map("daily_challenges")
+}
+
+/// Audit log of every coin earn/spend. The running balance is cached on
+/// `User.coins` — keep them in sync inside the same Prisma `$transaction`.
+model CoinTransaction {
+  id        String   @id @default(uuid())
+  userId    String
+  amount    Int // positive = earn, negative = spend
+  reason    String // solve_easy | solve_medium | ... | hint_reveal | solution_unlock
+  refId     String? // questionId | submissionId depending on reason
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("coin_transactions")
 }
 
 model Account {
@@ -148,14 +256,14 @@ model Account {
 }
 
 model Session {
-  id           String   @id @default(uuid())
-  sessionToken String   @unique
+  id               String    @id @default(uuid())
+  sessionToken     String    @unique
   refreshTokenHash String
-  userId       String
-  expires      DateTime
-  createdAt    DateTime @default(now())
-  revokedAt    DateTime?
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId           String
+  expires          DateTime
+  createdAt        DateTime  @default(now())
+  revokedAt        DateTime?
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("sessions")
 }
@@ -170,49 +278,48 @@ model VerificationToken {
 }
 
 model Question {
-  id                   String              @id @default(uuid())
-  title                String
-  description          String              @db.Text
-  topic                String
-  difficulty           Difficulty
-  type                 QuestionType
-  language             ProgrammingLanguage?
-  framework            Framework?          @default(NONE)
-  questionFormat       QuestionFormat      @default(CODE_WRITING)
+  id             String               @id @default(uuid())
+  title          String
+  description    String               @db.Text
+  topic          String
+  difficulty     Difficulty
+  type           QuestionType
+  language       ProgrammingLanguage?
+  framework      Framework?           @default(NONE)
+  questionFormat QuestionFormat       @default(CODE_WRITING)
 
-  
-  hints              String[]            @default([])
-  timeAllocation     Int                 @default(10) // minutes
+  hints          String[] @default([])
+  timeAllocation Int      @default(10) // minutes
 
   // DSA-specific
-  testCases            Json?
-  expectedComplexity   String?
-  starterCode          String?             @db.Text
-  entryFunctionName    String?
+  testCases          Json?
+  expectedComplexity String?
+  starterCode        String? @db.Text
+  entryFunctionName  String?
 
   // Coding language interview
-  tags                 String[]            @default([])
-  followUps            String[]            @default([])
-  expectedAnswerFormat AnswerFormat         @default(SHORT_ANSWER)
-  codeSnippet          String?             @db.Text
+  tags                 String[]     @default([])
+  followUps            String[]     @default([])
+  expectedAnswerFormat AnswerFormat @default(SHORT_ANSWER)
+  codeSnippet          String?      @db.Text
 
   // MCQ / Output prediction
-  options              String[]            @default([])
-  correctAnswer        String?
+  options       String[] @default([])
+  correctAnswer String?
 
   // HR interview
-  category             QuestionCategory?
+  category QuestionCategory?
 
   // Interview logic
-  expectedTimeMinutes  Int                 @default(10)
-  weight               Float               @default(1.0)
+  expectedTimeMinutes Int   @default(10)
+  weight              Float @default(1.0)
 
   // Metadata
-  source               QuestionSource      @default(AI)
-  version              Int                 @default(1)
-  createdAt            DateTime            @default(now())
+  source    QuestionSource @default(AI)
+  version   Int            @default(1)
+  createdAt DateTime       @default(now())
 
-  mockResults          MockResult[]
+  mockResults MockResult[]
 
   @@index([topic, difficulty])
   @@index([type, difficulty])
@@ -244,33 +351,33 @@ enum QuestionSource {
 }
 
 model MockSession {
-  id              String              @id @default(uuid())
-  userId          String
-  questionIds     String[]            @default([])           // Array of question IDs
-  status          MockSessionStatus   @default(IN_PROGRESS)
-  interviewType   QuestionType        @default(CODING)
-  difficulty      Difficulty          @default(MEDIUM)
-  language        ProgrammingLanguage?
-  framework       Framework?          @default(NONE)
-  totalDuration   Int                 @default(45) // minutes
-  startedAt       DateTime            @default(now())
-  completedAt     DateTime?
-  
+  id            String               @id @default(uuid())
+  userId        String
+  questionIds   String[]             @default([]) // Array of question IDs
+  status        MockSessionStatus    @default(IN_PROGRESS)
+  interviewType QuestionType         @default(CODING)
+  difficulty    Difficulty           @default(MEDIUM)
+  language      ProgrammingLanguage?
+  framework     Framework?           @default(NONE)
+  totalDuration Int                  @default(45) // minutes
+  startedAt     DateTime             @default(now())
+  completedAt   DateTime?
+
   // Dynamic question storage for CODING/HR mocks
   codingQuestions Json?
   hrQuestions     Json?
-  
-  // Video interview fields
-  videoRecordingUrl   String?         @db.Text
-  videoThumbnailUrl   String?
-  isPublic            Boolean         @default(false)
-  views               Int             @default(0)
-  likes               Int             @default(0)
 
-  user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  results         MockResult[]
-  videoLikes      VideoLike[]
-  comments        VideoComment[]
+  // Video interview fields
+  videoRecordingUrl String? @db.Text
+  videoThumbnailUrl String?
+  isPublic          Boolean @default(false)
+  views             Int     @default(0)
+  likes             Int     @default(0)
+
+  user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  results    MockResult[]
+  videoLikes VideoLike[]
+  comments   VideoComment[]
 
   @@index([userId])
   @@index([status])
@@ -279,18 +386,18 @@ model MockSession {
 }
 
 model MockResult {
-  id          String    @id @default(uuid())
+  id          String   @id @default(uuid())
   sessionId   String
   questionId  String
-  userCode    String    @db.Text
-  testResults Json      // TestResult object
+  userCode    String   @db.Text
+  testResults Json // TestResult object
   score       Int
-  feedback    Json      // Feedback object
-  timeSpent   Int       // seconds
-  submittedAt DateTime  @default(now())
+  feedback    Json // Feedback object
+  timeSpent   Int // seconds
+  submittedAt DateTime @default(now())
 
-  session     MockSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  question    Question    @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  session  MockSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  question Question    @relation(fields: [questionId], references: [id], onDelete: Cascade)
 
   @@index([sessionId])
   @@index([questionId])
@@ -298,17 +405,17 @@ model MockResult {
 }
 
 model Payment {
-  id                String        @id @default(uuid())
+  id                String            @id @default(uuid())
   userId            String
-  razorpayOrderId   String?       @unique
+  razorpayOrderId   String?           @unique
   razorpayPaymentId String?
-  amount            Int           // in paise
-  currency          String        @default("INR")
-  status            PaymentStatus @default(PENDING)
+  amount            Int // in paise
+  currency          String            @default("INR")
+  status            PaymentStatus     @default(PENDING)
   subscriptionTier  SubscriptionTier?
-  createdAt         DateTime      @default(now())
+  createdAt         DateTime          @default(now())
 
-  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([status])
@@ -316,17 +423,17 @@ model Payment {
 }
 
 model Notification {
-  id          String          @id @default(uuid())
-  userId      String
-  type        NotificationType
-  title       String
-  body        String          @db.Text
-  meta        Json?
-  readAt      DateTime?
-  createdAt   DateTime        @default(now())
+  id        String           @id @default(uuid())
+  userId    String
+  type      NotificationType
+  title     String
+  body      String           @db.Text
+  meta      Json?
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
 
-  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  emailLogs   EmailLog[]
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emailLogs EmailLog[]
 
   @@index([userId, createdAt])
   @@index([userId, readAt])
@@ -334,29 +441,29 @@ model Notification {
 }
 
 model NotificationPreference {
-  userId        String   @id
-  emailEnabled  Boolean  @default(true)
-  inAppEnabled  Boolean  @default(true)
-  digestEnabled Boolean  @default(false)
+  userId        String  @id
+  emailEnabled  Boolean @default(true)
+  inAppEnabled  Boolean @default(true)
+  digestEnabled Boolean @default(false)
 
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("notification_preferences")
 }
 
 model EmailLog {
-  id                String          @id @default(uuid())
+  id                String      @id @default(uuid())
   userId            String?
   notificationId    String?
   to                String
   subject           String
-  status            EmailStatus     @default(QUEUED)
+  status            EmailStatus @default(QUEUED)
   providerMessageId String?
-  error             String?         @db.Text
-  createdAt         DateTime        @default(now())
+  error             String?     @db.Text
+  createdAt         DateTime    @default(now())
 
-  user              User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
-  notification      Notification?   @relation(fields: [notificationId], references: [id], onDelete: SetNull)
+  user         User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  notification Notification? @relation(fields: [notificationId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([notificationId])
@@ -365,16 +472,16 @@ model EmailLog {
 }
 
 model MediaObject {
-  id               String   @id @default(uuid())
+  id               String    @id @default(uuid())
   userId           String
   bucket           String
   path             String
   contentType      String
   size             Int
   signedUrlExpires DateTime?
-  createdAt        DateTime @default(now())
+  createdAt        DateTime  @default(now())
 
-  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@map("media_objects")
@@ -383,27 +490,27 @@ model MediaObject {
 // ============ Community Features ============
 
 model VideoLike {
-  id          String      @id @default(uuid())
-  sessionId   String
-  userId      String
-  createdAt   DateTime    @default(now())
-  
-  session     MockSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  
+  id        String   @id @default(uuid())
+  sessionId String
+  userId    String
+  createdAt DateTime @default(now())
+
+  session MockSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
   @@unique([sessionId, userId])
   @@index([sessionId])
   @@map("video_likes")
 }
 
 model VideoComment {
-  id          String      @id @default(uuid())
-  sessionId   String
-  userId      String
-  content     String      @db.Text
-  createdAt   DateTime    @default(now())
-  
-  session     MockSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  
+  id        String   @id @default(uuid())
+  sessionId String
+  userId    String
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+
+  session MockSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
   @@index([sessionId])
   @@map("video_comments")
 }
@@ -413,17 +520,17 @@ model InterviewExperience {
   userId        String
   company       String
   role          String
-  interviewType String     // onsite, phone, video, take-home
+  interviewType String // onsite, phone, video, take-home
   difficulty    Difficulty
-  outcome       String     // offered, rejected, pending, ghosted
+  outcome       String // offered, rejected, pending, ghosted
   rounds        Int        @default(1)
-  questions     Json       // array of question summaries
+  questions     Json // array of question summaries
   tips          String     @db.Text
   isPublic      Boolean    @default(true)
   likes         Int        @default(0)
   createdAt     DateTime   @default(now())
 
-  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([company])
   @@index([userId])
@@ -434,14 +541,14 @@ model InterviewExperience {
 // ============ Question Bank (AI Cache — Core Differentiator) ============
 
 model SkillQuestionBank {
-  id         String   @id @default(cuid())
-  skill      String   @unique  // "NestJS", "UPSC Polity", "System Design"
-  niche      String            // programming | hr | government
-  topics     Json              // array of all topics in this skill
-  questions  Json              // array of 30+ questions
-  hitCount   Int      @default(0)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id        String   @id @default(cuid())
+  skill     String   @unique // "NestJS", "UPSC Polity", "System Design"
+  niche     String // programming | hr | government
+  topics    Json // array of all topics in this skill
+  questions Json // array of 30+ questions
+  hitCount  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([skill])
   @@index([niche])

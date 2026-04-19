@@ -8,9 +8,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   try {
-    const { requireAuth } = await import('@/lib/auth');
-    const userId = await requireAuth();
-    const data = await getBillingDataAction(userId);
+    const data = await getBillingDataAction();
     return NextResponse.json<ApiResponse<BillingData>>({ data });
   } catch (error) {
     const errorResponse = createErrorResponse(error);

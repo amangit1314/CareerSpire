@@ -7,31 +7,35 @@ export default function FeedbackPage() {
     return (
         <StaticPageLayout
             title="Give Feedback"
-            subtitle="How's your experience with CareerSpire? We'd love to hear your thoughts."
+            subtitle="Your feedback directly shapes what we build next."
         >
-            <div className="p-8 md:p-12 rounded-3xl glass border border-primary/10 space-y-8">
-                <div className="space-y-4">
-                    <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Rating</label>
-                    <div className="flex space-x-2">
+            <div className="p-6 sm:p-8 rounded-xl border border-border bg-card/50 space-y-6">
+                <div className="space-y-2">
+                    <label className="text-xs font-semibold text-muted-foreground">How would you rate CareerSpire?</label>
+                    <div className="flex gap-1">
                         {[1, 2, 3, 4, 5].map((star) => (
-                            <Button key={star} variant="ghost" size="icon" className="h-12 w-12 hover:bg-primary/10 hover:text-primary">
-                                <Star className="h-8 w-8" />
-                            </Button>
+                            <button key={star} className="p-2 rounded-lg hover:bg-primary/10 transition-colors cursor-pointer">
+                                <Star className="h-6 w-6 text-muted-foreground/30 hover:text-primary transition-colors" />
+                            </button>
                         ))}
                     </div>
                 </div>
 
-                <div className="space-y-2">
-                    <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">What do you think?</label>
+                <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-muted-foreground">What&apos;s on your mind?</label>
                     <Textarea
-                        placeholder="Share your experience, what you liked, or where we can improve..."
-                        className="min-h-[200px] bg-muted/30 mt-2"
+                        placeholder="What do you like? What could be better? Which feature do you use the most — mocks, practice hub, AI tutor, or community?"
+                        className="min-h-[160px]"
                     />
                 </div>
 
-                <Button className="w-full py-6 text-md font-bold shadow-xl shadow-primary/10 dark:text-white">
+                <Button className="w-full font-semibold">
                     Send Feedback
                 </Button>
+
+                <p className="text-[0.6875rem] text-muted-foreground text-center">
+                    Want to suggest a specific feature instead? <a href="/request-feature" className="text-primary font-medium">Request a feature</a>.
+                </p>
             </div>
         </StaticPageLayout>
     );

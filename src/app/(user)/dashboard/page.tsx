@@ -6,13 +6,14 @@ import { useDashboard } from '@/hooks/useDashboard';
 import { StatsCard } from '@/components/StatsCard';
 import { DashboardSkeleton } from '@/components/skeletons/DashboardSkeleton';
 import { ErrorMessage } from '@/components/ui/error-message';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { TrendingUp, Target, Clock, Award, Play, Loader2, TrendingDown, Minus } from 'lucide-react';
+import { TrendingUp, Target, Clock, Award, Play, TrendingDown, Minus, ChevronRight, FileText, Calendar } from 'lucide-react';
 import Link from 'next/link';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Area } from 'recharts';
+import { LineChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Area } from 'recharts';
 import { formatDate } from '@/lib/utils';
 import { dmSans } from '@/lib/fonts';
+import { cn } from '@/lib/utils';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -30,7 +31,7 @@ export default function DashboardPage() {
 
   if (error || !stats) {
     return (
-      <div className="container mx-auto px-4 py-8">
+      <div className="mx-auto w-full max-w-[88rem] px-3 sm:px-4 lg:px-6 py-8">
         <ErrorMessage
           title="Failed to load dashboard"
           message={
@@ -43,29 +44,29 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-8">
-        <h1 className={`${dmSans.className} text-3xl font-bold mb-2`}>Dashboard</h1>
-        <p className="text-muted-foreground">
+    <div className="mx-auto w-full max-w-[88rem] px-3 sm:px-4 lg:px-6 py-6 sm:py-8">
+      <div className="mb-6 sm:mb-8">
+        <h1 className={`${dmSans.className} text-2xl sm:text-3xl font-bold mb-2`}>Dashboard</h1>
+        <p className="text-sm sm:text-base text-muted-foreground">
           Track your progress and improve your interview skills
         </p>
       </div>
 
       {/* Quick Start */}
       {stats.freeMocksRemaining > 0 && (
-        <Card className="mb-8 bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
+        <Card className="mb-6 sm:mb-8 bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
           <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className={`${dmSans.className} text-lg font-semibold mb-2`}>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="min-w-0">
+                <h3 className={`${dmSans.className} text-base sm:text-lg font-semibold mb-1 sm:mb-2`}>
                   {stats.freeMocksRemaining} Free Mock{stats.freeMocksRemaining > 1 ? 's' : ''} Remaining
                 </h3>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-xs sm:text-sm text-muted-foreground">
                   Start practicing now to improve your skills
                 </p>
               </div>
-              <Link href="/mock/new">
-                <Button size="lg" className={`${dmSans.className} text-white`}>
+              <Link href="/mock/new" className="w-full sm:w-auto">
+                <Button size="lg" className={`${dmSans.className} w-full sm:w-auto text-primary-foreground`}>
                   <Play className="mr-2 h-4 w-4" />
                   Start Mock Interview
                 </Button>
@@ -76,7 +77,7 @@ export default function DashboardPage() {
       )}
 
       {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
+      <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4 mb-6 sm:mb-8">
         <StatsCard
           title="Total Mocks"
           value={stats.totalMocks}
@@ -101,141 +102,170 @@ export default function DashboardPage() {
 
       {/* Score Trend */}
       {stats.scoreTrend.length > 0 && (
-        <Card className="mb-8 overflow-hidden">
-          {/* <CardHeader>
-            <CardTitle className={dmSans.className}>Score Trend</CardTitle>
-          </CardHeader> */}
-          <CardContent className="p-0 sm:p-6">
-            <div className="h-full w-full">
+        <Card className="mb-6 sm:mb-8 overflow-hidden">
+          <CardHeader className="flex flex-row items-start sm:items-center justify-between gap-4 space-y-0">
+            <div className="min-w-0">
+              <CardTitle className={cn(dmSans.className, 'text-lg sm:text-xl')}>
+                Performance Trend
+              </CardTitle>
+              <CardDescription className="mt-1">
+                Your practice scores over time
+              </CardDescription>
+            </div>
+            <TrendBadge stats={stats} />
+          </CardHeader>
+          <CardContent className="pt-0">
+            <ScoreTrendChart stats={stats} />
+          </CardContent>
+        </Card>
+      )}
 
-
-              <ScoreTrendChart stats={stats} />
-
+      {/* Weak Topics */}
+      {stats.weakTopics.length > 0 && (
+        <Card className="mb-6 sm:mb-8">
+          <CardHeader>
+            <CardTitle className={cn(dmSans.className, 'text-lg sm:text-xl')}>Focus Areas</CardTitle>
+            <CardDescription className="mt-1">
+              These topics need more practice
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              {stats.weakTopics.map((topic) => (
+                <span
+                  key={topic}
+                  className="px-3 py-1 bg-warning/10 text-warning border border-warning/20 rounded-full text-xs sm:text-sm font-medium"
+                >
+                  {topic}
+                </span>
+              ))}
             </div>
           </CardContent>
         </Card>
       )}
-      {/* Weak Topics */}
-      {
-        stats.weakTopics.length > 0 && (
-          <Card className="mb-8">
-            <CardHeader>
-              <CardTitle className={dmSans.className}>Focus Areas</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground mb-4">
-                These topics need more practice:
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {stats.weakTopics.map((topic) => (
-                  <span
-                    key={topic}
-                    className="px-3 py-1 bg-yellow-500/10 text-yellow-600 border border-yellow-500/20 rounded-full text-sm"
-                  >
-                    {topic}
-                  </span>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )
-      }
 
       {/* Recent Mocks */}
       <Card>
         <CardHeader>
-          <CardTitle className={dmSans.className}>Recent Mock Interviews</CardTitle>
+          <CardTitle className={cn(dmSans.className, 'text-lg sm:text-xl')}>Recent Mock Interviews</CardTitle>
+          <CardDescription className="mt-1">
+            Your latest practice sessions
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {stats.recentMocks.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <p>No mock interviews yet. Start your first one!</p>
-              <Link href="/mock/new" className="mt-4 inline-block">
-                <Button className={`${dmSans.className}  text-white overflow-hidden`}>Start Mock Interview</Button>
+            <div className="text-center py-10 sm:py-12 px-4">
+              <div className="mx-auto w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mb-4">
+                <FileText className="h-6 w-6 text-primary" />
+              </div>
+              <p className="text-sm sm:text-base font-medium mb-1">No mock interviews yet</p>
+              <p className="text-xs sm:text-sm text-muted-foreground mb-5">
+                Start your first session to see results here.
+              </p>
+              <Link href="/mock/new" className="inline-block">
+                <Button className={cn(dmSans.className, 'text-primary-foreground cursor-pointer')}>
+                  <Play className="mr-2 h-4 w-4" />
+                  Start Mock Interview
+                </Button>
               </Link>
             </div>
           ) : (
-            <div className="space-y-4">
+            <ul className="divide-y divide-border -mt-2">
               {stats.recentMocks.map((mock) => (
-                <div
-                  key={mock.id}
-                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent transition-colors"
-                >
-                  <div>
-                    <p className="font-semibold">
-                      Score: {mock.score}% • {mock.questions} questions
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {formatDate(mock.date)}
-                    </p>
-                  </div>
-                  <Link href={`/mock/${mock.id}`}>
-                    <Button variant="outline" size="sm" className={dmSans.className}>
-                      View Details
-                    </Button>
-                  </Link>
-                </div>
+                <li key={mock.id}>
+                  <RecentMockRow mock={mock} />
+                </li>
               ))}
-            </div>
+            </ul>
           )}
         </CardContent>
       </Card>
-    </div >
+    </div>
   );
 }
 
+// ----------------------------------------------------------------------------
+// Trend helpers
+// ----------------------------------------------------------------------------
 
-// Enhanced Score Trend Component
-function ScoreTrendChart({ stats }: { stats: any }) {
-  const calculateTrend = () => {
-    if (stats.scoreTrend.length < 2) return 'stable';
-    const recent = stats.scoreTrend.slice(-2);
-    return recent[1].score > recent[0].score ? 'up' :
-      recent[1].score < recent[0].score ? 'down' : 'stable';
-  };
+type ScorePoint = { date: string; score: number };
+type TrendDirection = 'up' | 'down' | 'stable';
 
-  const trend = calculateTrend();
-  const latestScore = stats.scoreTrend[stats.scoreTrend.length - 1]?.score || 0;
+function getTrendDirection(trend: ScorePoint[]): TrendDirection {
+  if (trend.length < 2) return 'stable';
+  const [prev, curr] = trend.slice(-2);
+  if (curr.score > prev.score) return 'up';
+  if (curr.score < prev.score) return 'down';
+  return 'stable';
+}
+
+const trendStyles: Record<TrendDirection, { badge: string; text: string; Icon: typeof TrendingUp }> = {
+  up: {
+    badge: 'bg-success/10 text-success border border-success/20',
+    text: 'text-success',
+    Icon: TrendingUp,
+  },
+  down: {
+    badge: 'bg-destructive/10 text-destructive border border-destructive/20',
+    text: 'text-destructive',
+    Icon: TrendingDown,
+  },
+  stable: {
+    badge: 'bg-muted text-muted-foreground border border-border',
+    text: 'text-muted-foreground',
+    Icon: Minus,
+  },
+};
+
+function TrendBadge({ stats }: { stats: { scoreTrend: ScorePoint[] } }) {
+  const direction = getTrendDirection(stats.scoreTrend);
+  const latest = stats.scoreTrend[stats.scoreTrend.length - 1]?.score ?? 0;
+  const { badge, Icon } = trendStyles[direction];
 
   return (
-    <div className="chart-container p-4">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h3 className="font-semibold text-lg">Performance Trend</h3>
-          <p className="text-sm text-muted-foreground">Your practice scores over time</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className={`
-            px-3 py-1 rounded-full text-sm font-medium flex items-center gap-1
-            ${trend === 'up' ? 'bg-green-500/10 text-green-500' :
-              trend === 'down' ? 'bg-red-500/10 text-red-500' :
-                'bg-blue-500/10 text-blue-500'}
-          `}>
-            {trend === 'up' ? <TrendingUp className="h-4 w-4" /> :
-              trend === 'down' ? <TrendingDown className="h-4 w-4" /> :
-                <Minus className="h-4 w-4" />}
-            {latestScore}%
-          </div>
-        </div>
-      </div>
+    <div className={cn('px-3 py-1 rounded-full text-xs sm:text-sm font-medium flex items-center gap-1.5 shrink-0', badge)}>
+      <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+      {latest}%
+    </div>
+  );
+}
 
-      <div style={{ height: 270 }}>
-        <ResponsiveContainer width="100%" height={300}>
+// ----------------------------------------------------------------------------
+// Chart
+// ----------------------------------------------------------------------------
+
+function ScoreTrendChart({ stats }: { stats: { scoreTrend: ScorePoint[]; averageScore?: number } }) {
+  const direction = getTrendDirection(stats.scoreTrend);
+  const trendStyle = trendStyles[direction];
+
+  const highest = Math.max(...stats.scoreTrend.map((s) => s.score));
+  const average =
+    stats.scoreTrend.reduce((acc, s) => acc + s.score, 0) / stats.scoreTrend.length;
+  const improvement =
+    stats.scoreTrend.length > 1
+      ? Math.abs(stats.scoreTrend[stats.scoreTrend.length - 1].score - stats.scoreTrend[0].score)
+      : 0;
+  const avgValue = stats.averageScore ?? Math.round(average);
+
+  return (
+    <div>
+      <div className="h-[16.25rem] sm:h-[18.75rem] w-full">
+        <ResponsiveContainer width="100%" height="100%">
           <LineChart
             data={stats.scoreTrend}
-            margin={{ top: 20, right: 30, left: 10, bottom: 20 }}
+            margin={{ top: 20, right: 24, left: -8, bottom: 8 }}
           >
             <defs>
               <linearGradient id="scoreGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.8} />
-                <stop offset="95%" stopColor="var(--primary)" stopOpacity={0.1} />
+                <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.45} />
+                <stop offset="95%" stopColor="var(--primary)" stopOpacity={0.02} />
               </linearGradient>
             </defs>
 
             <CartesianGrid
               strokeDasharray="3 3"
               stroke="var(--border)"
-              strokeOpacity={0.3}
+              strokeOpacity={0.5}
               vertical={false}
             />
 
@@ -266,11 +296,11 @@ function ScoreTrendChart({ stats }: { stats: any }) {
                 if (active && payload && payload.length) {
                   return (
                     <div className="glass p-3 rounded-lg shadow-lg border border-primary/20">
-                      <p className="text-sm font-semibold text-primary">{label}</p>
-                      <p className="text-lg font-bold mt-1">
+                      <p className="text-xs font-semibold text-primary">{label}</p>
+                      <p className="text-base font-bold mt-1">
                         {payload[0].value}%
                       </p>
-                      <p className="text-xs text-muted-foreground mt-1">
+                      <p className="text-[0.6875rem] text-muted-foreground mt-1">
                         Practice Score
                       </p>
                     </div>
@@ -285,33 +315,40 @@ function ScoreTrendChart({ stats }: { stats: any }) {
               }}
             />
 
-            {/* Area under line */}
             <Area
               type="monotone"
               dataKey="score"
               stroke="var(--primary)"
-              strokeWidth={3}
+              strokeWidth={2.5}
               fillOpacity={1}
               fill="url(#scoreGradient)"
+              dot={{
+                r: 4,
+                fill: 'var(--primary)',
+                stroke: 'var(--background)',
+                strokeWidth: 2,
+              }}
               activeDot={{
                 r: 6,
                 fill: 'var(--primary)',
-                stroke: 'hsl(var(--background))',
+                stroke: 'var(--background)',
                 strokeWidth: 2,
               }}
             />
 
-            {/* Reference line for average or target */}
             <ReferenceLine
-              y={stats.averageScore || 70}
-              stroke="var(--secondary-avg)"
+              y={avgValue}
+              stroke="var(--muted-foreground)"
+              strokeOpacity={0.6}
               strokeDasharray="5 5"
               strokeWidth={1}
               label={{
-                value: `Avg: ${stats.averageScore || 70}%`,
+                value: `Avg: ${avgValue}%`,
                 position: 'insideTopRight',
-                fill: 'var(--secondary-avg)',
-                fontSize: 10
+                fill: 'var(--muted-foreground)',
+                fontSize: 11,
+                fontWeight: 600,
+                offset: 8,
               }}
             />
           </LineChart>
@@ -319,33 +356,154 @@ function ScoreTrendChart({ stats }: { stats: any }) {
       </div>
 
       {/* Chart stats summary */}
-      <div className="grid grid-cols-3 gap-4 mt-6 pt-6 border-t border-border">
-        <div className="text-center">
-          <p className="text-sm text-muted-foreground">Highest</p>
-          <p className="text-xl font-semibold">
-            {Math.max(...stats.scoreTrend.map((s: any) => s.score))}%
-          </p>
-        </div>
-        <div className="text-center">
-          <p className="text-sm text-muted-foreground">Average</p>
-          <p className="text-xl font-semibold">
-            {(stats.scoreTrend.reduce((a: number, b: any) => a + b.score, 0) / stats.scoreTrend.length).toFixed(1)}%
-          </p>
-        </div>
-        <div className="text-center">
-          <p className="text-sm text-muted-foreground">Improvement</p>
-          <p className={`
-            text-xl font-semibold flex items-center justify-center gap-1
-            ${trend === 'up' ? 'text-green-500' :
-              trend === 'down' ? 'text-red-500' : 'text-blue-500'}
-          `}>
-            {trend === 'up' ? '+' : trend === 'down' ? '-' : ''}
-            {stats.scoreTrend.length > 1
-              ? Math.abs(stats.scoreTrend[stats.scoreTrend.length - 1].score - stats.scoreTrend[0].score)
-              : 0}%
-          </p>
-        </div>
+      <div className="grid grid-cols-3 gap-3 sm:gap-4 mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-border">
+        <SummaryStat label="Highest" value={`${highest}%`} valueClass="text-foreground" />
+        <SummaryStat label="Average" value={`${average.toFixed(1)}%`} valueClass="text-foreground" />
+        <SummaryStat
+          label="Improvement"
+          value={`${direction === 'up' ? '+' : direction === 'down' ? '-' : ''}${improvement}%`}
+          valueClass={trendStyle.text}
+        />
       </div>
     </div>
+  );
+}
+
+function SummaryStat({
+  label,
+  value,
+  valueClass,
+}: {
+  label: string;
+  value: string;
+  valueClass: string;
+}) {
+  return (
+    <div className="text-center">
+      <p className="text-xs sm:text-sm text-muted-foreground mb-1">{label}</p>
+      <p className={cn(dmSans.className, 'text-lg sm:text-xl font-semibold', valueClass)}>
+        {value}
+      </p>
+    </div>
+  );
+}
+
+// ----------------------------------------------------------------------------
+// Recent Mock row
+// ----------------------------------------------------------------------------
+
+type RecentMock = {
+  id: string;
+  score: number;
+  questions: number;
+  date: Date;
+};
+
+function getScoreTone(score: number) {
+  if (score >= 80) {
+    return {
+      ring: 'ring-success/30',
+      bg: 'bg-success/10',
+      text: 'text-success',
+      label: 'Excellent',
+    };
+  }
+  if (score >= 60) {
+    return {
+      ring: 'ring-warning/30',
+      bg: 'bg-warning/10',
+      text: 'text-warning',
+      label: 'Good',
+    };
+  }
+  return {
+    ring: 'ring-destructive/30',
+    bg: 'bg-destructive/10',
+    text: 'text-destructive',
+    label: 'Needs work',
+  };
+}
+
+function RecentMockRow({ mock }: { mock: RecentMock }) {
+  const tone = getScoreTone(mock.score);
+
+  return (
+    <Link
+      href={`/mock/${mock.id}`}
+      aria-label={`View details for mock with score ${mock.score}%`}
+      className={cn(
+        'group relative flex items-center gap-3 sm:gap-4 py-3 sm:py-4 px-2 sm:px-3 -mx-2 sm:-mx-3 rounded-xl cursor-pointer',
+        'transition-all duration-200',
+        'hover:bg-primary hover:shadow-md hover:shadow-primary/10',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background'
+      )}
+    >
+      {/* Score chip — at rest: tinted; on hover: clean white surface keeps the tone-colored
+          number high-contrast against the blue background without color clash */}
+      <div
+        className={cn(
+          'shrink-0 h-12 w-14 sm:h-14 sm:w-16 rounded-xl flex items-center justify-center ring-1 transition-colors',
+          tone.bg,
+          tone.ring,
+          'group-hover:bg-white group-hover:ring-white/40'
+        )}
+      >
+        <span
+          className={cn(
+            dmSans.className,
+            'text-base sm:text-lg font-bold leading-none tabular-nums transition-colors',
+            tone.text
+          )}
+        >
+          {mock.score}%
+        </span>
+      </div>
+
+      {/* Meta */}
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2 flex-wrap">
+          <p className={cn(
+            dmSans.className,
+            'font-semibold text-sm sm:text-base text-foreground transition-colors',
+            'group-hover:text-white'
+          )}>
+            Mock Interview
+          </p>
+          {/* Status pill — secondary visual weight on hover so the chip stays the anchor */}
+          <span
+            className={cn(
+              'text-[0.625rem] uppercase tracking-wider px-2 py-0.5 rounded-full font-semibold whitespace-nowrap transition-colors',
+              tone.bg,
+              tone.text,
+              'group-hover:bg-white/20 group-hover:text-white'
+            )}
+          >
+            {tone.label}
+          </span>
+        </div>
+        <p className={cn(
+          'flex items-center gap-1.5 text-xs sm:text-sm text-muted-foreground mt-1 transition-colors',
+          'group-hover:text-white/80'
+        )}>
+          <Calendar className="h-3.5 w-3.5 shrink-0" />
+          <span className="truncate">
+            {mock.questions} question{mock.questions !== 1 ? 's' : ''} · {formatDate(mock.date)}
+          </span>
+        </p>
+      </div>
+
+      {/* CTA */}
+      <div className={cn(
+        'hidden sm:flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground transition-all',
+        'group-hover:text-white group-hover:translate-x-0.5'
+      )}>
+        View Details
+        <ChevronRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
+      </div>
+      <ChevronRight className={cn(
+        'sm:hidden h-5 w-5 text-muted-foreground transition-all',
+        'group-hover:text-white group-hover:translate-x-0.5'
+      )} />
+    </Link>
   );
 }

@@ -81,12 +81,30 @@ function mapMockResult(r: PrismaMockResultWithQuestion): MockResult {
   };
 }
 
-/** Deduct one free mock if user is on free tier */
-async function deductFreeMock(userId: string, user: PrismaUser): Promise<void> {
-  if (user.subscriptionTier === 'FREE' && user.freeMocksRemaining > 0) {
+/** Check mock quota and deduct one mock credit */
+async function checkAndDeductMock(userId: string, user: PrismaUser): Promise<void> {
+  if (user.subscriptionTier === 'FREE') {
+    if (user.freeMocksRemaining <= 0) {
+      throw new AppError('No mocks remaining. Buy a mock pack or upgrade your plan.', 'NO_MOCKS_REMAINING', 403);
+    }
     await prisma.user.update({
       where: { id: userId },
       data: { freeMocksRemaining: user.freeMocksRemaining - 1 },
+    });
+  } else {
+    // Paid tier — enforce monthly quota
+    const { getPlanByTier } = await import('@/lib/pricing');
+    const plan = getPlanByTier(user.subscriptionTier as any);
+    if (user.mocksUsedThisCycle >= plan.mocksPerMonth) {
+      throw new AppError(
+        `You've used all ${plan.mocksPerMonth} mocks this month. Buy a mock pack or upgrade.`,
+        'NO_MOCKS_REMAINING',
+        403,
+      );
+    }
+    await prisma.user.update({
+      where: { id: userId },
+      data: { mocksUsedThisCycle: user.mocksUsedThisCycle + 1 },
     });
   }
 }
@@ -113,7 +131,7 @@ async function createMockSession(
     },
   });
 
-  await deductFreeMock(userId, user);
+  await checkAndDeductMock(userId, user);
 
   return {
     id: session.id,

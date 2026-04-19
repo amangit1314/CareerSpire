@@ -7,6 +7,7 @@ import { SubscriptionTier } from '@/types/enums';
 export interface PlanFeature {
   text: string;
   included: boolean;
+  highlight?: boolean;
 }
 
 export interface Plan {
@@ -17,9 +18,10 @@ export interface Plan {
   monthlyPrice: number;
   yearlyPricePerMonth: number;
   yearlyTotal: number;
-  mocksPerMonth: number | null; // null = lifetime (Free plan)
+  mocksPerMonth: number;
   mockLabel: string;
-  learningPathsPerMonth: number;
+  videoMocksPerMonth: number;
+  tutorMsgsPerDay: number;
   features: PlanFeature[];
   ctaLabel: string;
   ctaLoggedInLabel: string;
@@ -32,19 +34,22 @@ export const PLANS: Plan[] = [
     id: 'free',
     tier: SubscriptionTier.FREE,
     name: 'Free',
-    tagline: 'Try the platform risk-free',
+    tagline: 'Start your prep journey — no card needed',
     monthlyPrice: 0,
     yearlyPricePerMonth: 0,
     yearlyTotal: 0,
-    mocksPerMonth: null,
-    mockLabel: '2 mocks (lifetime)',
-    learningPathsPerMonth: 1,
+    mocksPerMonth: 3,
+    mockLabel: '3 mocks/month',
+    videoMocksPerMonth: 0,
+    tutorMsgsPerDay: 10,
     features: [
-      { text: '2 mock interviews (lifetime)', included: true },
-      { text: '1 learning path/month', included: true },
-      { text: 'Readiness score', included: true },
-      { text: 'Interview roadmap', included: true },
-      { text: 'No expiry', included: true },
+      { text: '3 AI mock interviews/month', included: true },
+      { text: 'Unlimited practice problems', included: true },
+      { text: 'Unlimited learning tracks', included: true },
+      { text: 'AI Tutor (10 msgs/day)', included: true },
+      { text: 'Community access', included: true },
+      { text: 'Coins, XP & streaks', included: true },
+      { text: 'Daily challenges', included: true },
     ],
     ctaLabel: 'Get Started Free',
     ctaLoggedInLabel: 'Current Plan',
@@ -53,19 +58,22 @@ export const PLANS: Plan[] = [
     id: 'pro',
     tier: SubscriptionTier.STARTER,
     name: 'Pro',
-    tagline: 'Master interviews with structured practice',
+    tagline: 'Serious prep for your upcoming interviews',
     monthlyPrice: 499,
     yearlyPricePerMonth: 399,
     yearlyTotal: 4788,
     mocksPerMonth: 15,
     mockLabel: '15 mocks/month',
-    learningPathsPerMonth: 5,
+    videoMocksPerMonth: 3,
+    tutorMsgsPerDay: 150,
     features: [
-      { text: '15 mock interviews/month', included: true },
-      { text: '5 learning paths/month', included: true },
-      { text: 'Resume review', included: true },
-      { text: 'Progress insights', included: true },
-      { text: 'Roadmaps included', included: true },
+      { text: '15 AI mock interviews/month', included: true, highlight: true },
+      { text: '3 video mock interviews/month', included: true, highlight: true },
+      { text: 'Unlimited practice problems', included: true },
+      { text: 'Unlimited learning tracks', included: true },
+      { text: 'AI Tutor (150 msgs/day)', included: true, highlight: true },
+      { text: 'Performance insights', included: true },
+      { text: 'Weak area analysis', included: true },
     ],
     ctaLabel: 'Start with Pro',
     ctaLoggedInLabel: 'Upgrade to Pro',
@@ -75,24 +83,27 @@ export const PLANS: Plan[] = [
     id: 'placement',
     tier: SubscriptionTier.PRO,
     name: 'Placement',
-    tagline: 'Designed to get you placed in product companies',
+    tagline: 'Go all-in for placement season',
     monthlyPrice: 999,
     yearlyPricePerMonth: 699,
     yearlyTotal: 8388,
-    mocksPerMonth: 25,
-    mockLabel: '25 mocks/month',
-    learningPathsPerMonth: 10,
+    mocksPerMonth: 30,
+    mockLabel: '30 mocks/month',
+    videoMocksPerMonth: 10,
+    tutorMsgsPerDay: Infinity,
     features: [
-      { text: '25 mock interviews/month', included: true },
-      { text: '10 learning paths/month', included: true },
-      { text: 'Resume + LinkedIn optimization', included: true },
-      { text: 'Recruiter outreach templates', included: true },
-      { text: 'Interview tracker', included: true },
+      { text: '30 AI mock interviews/month', included: true, highlight: true },
+      { text: '10 video mock interviews/month', included: true, highlight: true },
+      { text: 'Unlimited practice problems', included: true },
+      { text: 'Unlimited learning tracks', included: true },
+      { text: 'AI Tutor (unlimited)', included: true, highlight: true },
+      { text: 'Performance insights', included: true },
+      { text: 'Weak area analysis', included: true },
       { text: 'Priority support', included: true },
     ],
     ctaLabel: 'Start with Placement',
     ctaLoggedInLabel: 'Upgrade to Placement',
-    highlight: 'Best Value',
+    highlight: 'Best for Placements',
     highlightColor: 'green',
   },
 ];
@@ -104,33 +115,35 @@ export interface MockPack {
   mocks: number;
   price: number;
   label: string;
+  perMockPrice: number;
   badge?: string;
 }
 
 export const MOCK_PACKS: MockPack[] = [
-  { id: 'mock_1', mocks: 1, price: 79, label: '1 Mock' },
-  { id: 'mock_5', mocks: 5, price: 299, label: '5 Mocks', badge: 'Popular' },
-  { id: 'mock_10', mocks: 10, price: 499, label: '10 Mocks', badge: 'Best Value' },
+  { id: 'mock_1', mocks: 1, price: 79, perMockPrice: 79, label: '1 Mock' },
+  { id: 'mock_5', mocks: 5, price: 299, perMockPrice: 60, label: '5 Mocks', badge: 'Popular' },
+  { id: 'mock_10', mocks: 10, price: 499, perMockPrice: 50, label: '10 Mocks', badge: 'Best Value' },
 ];
 
-// ─── Voice Interview Packs (standalone — never bundled with plans) ───────────
+// ─── Voice Interview Packs (PAYG) ──────────────────────────────────────────
 
 export interface VoicePack {
   id: string;
   sessions: number;
   price: number;
+  perSessionPrice: number;
   label: string;
   badge?: string;
 }
 
 export const VOICE_PACKS: VoicePack[] = [
-  { id: 'voice_1', sessions: 1, price: 149, label: '1 Session' },
-  { id: 'voice_3', sessions: 3, price: 399, label: '3 Sessions' },
-  { id: 'voice_5', sessions: 5, price: 599, label: '5 Sessions', badge: 'Popular' },
-  { id: 'voice_10', sessions: 10, price: 999, label: '10 Sessions', badge: 'Best Value' },
+  { id: 'voice_1', sessions: 1, price: 149, perSessionPrice: 149, label: '1 Session' },
+  { id: 'voice_3', sessions: 3, price: 399, perSessionPrice: 133, label: '3 Sessions' },
+  { id: 'voice_5', sessions: 5, price: 599, perSessionPrice: 120, label: '5 Sessions', badge: 'Popular' },
+  { id: 'voice_10', sessions: 10, price: 999, perSessionPrice: 100, label: '10 Sessions', badge: 'Best Value' },
 ];
 
-// ─── Add-ons ─────────────────────────────────────────────────────────────────
+// ─── Add-ons (legacy — learning paths are now unlimited) ────────────────────
 
 export const ADDON_LEARNING_PATH_PRICE = 29;
 
@@ -175,8 +188,12 @@ export const PRICING_FAQS: FAQ[] = [
     answer: 'You can buy individual mock packs (pay-as-you-go) starting at \u20B979 per mock, or upgrade to a higher plan for more monthly mocks.',
   },
   {
-    question: 'Are voice interviews included in plans?',
-    answer: 'No. Voice interview sessions are purchased separately and are not bundled with any plan. This keeps plan prices lower for users who don\u2019t need voice.',
+    question: 'Are video interviews included in plans?',
+    answer: 'Pro includes 3 video mocks/month and Placement includes 10/month. You can also buy additional voice packs separately if you need more.',
+  },
+  {
+    question: 'Is the Practice Hub free?',
+    answer: 'Yes! The full practice hub with 500+ DSA problems, code sandbox, coins, XP, streaks, and daily challenges is completely free for all users.',
   },
   {
     question: 'How does yearly billing work?',
@@ -189,5 +206,9 @@ export const PRICING_FAQS: FAQ[] = [
   {
     question: 'Do unused mocks roll over?',
     answer: 'No. Monthly mocks reset at the start of each billing cycle. We recommend buying a mock pack if you need additional mocks beyond your plan limit.',
+  },
+  {
+    question: 'What AI model powers the mocks?',
+    answer: 'We use advanced AI models to generate questions and evaluate your answers. The feedback quality is comparable to a senior engineer reviewing your work.',
   },
 ];

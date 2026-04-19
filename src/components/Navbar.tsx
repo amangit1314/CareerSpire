@@ -10,7 +10,6 @@ import { User, LogOut, Menu, X } from 'lucide-react';
 import { dmSans } from '@/lib/fonts';
 import { ThemeToggle } from './ThemeToggle';
 
-import { motion } from 'framer-motion';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,16 +38,13 @@ export function Navbar() {
   };
 
   // 'Features',
-  const links = ['Dashboard', 'Pricing', 'Resources'];
+  const links = ['Dashboard', 'Practice', 'Pricing', 'Community', 'Resources'];
 
   return (
-    <motion.nav
-      initial={{ y: -100 }}
-      animate={{ y: 0 }}
-      transition={{ duration: 0.6, ease: "easeOut" }}
-      className="sticky top-0 z-50 w-full border-b glass transition-all duration-300"
+    <nav
+      className="sticky top-0 z-50 w-full border-b glass transition-all duration-300 animate-in slide-in-from-top duration-500"
     >
-      <div className="container mx-auto px-4">
+      <div className="mx-auto w-full max-w-[88rem] px-3 sm:px-4 lg:px-6">
         <div className="flex h-16 items-center justify-between">
           <Link href="/" className="flex items-center space-x-2 group">
             <CareerSpireLogo size="md" />
@@ -56,7 +52,18 @@ export function Navbar() {
 
           <div className="hidden md:flex items-center space-x-8">
             {links.map((item) => {
-              const href = item === 'Dashboard' ? '/dashboard' : item === 'Pricing' ? '/pricing' : item === 'Resources' ? '/resources' : '/';
+              const href =
+                item === 'Dashboard'
+                  ? '/dashboard'
+                  : item === 'Practice'
+                    ? '/practice'
+                    : item === 'Pricing'
+                      ? '/pricing'
+                      : item === 'Community'
+                        ? '/community'
+                        : item === 'Resources'
+                          ? '/resources'
+                          : '/';
               const isActive = pathname === href || (href !== '/' && pathname.startsWith(href));
 
               return (
@@ -152,15 +159,25 @@ export function Navbar() {
         </div>
 
         {mobileMenuOpen && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            className="md:hidden py-6 space-y-4 border-t bg-background/95 backdrop-blur-lg rounded-b-3xl absolute left-0 right-0 top-16 px-4 shadow-lg z-50"
+          <div
+            className="md:hidden py-6 space-y-4 border-t bg-background/95 backdrop-blur-lg rounded-b-3xl absolute left-0 right-0 top-16 px-4 shadow-lg z-50 animate-in fade-in slide-in-from-top-2 duration-200"
           >
             {links.map((item) => (
               <Link
                 key={item}
-                href={item === 'Dashboard' ? '/dashboard' : item === 'Pricing' ? '/pricing' : item === 'Resources' ? '/resources' : '/resources'}
+                href={
+                  item === 'Dashboard'
+                    ? '/dashboard'
+                    : item === 'Practice'
+                      ? '/practice'
+                      : item === 'Pricing'
+                        ? '/pricing'
+                        : item === 'Community'
+                          ? '/community'
+                          : item === 'Resources'
+                            ? '/resources'
+                            : '/'
+                }
                 className="block px-4 py-3 text-base font-medium hover:bg-primary/5 rounded-2xl transition-all"
                 onClick={() => setMobileMenuOpen(false)}
               >
@@ -183,9 +200,9 @@ export function Navbar() {
                 </>
               )}
             </div>
-          </motion.div>
+          </div>
         )}
       </div>
-    </motion.nav>
+    </nav>
   );
 }

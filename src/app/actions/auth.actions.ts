@@ -72,7 +72,7 @@ export async function signUpAction(data: SignUpRequest): Promise<AuthResponse> {
         name: validated.name,
         passwordHash,
         level: UserLevel.FRESHER,
-        freeMocksRemaining: 2,
+        freeMocksRemaining: 3,
         subscriptionTier: SubscriptionTier.FREE,
         weakTopics: [],
         lastLoginAt: new Date(),
@@ -114,8 +114,8 @@ export async function signUpAction(data: SignUpRequest): Promise<AuthResponse> {
       await createNotificationAction({
         userId: user.id,
         type: NotificationType.SYSTEM,
-        title: 'Welcome to Mocky!',
-        body: 'You have 2 free mock interviews to get started. Start practicing now!',
+        title: 'Welcome to CareerSpire!',
+        body: 'You have 3 free mock interviews every month to get started. Start practicing now!',
         sendEmail: false,
       });
       console.log('signUpAction: Welcome notification created.');

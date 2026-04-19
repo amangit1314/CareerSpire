@@ -40,46 +40,250 @@ const CATEGORIES = [
 ];
 
 export async function getResourceCategories(userId?: string): Promise<CategoryStats[]> {
-    const categories: CategoryStats[] = [];
+    const results = await Promise.all(
+        CATEGORIES.map(async (cat) => {
+            const whereClause: Record<string, unknown> = {};
+            if (cat.type) whereClause.type = cat.type;
+            if (cat.language) whereClause.language = cat.language;
+            if (cat.framework) whereClause.framework = cat.framework;
 
-    for (const cat of CATEGORIES) {
-        const whereClause: any = {};
-        if (cat.type) whereClause.type = cat.type;
-        if (cat.language) whereClause.language = cat.language;
-        if (cat.framework) whereClause.framework = cat.framework;
+            const [total, userResults] = await Promise.all([
+                prisma.question.count({ where: whereClause }),
+                userId
+                    ? prisma.mockResult.findMany({
+                          where: {
+                              session: { userId },
+                              question: whereClause,
+                          },
+                          select: { questionId: true },
+                      })
+                    : Promise.resolve([]),
+            ]);
 
-        const total = await prisma.question.count({ where: whereClause });
+            const attempted = new Set(userResults.map((r) => r.questionId)).size;
 
-        let completed = 0;
-        let attempted = 0;
-
-        if (userId) {
-            const userResults = await prisma.mockResult.findMany({
-                where: {
-                    session: { userId },
-                    question: whereClause
+            return {
+                category: cat.name,
+                slug: cat.id,
+                description: cat.description,
+                stats: {
+                    totalQuestions: total,
+                    completedQuestions: attempted,
+                    attemptedQuestions: attempted,
                 },
-                select: { questionId: true }
-            });
-            const uniqueQuestions = new Set(userResults.map((r: any) => r.questionId));
-            attempted = uniqueQuestions.size;
-            // For now, let's treat any attempt as completed in resources view
-            completed = attempted;
-        }
+            };
+        }),
+    );
 
-        categories.push({
-            category: cat.name,
-            slug: cat.id,
-            description: cat.description,
-            stats: {
-                totalQuestions: total,
-                completedQuestions: completed,
-                attemptedQuestions: attempted,
-            }
-        });
+    return results;
+}
+
+// ---------------------------------------------------------------------------
+// Consolidated: fetch all resources page data in one round trip
+// ---------------------------------------------------------------------------
+
+export interface ResourcesPageData {
+    categories: CategoryStats[];
+    roadmaps: UserRoadmap[];
+}
+
+export async function getResourcesPageData(userId?: string): Promise<ResourcesPageData> {
+    const [categories, roadmaps] = await Promise.all([
+        getResourceCategories(userId),
+        getUserRoadmaps(userId),
+    ]);
+    return { categories, roadmaps };
+}
+
+// ---------------------------------------------------------------------------
+// User Roadmaps — custom skill tracks (AI-generated, outside curated catalog)
+// ---------------------------------------------------------------------------
+
+export type UserRoadmap = {
+    slug: string;
+    name: string;
+    totalQuestions: number;
+    completedQuestions: number;
+    tutorMessages: number;
+    lastVisitedAt: Date;
+    startedAt: Date;
+    isPinned: boolean;
+};
+
+/** Normalize a skill label into a consistent slug. */
+function normalizeSlug(raw: string): string {
+    return raw
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, '-')
+        .replace(/[^a-z0-9.\-]/g, '');
+}
+
+/** Title-case display name from a slug. */
+function defaultDisplayName(raw: string): string {
+    const cleaned = raw.trim().replace(/[-_]+/g, ' ');
+    return cleaned
+        .split(' ')
+        .map((w) => (w.length ? w[0].toUpperCase() + w.slice(1) : w))
+        .join(' ');
+}
+
+/** True if this slug corresponds to a curated category (should NOT go in user roadmaps). */
+function isCuratedSlug(slug: string): boolean {
+    const normalized = slug.toLowerCase();
+    return CATEGORIES.some(
+        (c) => c.id.toLowerCase() === normalized || c.name.toLowerCase() === normalized,
+    );
+}
+
+/**
+ * List the current user's custom roadmaps, enriched with live question
+ * totals and attempted counts. Pinned first, then most-recently-visited.
+ */
+export async function getUserRoadmaps(userId?: string): Promise<UserRoadmap[]> {
+    if (!userId) return [];
+
+    const roadmaps = await prisma.userRoadmap.findMany({
+        where: { userId, isArchived: false },
+        orderBy: [{ isPinned: 'desc' }, { lastVisitedAt: 'desc' }],
+    });
+
+    if (roadmaps.length === 0) return [];
+
+    // Get total questions per slug and the user's attempt count per slug
+    // in two parallelized queries to keep the list fast.
+    const slugs = roadmaps.map((r) => r.slug);
+
+    const [totals, userAttempts] = await Promise.all([
+        Promise.all(
+            slugs.map((s) =>
+                prisma.question.count({
+                    where: { topic: { equals: s, mode: 'insensitive' } },
+                }),
+            ),
+        ),
+        prisma.mockResult.findMany({
+            where: {
+                session: { userId },
+                question: {
+                    topic: { in: slugs, mode: 'insensitive' },
+                },
+            },
+            select: { questionId: true, question: { select: { topic: true } } },
+        }),
+    ]);
+
+    const attemptsBySlug = new Map<string, Set<string>>();
+    for (const a of userAttempts) {
+        const key = a.question.topic.toLowerCase();
+        if (!attemptsBySlug.has(key)) attemptsBySlug.set(key, new Set());
+        attemptsBySlug.get(key)!.add(a.questionId);
     }
 
-    return categories;
+    return roadmaps.map((r, i) => ({
+        slug: r.slug,
+        name: r.displayName,
+        totalQuestions: totals[i],
+        completedQuestions: attemptsBySlug.get(r.slug.toLowerCase())?.size ?? 0,
+        tutorMessages: r.tutorMessages,
+        lastVisitedAt: r.lastVisitedAt,
+        startedAt: r.startedAt,
+        isPinned: r.isPinned,
+    }));
+}
+
+/**
+ * Record that the current user has visited a custom skill page. Idempotent
+ * upsert — creates a roadmap on first visit, bumps `lastVisitedAt` thereafter.
+ * Silent no-op for anonymous users or curated slugs.
+ */
+export async function recordRoadmapVisit(
+    rawSlug: string,
+    rawDisplayName?: string,
+): Promise<void> {
+    try {
+        const { getCurrentUserId } = await import('@/lib/auth');
+        const userId = await getCurrentUserId();
+        if (!userId) return;
+
+        const slug = normalizeSlug(rawSlug);
+        if (!slug || isCuratedSlug(slug)) return;
+
+        const displayName = rawDisplayName?.trim() || defaultDisplayName(rawSlug);
+
+        await prisma.userRoadmap.upsert({
+            where: { userId_slug: { userId, slug } },
+            update: {
+                lastVisitedAt: new Date(),
+                isArchived: false, // un-archive on revisit
+            },
+            create: {
+                userId,
+                slug,
+                displayName,
+            },
+        });
+    } catch (error) {
+        // Never block page render on this best-effort telemetry write
+        console.error('recordRoadmapVisit failed:', error);
+    }
+}
+
+/**
+ * Bump the tutor message count for a user's roadmap. Called from tutorChat
+ * after a successful response. No-op if the roadmap doesn't exist (e.g.
+ * curated slug or anonymous user).
+ */
+export async function incrementRoadmapTutorMessages(
+    userId: string,
+    rawSlug: string,
+): Promise<void> {
+    try {
+        const slug = normalizeSlug(rawSlug);
+        if (!slug || isCuratedSlug(slug)) return;
+
+        await prisma.userRoadmap.updateMany({
+            where: { userId, slug },
+            data: {
+                tutorMessages: { increment: 1 },
+                lastVisitedAt: new Date(),
+            },
+        });
+    } catch (error) {
+        console.error('incrementRoadmapTutorMessages failed:', error);
+    }
+}
+
+/** Pin / unpin a roadmap (moves it to the top of the list). */
+export async function toggleRoadmapPin(rawSlug: string): Promise<void> {
+    const { getCurrentUserId } = await import('@/lib/auth');
+    const userId = await getCurrentUserId();
+    if (!userId) return;
+
+    const slug = normalizeSlug(rawSlug);
+    const existing = await prisma.userRoadmap.findUnique({
+        where: { userId_slug: { userId, slug } },
+        select: { isPinned: true },
+    });
+    if (!existing) return;
+
+    await prisma.userRoadmap.update({
+        where: { userId_slug: { userId, slug } },
+        data: { isPinned: !existing.isPinned },
+    });
+}
+
+/** Soft-delete (archive) a roadmap. Re-visiting it restores it. */
+export async function archiveRoadmap(rawSlug: string): Promise<void> {
+    const { getCurrentUserId } = await import('@/lib/auth');
+    const userId = await getCurrentUserId();
+    if (!userId) return;
+
+    const slug = normalizeSlug(rawSlug);
+    await prisma.userRoadmap.updateMany({
+        where: { userId, slug },
+        data: { isArchived: true, isPinned: false },
+    });
 }
 
 export async function getQuestionsByCategory(categorySlug: string) {
@@ -299,55 +503,236 @@ export async function getQuestionDetails(questionId: string) {
     }
 }
 
-export async function generatePracticeExplanation(topic: string, questionTitle: string, questionDesc: string) {
+// ---------------------------------------------------------------------------
+// Adaptive AI Tutor
+// ---------------------------------------------------------------------------
+//
+// A single prompt that adapts based on user intent — code submission,
+// conceptual question, hint request, "test me", etc. Returns markdown only.
+// The frontend just renders it — no schema branching, no structured fallbacks,
+// no "undefined" leaking into the UI.
+//
+// ---------------------------------------------------------------------------
+
+interface TutorQuestion {
+    title: string;
+    description: string;
+    topic: string;
+    difficulty?: string;
+    hints?: unknown; // typically string[] from JSON column
+    codeSnippet?: string | null;
+    language?: string | null;
+    expectedAnswerFormat?: string | null;
+}
+
+interface TutorMessage {
+    role: 'ai' | 'user';
+    content: string;
+}
+
+function buildQuestionContext(q: TutorQuestion): string {
+    const hints = Array.isArray(q.hints) ? (q.hints as string[]) : [];
+    return [
+        `Title: ${q.title}`,
+        `Topic: ${q.topic}`,
+        q.difficulty ? `Difficulty: ${q.difficulty}` : null,
+        q.language ? `Language: ${q.language}` : null,
+        `Description: ${q.description}`,
+        q.codeSnippet ? `Reference Code:\n\`\`\`${q.language ?? ''}\n${q.codeSnippet}\n\`\`\`` : null,
+        hints.length
+            ? `Available hints (only reveal if the user explicitly asks for a hint, and only one at a time):\n${hints.map((h, i) => `${i + 1}. ${h}`).join('\n')}`
+            : null,
+    ]
+        .filter(Boolean)
+        .join('\n');
+}
+
+/**
+ * Generate a brief, Socratic opening message for a new tutoring session.
+ * Returns markdown. 2 short sentences + 1 invitation — NOT a lecture.
+ */
+export async function generateOpeningMessage(question: TutorQuestion): Promise<string> {
     try {
         const { llmClient } = await import('@/lib/llmClient');
-        const prompt = `You are a ChatGPT-like AI tutor for a technical interview prep platform.
-The user is about to practice a question on the topic: "${topic}".
-Question Title: "${questionTitle}"
-Question Description: "${questionDesc}"
+        const prompt = `You are an adaptive technical tutor starting a practice session on CareerSpire.
 
-Step 1: Briefly explain the core concept behind this topic in a friendly, conversational, and encouraging tone. (2-3 short paragraphs).
-Step 2: Connect it to why it's important in real-world engineering or interviews.
-Step 3: End by prompting the user to take a shot at the question.
+### Question
+${buildQuestionContext(question)}
 
-Format the response in Markdown. Do not give away the solution yet.`;
+### Your task
+Generate a brief, inviting opening message. Format as markdown.
+
+Strict rules:
+- Maximum 2 short sentences followed by ONE question that invites engagement.
+- Do NOT explain the concept. The user will learn by doing.
+- Do NOT give away any part of the solution or hints.
+- Tone: warm, concise, focused. Like a senior engineer saying "let's dig in".
+- Prefer an opening question tied directly to the problem, e.g.
+  "What do you think will happen if we log \`x\` before declaring it?"
+  "Before writing code — in one line, what's your mental model here?"
+
+Output: only the message text in markdown. No preamble, no headings, no code fences wrapping the whole output.`;
 
         const response = await llmClient(prompt);
-        return response;
+        return response.trim();
     } catch (error) {
-        console.error('Failed to generate practice explanation:', error);
-        return "I'm having trouble connecting to my brain right now, but let's dive into this question! What do you think is the first step?";
+        console.error('Failed to generate opening message:', error);
+        return `Let's work on **${question.title}** together. Before writing any code — in one line, what's your current mental model of this problem?`;
     }
 }
 
-export async function getTutorResponse(
-    question: {
-        title: string;
-        description: string;
-        topic: string;
-        expectedAnswerFormat?: string;
-    },
-    userAnswer: string,
-    history: { role: 'ai' | 'user'; content: string }[] = []
-) {
-    try {
-        const { generateFeedback } = await import('@/lib/llm');
-        const feedback = await generateFeedback(
-            {
-                title: question.title,
-                description: question.description,
-                topic: question.topic,
-                expectedAnswerFormat: question.expectedAnswerFormat,
+/**
+ * Discriminated return type for tutorChat.
+ * - ok=true: markdown reply
+ * - ok=false + reason='rate_limited': user hit daily cap (frontend shows soft pause)
+ * - ok=false + reason='transport': transient LLM/network failure
+ */
+export type TutorChatResult =
+    | {
+          ok: true;
+          content: string;
+          usage: { used: number; limit: number | null; remaining: number | null };
+      }
+    | {
+          ok: false;
+          reason: 'rate_limited';
+          usage: { used: number; limit: number; resetsAt: string };
+      }
+    | {
+          ok: false;
+          reason: 'transport';
+          message: string;
+      };
+
+/**
+ * Adaptive tutor response. Single prompt handles all intents (submission,
+ * question, hint, test-me, clarification). Returns a discriminated union
+ * so the frontend can render success / rate-limit / error distinctly.
+ */
+export async function tutorChat(
+    question: TutorQuestion,
+    history: TutorMessage[],
+    userMessage: string,
+): Promise<TutorChatResult> {
+    // 1. Identify user & resolve tier for rate limiting
+    const { getCurrentUserId } = await import('@/lib/auth');
+    const { checkAndConsume } = await import('@/lib/tutorRateLimit');
+    const { prisma } = await import('@/lib/prisma');
+
+    const userId = await getCurrentUserId();
+    const tier = userId
+        ? (
+              await prisma.user.findUnique({
+                  where: { id: userId },
+                  select: { subscriptionTier: true },
+              })
+          )?.subscriptionTier ?? 'FREE'
+        : 'ANONYMOUS';
+
+    // Anonymous users share a single bucket; still bounded but separate from paid users.
+    const rateLimitKey = userId ?? 'anonymous';
+    const usage = checkAndConsume(rateLimitKey, tier);
+
+    if (!usage.allowed) {
+        return {
+            ok: false,
+            reason: 'rate_limited',
+            usage: {
+                used: usage.used,
+                limit: usage.limit,
+                resetsAt: usage.resetsAt,
             },
-            userAnswer,
-            { passed: 0, total: 0 },
-            0,
-            history
-        );
-        return feedback;
+        };
+    }
+
+    // 2. Intent-based model routing — keep this BEFORE the try so routing
+    //    decisions are visible even in error logs.
+    const { classifyTutorIntent, providerForIntent } = await import('@/lib/tutorRouter');
+    const intent = classifyTutorIntent(userMessage);
+    const provider = providerForIntent(intent);
+
+    // 3. Build prompt
+    const recentHistory = history
+        .slice(-8)
+        .map((m) => `${m.role === 'ai' ? 'Tutor' : 'Learner'}: ${m.content}`)
+        .join('\n\n');
+
+    const prompt = `You are an elite, adaptive technical tutor for CareerSpire, helping a learner practice ONE specific question.
+
+### Question Context
+${buildQuestionContext(question)}
+
+### Conversation So Far
+${recentHistory || '(this is the first exchange)'}
+
+### Latest Learner Message
+"""
+${userMessage}
+"""
+
+### How to Respond
+Detect the learner's intent from their latest message and respond appropriately. Pick ONE mode:
+
+**A) Code / solution submission** — they pasted code or a conceptual answer
+  - Start with a 1-line honest verdict (e.g. "Close, but there's a subtle bug." or "Correct — nice work.")
+  - Use a short "**What works**" section (1–2 bullets) and "**What to improve**" section (1–2 bullets).
+  - If wrong: do NOT paste the correct code. Ask ONE pointed question that helps them see the issue.
+  - If right: celebrate briefly and ask ONE follow-up that extends understanding (edge case, complexity, variant).
+
+**B) Conceptual question / clarification** — they asked about the topic
+  - Answer directly and concisely.
+  - Include a TINY code example only if it makes the concept click.
+  - End with a one-line invitation back to the problem.
+
+**C) Hint request** — they asked for a hint, nudge, or said "I'm stuck"
+  - Offer the smallest possible nudge that moves them forward.
+  - If the question has hints listed above, reveal them ONE at a time in order — reveal the next unrevealed hint based on how many hints already appear to have been given in the conversation.
+  - Do NOT give the answer. Prefer a leading question.
+
+**D) "Test me" / wants to check understanding**
+  - Ask ONE focused Socratic question about the concept.
+  - Do not lecture before the question.
+
+### Tone & Format Rules
+- Warm, concise, precise. Never condescending.
+- Max ~4 short paragraphs. Brevity > comprehensiveness.
+- Use markdown: \`inline code\`, \`\`\`fenced blocks\`\`\` with a language tag, **bold** for emphasis, bullets sparingly.
+- Never say "as an AI". Never hedge with "I think maybe".
+- Never output JSON, schemas, or bracketed placeholders.
+
+Output: the tutor's reply only, in markdown.`;
+
+    // 4. Call the LLM with the chosen provider
+    try {
+        const { aiChat } = await import('@/lib/ai');
+        const result = await aiChat(prompt, {
+            provider, // undefined = default (Groq → Gemini fallback); 'gemini' = straight to flash
+            temperature: 0.7,
+        });
+
+        // 5. Record engagement on the user's custom roadmap (if applicable).
+        // Fire-and-forget — don't block the response on telemetry.
+        if (userId) {
+            incrementRoadmapTutorMessages(userId, question.topic).catch((e) =>
+                console.error('roadmap engagement update failed:', e),
+            );
+        }
+
+        return {
+            ok: true,
+            content: result.content.trim(),
+            usage: {
+                used: usage.used,
+                limit: Number.isFinite(usage.limit) ? usage.limit : null,
+                remaining: Number.isFinite(usage.remaining) ? usage.remaining : null,
+            },
+        };
     } catch (error) {
-        console.error('Failed to get tutor response:', error);
-        throw error;
+        console.error('tutorChat LLM error:', error, { intent, provider });
+        return {
+            ok: false,
+            reason: 'transport',
+            message: "I hit a snag on my side — could you send that again?",
+        };
     }
 }

@@ -85,7 +85,7 @@ export function MockCreditsGate({ open, onClose, onPurchase }: MockCreditsGatePr
               {proPlan.name}
             </p>
             <p className="text-sm text-muted-foreground">
-              {proPlan.mockLabel} + {proPlan.learningPathsPerMonth} paths
+              {proPlan.mockLabel} + {proPlan.videoMocksPerMonth} video mocks
             </p>
             <p className={cn(dmSans.className, 'text-2xl font-bold')}>
               {formatPrice(proPlan.monthlyPrice)}
@@ -118,8 +118,7 @@ export function MockCreditsGate({ open, onClose, onPurchase }: MockCreditsGatePr
               {placementPlan.name}
             </p>
             <p className="text-sm text-muted-foreground">
-              {placementPlan.mockLabel} + {placementPlan.learningPathsPerMonth}{' '}
-              paths
+              {placementPlan.mockLabel} + {placementPlan.videoMocksPerMonth} video mocks
             </p>
             <p className={cn(dmSans.className, 'text-2xl font-bold')}>
               {formatPrice(placementPlan.monthlyPrice)}

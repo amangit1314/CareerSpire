@@ -122,16 +122,53 @@ export async function runTests(
 async function runJavaScriptTests(userCode: string, testCases: any[], entryName?: string | null): Promise<TestResult> {
   const results: TestResult['details'] = [];
 
-  // Use a cleaner approach: Inject a driver into the VM context
-  const context = vm.createContext({
-    console: {
-      log: (...args: any[]) => { /* Captured stdout if needed */ },
-      error: (...args: any[]) => { /* Captured stderr if needed */ }
-    },
-    process: { exit: () => { throw new Error('process.exit() is forbidden'); } },
-    Buffer: null,
-    require: null, // Disable require for security
+  // Block common vm escape patterns before execution
+  const dangerousPatterns = [
+    /this\s*\.\s*constructor/i,
+    /constructor\s*\(\s*['"]return/i,
+    /\bprocess\b/,
+    /\brequire\b/,
+    /\bglobalThis\b/,
+    /\b__proto__\b/,
+    /\bprototype\b\s*\.\s*constructor/,
+    /\bFunction\s*\(/,
+    /\beval\s*\(/,
+    /\bimport\s*\(/,
+  ];
+
+  for (const pattern of dangerousPatterns) {
+    if (pattern.test(userCode)) {
+      throw new Error('Code contains forbidden patterns for security reasons.');
+    }
+  }
+
+  // NOTE: Node.js `vm` is NOT a true sandbox. The pattern checks above are a
+  // defense-in-depth layer. For production, consider running user code in an
+  // isolated subprocess with restricted permissions (e.g., Docker, Firecracker, or E2B).
+  const context = vm.createContext(Object.create(null), {
+    codeGeneration: { strings: false, wasm: false },
   });
+  // Provide only safe globals
+  context.console = {
+    log: (..._args: any[]) => {},
+    error: (..._args: any[]) => {},
+  };
+  context.Array = Array;
+  context.Object = Object;
+  context.Math = Math;
+  context.String = String;
+  context.Number = Number;
+  context.Boolean = Boolean;
+  context.JSON = JSON;
+  context.Map = Map;
+  context.Set = Set;
+  context.parseInt = parseInt;
+  context.parseFloat = parseFloat;
+  context.isNaN = isNaN;
+  context.isFinite = isFinite;
+  context.undefined = undefined;
+  context.NaN = NaN;
+  context.Infinity = Infinity;
 
   try {
     // 1. Execute User Code to populate context
@@ -224,6 +261,32 @@ async function runJavaScriptTests(userCode: string, testCases: any[], entryName?
 }
 
 async function runPythonTests(code: string, testCases: any[], entryName?: string | null): Promise<TestResult> {
+  // Block dangerous Python imports/calls
+  const dangerousPyPatterns = [
+    /\bimport\s+os\b/,
+    /\bimport\s+subprocess\b/,
+    /\bimport\s+shutil\b/,
+    /\bimport\s+socket\b/,
+    /\bimport\s+http\b/,
+    /\bimport\s+urllib\b/,
+    /\bimport\s+requests\b/,
+    /\bimport\s+pathlib\b/,
+    /\bfrom\s+os\b/,
+    /\bfrom\s+subprocess\b/,
+    /\b__import__\b/,
+    /\bexec\s*\(/,
+    /\beval\s*\(/,
+    /\bopen\s*\(/,
+    /\bcompile\s*\(/,
+    /\bglobals\s*\(\s*\)/,
+  ];
+
+  for (const pattern of dangerousPyPatterns) {
+    if (pattern.test(code)) {
+      throw new Error('Code contains forbidden imports/calls for security reasons.');
+    }
+  }
+
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mocky-py-'));
   const userCodePath = path.join(tempDir, 'solution.py');
   const runnerPath = path.join(tempDir, 'runner.py');

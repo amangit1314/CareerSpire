@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { getTopicsForCategory } from '@/app/actions/resource.actions';
+import { getTopicsForCategory, recordRoadmapVisit } from '@/app/actions/resource.actions';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
@@ -18,6 +18,10 @@ export default async function ResourceCategoryPage({ params }: { params: Promise
     if (!topics || topics.length === 0) {
         notFound();
     }
+
+    // Record this visit in the user's custom roadmaps. No-op for curated
+    // slugs or anonymous users. Fire-and-forget — never blocks render.
+    recordRoadmapVisit(decodedCategory).catch(() => {});
 
     return (
         <div className="container mx-auto px-4 py-8">

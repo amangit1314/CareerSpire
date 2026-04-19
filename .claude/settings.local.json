@@ -19,7 +19,16 @@
       "Bash(git commit:*)",
       "Bash(pg_dump --version)",
       "Bash(PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION=\"yes\" npx prisma:*)",
-      "Bash(psql $DB_URL:*)"
+      "Bash(psql $DB_URL:*)",
+      "Bash(npm run:*)",
+      "Bash(npx eslint:*)",
+      "Bash(npx tsx:*)",
+      "Bash(node:*)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3999/)",
+      "Bash(ab -n 200 -c 20 -q http://localhost:3999/)",
+      "Bash(ab -n 500 -c 50 -q http://localhost:3999/resources)",
+      "Bash(ab -n 500 -c 50 -q http://localhost:3999/community)",
+      "Bash(ab -n 1000 -c 100 -q http://localhost:3999/)"
     ]
   },
   "enableAllProjectMcpServers": true,

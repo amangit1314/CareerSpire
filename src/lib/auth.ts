@@ -1,11 +1,20 @@
 import { cookies } from 'next/headers';
 import { verify, sign } from 'jsonwebtoken';
 import { hash, compare } from 'bcryptjs';
+import crypto from 'node:crypto';
 import { prisma } from '@/lib/prisma';
 import { AppError } from './errors';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
-const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || JWT_SECRET + '-refresh';
+function requireEnv(name: string): string {
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(`FATAL: ${name} environment variable is not set. Refusing to start with insecure defaults.`);
+  }
+  return value;
+}
+
+const JWT_SECRET: string = requireEnv('JWT_SECRET');
+const JWT_REFRESH_SECRET: string = requireEnv('JWT_REFRESH_SECRET');
 const ACCESS_TOKEN_EXPIRY = '6h';
 const REFRESH_TOKEN_EXPIRY = '7d';
 
@@ -109,7 +118,7 @@ export async function setAuthCookies(
   await prisma.session.create({
     data: {
       userId,
-      sessionToken: `session-${Date.now()}`,
+      sessionToken: crypto.randomUUID(),
       refreshTokenHash,
       expires: expiresAt,
     },
