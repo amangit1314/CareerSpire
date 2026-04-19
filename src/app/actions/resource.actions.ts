@@ -1,7 +1,7 @@
 'use server';
 
 import { prisma } from '@/lib/prisma';
-import { Difficulty, ProgrammingLanguage, QuestionType } from '@prisma/client';
+import { Difficulty, ProgrammingLanguage, QuestionType, type Prisma } from '@prisma/client';
 import { AppError } from '@/lib/errors';
 import { unstable_cache } from 'next/cache';
 
@@ -292,7 +292,7 @@ export async function getQuestionsByCategory(categorySlug: string) {
         throw new AppError('Category not found', 'NOT_FOUND', 404);
     }
 
-    const whereClause: any = {};
+    const whereClause: Record<string, string> = {};
     if (category.type) whereClause.type = category.type;
     if (category.language) whereClause.language = category.language;
     if (category.framework) whereClause.framework = category.framework;
@@ -364,7 +364,7 @@ export async function getOrGenerateQuestionsForSkill(skillSlug: string) {
                             topic: skillSlug, // Use the slug or cleaned name as topic
                             difficulty: q.difficulty as Difficulty, // Ensure cast or map
                             type: q.type as QuestionType,
-                            testCases: q.testCases,
+                            testCases: q.testCases as Prisma.InputJsonValue,
                             hints: q.hints,
                             expectedComplexity: q.expectedComplexity,
                             // Defaults
@@ -466,7 +466,7 @@ export async function getTopicDetails(categorySlug: string, topicSlug: string) {
                             topic: topicSlug, // Tag with the specific topic slug
                             difficulty: (q.difficulty as Difficulty) || mappedDifficulty as Difficulty,
                             type: (q.type as QuestionType) || 'CODING',
-                            testCases: q.testCases,
+                            testCases: q.testCases as Prisma.InputJsonValue,
                             hints: q.hints,
                             expectedComplexity: q.expectedComplexity,
                             language: q.language ? (q.language.toUpperCase() as ProgrammingLanguage) : undefined,

@@ -107,7 +107,7 @@ export default function ProfilePage() {
     const handleSave = async () => {
         setSaving(true);
         try { await authService.updateProfile({ name }); setEditing(false); toast.success('Profile updated'); }
-        catch (error: any) { toast.error(error.message || 'Failed to update'); }
+        catch (error: unknown) { toast.error(error instanceof Error ? error.message : 'Failed to update'); }
         setSaving(false);
     };
 
@@ -121,14 +121,14 @@ export default function ProfilePage() {
             toast.success('Password changed');
             setShowChangePassword(false);
             setCurrentPassword(''); setNewPassword(''); setConfirmNewPassword('');
-        } catch (error: any) { toast.error(error.message || 'Failed'); }
+        } catch (error: unknown) { toast.error(error instanceof Error ? error.message : 'Failed'); }
         finally { setIsChangingPassword(false); }
     };
 
     const handleDeleteAccount = async () => {
         setIsDeleting(true);
         try { await deleteAccountAction(); toast.success('Account deleted'); router.push('/'); }
-        catch (error: any) { toast.error(error.message || 'Failed'); setIsDeleting(false); }
+        catch (error: unknown) { toast.error(error instanceof Error ? error.message : 'Failed'); setIsDeleting(false); }
     };
 
     if (isLoading) {

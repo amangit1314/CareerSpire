@@ -65,9 +65,9 @@ export function NotificationBell() {
                     <Skeleton key={i} className="h-16 w-full" />
                   ))}
                 </div>
-              ) : data && (data as any).notifications.length > 0 ? (
+              ) : data && data.notifications.length > 0 ? (
                 <div className="divide-y">
-                  {(data as any).notifications.slice(0, 5).map((notification: any) => (
+                  {data.notifications.slice(0, 5).map((notification) => (
                     <Link
                       key={notification.id}
                       href="/notifications"
@@ -97,7 +97,7 @@ export function NotificationBell() {
                 </div>
               )}
             </div>
-            {data && (data as any).notifications.length > 5 && (
+            {data && data.notifications.length > 5 && (
               <div className="p-4 border-t">
                 <Link
                   href="/notifications"

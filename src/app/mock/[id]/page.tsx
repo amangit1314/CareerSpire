@@ -246,8 +246,8 @@ export default function MockInterviewPage() {
 
       setSubmittedResult(result);
       setActiveTab('feedback');
-    } catch (error: any) {
-      alert(error.message || 'Failed to submit solution');
+    } catch (error: unknown) {
+      alert(error instanceof Error ? error.message : 'Failed to submit solution');
     }
   };
 

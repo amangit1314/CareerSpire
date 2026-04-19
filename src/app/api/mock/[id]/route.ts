@@ -15,10 +15,11 @@ export async function GET(
     return NextResponse.json<ApiResponse<MockSession>>({
       data: session,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json<ApiResponse<never>>(
-      { error: error.message },
-      { status: error.message.includes('Unauthorized') ? 401 : 404 }
+      { error: msg },
+      { status: msg.includes('Unauthorized') ? 401 : 404 }
     );
   }
 }

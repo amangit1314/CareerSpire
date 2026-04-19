@@ -11,16 +11,25 @@ const XP_REWARDS = {
     FIRST_MOCK: 100,
 };
 
+// Badge check stats shape
+interface BadgeCheckStats {
+    totalMocksCompleted: number;
+    longestStreak: number;
+    hasPerfectScore: boolean;
+    hasSpeedRun: boolean;
+    dsaCount: number;
+}
+
 // Badge definitions
-const BADGE_DEFINITIONS = {
-    first_mock: { check: (stats: any) => stats.totalMocksCompleted >= 1 },
-    streak_3: { check: (stats: any) => stats.longestStreak >= 3 },
-    streak_7: { check: (stats: any) => stats.longestStreak >= 7 },
-    streak_30: { check: (stats: any) => stats.longestStreak >= 30 },
-    perfect_score: { check: (stats: any) => stats.hasPerfectScore },
-    speed_demon: { check: (stats: any) => stats.hasSpeedRun },
-    dsa_master: { check: (stats: any) => stats.dsaCount >= 10 },
-    mock_veteran: { check: (stats: any) => stats.totalMocksCompleted >= 50 },
+const BADGE_DEFINITIONS: Record<string, { check: (stats: BadgeCheckStats) => boolean }> = {
+    first_mock: { check: (stats) => stats.totalMocksCompleted >= 1 },
+    streak_3: { check: (stats) => stats.longestStreak >= 3 },
+    streak_7: { check: (stats) => stats.longestStreak >= 7 },
+    streak_30: { check: (stats) => stats.longestStreak >= 30 },
+    perfect_score: { check: (stats) => stats.hasPerfectScore },
+    speed_demon: { check: (stats) => stats.hasSpeedRun },
+    dsa_master: { check: (stats) => stats.dsaCount >= 10 },
+    mock_veteran: { check: (stats) => stats.totalMocksCompleted >= 50 },
 };
 
 export async function awardXP(userId: string, score: number, timeSpent: number): Promise<{

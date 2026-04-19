@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth';
 import { AppError } from '@/lib/errors';
 import type { Payment } from '@/types';
+import type { Payment as PrismaPayment } from '@prisma/client';
 import { SubscriptionTier, PaymentStatus } from '@/types/enums';
 import { PLANS, getPlanByTier } from '@/lib/pricing';
 
@@ -63,7 +64,7 @@ export async function getBillingDataAction(): Promise<BillingData> {
     mocksTotal,
     videoMocksRemaining,
     videoMocksTotal,
-    payments: payments.map((p) => ({
+    payments: payments.map((p: PrismaPayment) => ({
       id: p.id,
       userId: p.userId,
       razorpayOrderId: p.razorpayOrderId,

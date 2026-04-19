@@ -5,13 +5,14 @@ import { sendEmail, sendEmailTemplate } from '@/lib/supabase/email';
 import { NotificationType } from '@/types/enums';
 import { AppError } from '@/lib/errors';
 import { z } from 'zod';
+import type { Prisma } from '@prisma/client';
 
 const createNotificationSchema = z.object({
   userId: z.string().uuid(),
   type: z.nativeEnum(NotificationType),
   title: z.string().min(1).max(200),
   body: z.string().min(1).max(5000),
-  meta: z.record(z.string(), z.any()).optional(),
+  meta: z.record(z.string(), z.unknown()).optional(),
   sendEmail: z.boolean().optional().default(true),
 });
 
@@ -32,7 +33,7 @@ export async function createNotificationAction(input: unknown) {
           type: data.type,
           title: data.title,
           body: data.body,
-          meta: (data.meta as any) || {},
+          meta: (data.meta ?? {}) as Prisma.InputJsonValue,
         },
       });
 

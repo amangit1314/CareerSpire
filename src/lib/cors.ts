@@ -31,7 +31,7 @@ export function handleCorsPreflight(request: NextRequest) {
 }
 
 // Helper for CORS-enabled JSON responses
-export function corsJsonResponse(data: any, status: number = 200) {
+export function corsJsonResponse(data: unknown, status: number = 200) {
     const response = NextResponse.json(data, { status });
     return addCorsHeaders(response);
 }

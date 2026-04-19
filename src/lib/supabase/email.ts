@@ -87,29 +87,30 @@ export async function sendEmail(options: EmailOptions): Promise<void> {
         providerMessageId: result.messageId || null,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     // Update email log with error
     await prisma.emailLog.update({
       where: { id: emailLog.id },
       data: {
         status: EmailStatus.FAILED,
-        error: error.message || 'Unknown error',
+        error: errorMessage,
       },
     });
 
     // Don't throw - log the error but don't fail the notification
-    console.log('[Email] Failed to send (non-blocking):', error.message);
+    console.log('[Email] Failed to send (non-blocking):', errorMessage);
   }
 }
 
 export async function sendEmailTemplate(
   template: 'welcome' | 'mock-result' | 'payment-success' | 'password-reset',
   to: string,
-  data: Record<string, any>,
+  data: Record<string, unknown>,
   userId?: string,
   notificationId?: string
 ): Promise<void> {
-  const templates: Record<string, { subject: string; html: (data: any) => string }> = {
+  const templates: Record<string, { subject: string; html: (data: Record<string, unknown>) => string }> = {
     welcome: {
       subject: 'Welcome to CareerSpire!',
       html: (d) => `

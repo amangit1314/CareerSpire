@@ -64,10 +64,10 @@ export function VideoPreflightCheck({ onReady, onCancel }: VideoPreflightCheckPr
             };
             checkAudioLevel();
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Permission error:', error);
 
-            if (error.name === 'NotAllowedError') {
+            if (error instanceof DOMException && error.name === 'NotAllowedError') {
                 setCameraStatus('denied');
                 setMicStatus('denied');
             } else {

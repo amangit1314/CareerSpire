@@ -44,8 +44,8 @@ export default function NewMockPage() {
 
       clearInterval(statusInterval);
       router.push(`/mock/${session.id}`);
-    } catch (err: any) {
-      setError(err.message || 'Failed to start mock interview. The AI service might be busy.');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to start mock interview. The AI service might be busy.');
     } finally {
       setLoadingStatus('Starting...');
     }

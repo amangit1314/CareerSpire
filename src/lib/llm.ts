@@ -108,8 +108,8 @@ const AISchema = z.object({
     type: z.nativeEnum(QuestionType),
     language: z.string().optional(),
     testCases: z.array(z.object({
-      input: z.any(),
-      expectedOutput: z.any(),
+      input: z.unknown(),
+      expectedOutput: z.unknown(),
       isHidden: z.boolean().optional(),
     })).optional().default([]),
     expectedComplexity: z.string().optional(),
@@ -119,7 +119,7 @@ const AISchema = z.object({
 
 export async function generateAIQuestions(
   options: { difficulty: string; type: string; count: number; topics: string[] }
-): Promise<any[]> {
+): Promise<z.infer<typeof AISchema>['questions']> {
   const prompt = `Generate ${options.count} ${options.difficulty} ${options.type} interview questions.
 Topics to cover: ${options.topics.join(', ') || 'Any common interview topics'}.
 
@@ -154,14 +154,14 @@ Return ONLY valid JSON. No markdown. No backticks. No explanation. No preamble.`
 
 // ======== UTILS ========
 
-export function normalizeEnum<T extends Record<string, string>>(val: any, enumObj: T): T[keyof T] | undefined {
+export function normalizeEnum<T extends Record<string, string>>(val: unknown, enumObj: T): T[keyof T] | undefined {
   if (typeof val !== 'string') return undefined;
   const upper = val.toUpperCase().trim();
 
   // Handle common aliases
-  if (upper === 'JS') return enumObj.JAVASCRIPT as any;
-  if (upper === 'TS') return enumObj.TYPESCRIPT as any;
-  if (upper === 'PY') return enumObj.PYTHON as any;
+  const aliasMap: Record<string, string> = { JS: 'JAVASCRIPT', TS: 'TYPESCRIPT', PY: 'PYTHON' };
+  const aliasKey = aliasMap[upper];
+  if (aliasKey && aliasKey in enumObj) return enumObj[aliasKey as keyof T];
 
   // Direct match
   const match = Object.values(enumObj).find(e => e.toUpperCase() === upper);
@@ -205,6 +205,8 @@ const CodingQuestionSchema = z.object({
   followUps: z.array(z.string()).default([]),
   tags: z.array(z.string()).default([]),
   expectedTimeMinutes: z.number(),
+  entryFunctionName: z.string().optional(),
+  starterCode: z.string().optional(),
   examples: z.array(z.object({
     input: z.string(),
     output: z.string(),
@@ -222,15 +224,21 @@ const HRQuestionSchema = z.object({
   expectedTimeMinutes: z.number()
 });
 
+// ======== INFERRED TYPES ========
+export type DSAQuestion = z.infer<typeof DSAQuestionSchema>;
+export type CodingQuestion = z.infer<typeof CodingQuestionSchema>;
+export type HRQuestion = z.infer<typeof HRQuestionSchema>;
+
 // ======== CACHE ========
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const questionCache = new Map<string, { questions: any[]; expires: number }>();
 const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 
-function getCachedQuestions(key: string): any[] | null {
+function getCachedQuestions<T = unknown>(key: string): T[] | null {
   const entry = questionCache.get(key);
   if (entry && entry.expires > Date.now()) {
     console.log(`[Cache] Serving cached questions for key: ${key}`);
-    return entry.questions;
+    return entry.questions as T[];
   }
   if (entry) {
     questionCache.delete(key);
@@ -238,7 +246,7 @@ function getCachedQuestions(key: string): any[] | null {
   return null;
 }
 
-function setCachedQuestions(key: string, questions: any[]) {
+function setCachedQuestions<T>(key: string, questions: T[]) {
   questionCache.set(key, {
     questions,
     expires: Date.now() + CACHE_TTL
@@ -250,10 +258,10 @@ function setCachedQuestions(key: string, questions: any[]) {
 export async function generateDSAQuestions(opts: {
   difficulty: Difficulty,
   count?: number
-}) {
+}): Promise<DSAQuestion[]> {
   const count = opts.count ?? 4;
   const cacheKey = `dsa_${opts.difficulty}_${count}`;
-  const cached = getCachedQuestions(cacheKey);
+  const cached = getCachedQuestions<DSAQuestion>(cacheKey);
   if (cached) return cached;
 
   const prompt = `
@@ -294,7 +302,7 @@ ONLY RETURN JSON.
 `;
 
   const result = await aiChat(prompt, { temperature: 0.3, responseFormat: 'json_object' });
-  let data: any;
+  let data: { questions?: unknown[] };
   try {
     data = JSON.parse(result.content);
   } catch (parseError) {
@@ -318,9 +326,9 @@ export async function generateCodingQuestions(opts: {
   framework?: string | null;
   difficulty: Difficulty;
   count: number;
-}) {
+}): Promise<(CodingQuestion & { id: string })[]> {
   const cacheKey = `coding_${opts.language}_${opts.framework ?? 'none'}_${opts.difficulty}_${opts.count}`;
-  const cached = getCachedQuestions(cacheKey);
+  const cached = getCachedQuestions<CodingQuestion & { id: string }>(cacheKey);
   if (cached) return cached;
 
   // Split into 2 parallel batches if count is high
@@ -378,7 +386,7 @@ Generate a diverse mix of the following types:
 Return ONLY JSON: { "questions": [...] }
 `;
     const aiResult = await aiChat(prompt, { temperature: 0.3, responseFormat: 'json_object' });
-    let data: any;
+    let data: { questions?: unknown[] };
     try {
       data = JSON.parse(aiResult.content);
     } catch (parseError) {
@@ -401,9 +409,9 @@ Return ONLY JSON: { "questions": [...] }
 export async function generateHRQuestions(opts: {
   difficulty: Difficulty;
   count: number;
-}) {
+}): Promise<(HRQuestion & { id: string })[]> {
   const cacheKey = `hr_${opts.difficulty}_${opts.count}`;
-  const cached = getCachedQuestions(cacheKey);
+  const cached = getCachedQuestions<HRQuestion & { id: string }>(cacheKey);
   if (cached) return cached;
 
   // Split into 2 batches
@@ -434,7 +442,7 @@ Return only JSON:
 { "questions": [ ... ] }
 `;
     const aiResult = await aiChat(prompt, { temperature: 0.3, responseFormat: 'json_object' });
-    let data: any;
+    let data: { questions?: unknown[] };
     try {
       data = JSON.parse(aiResult.content);
     } catch (parseError) {

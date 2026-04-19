@@ -9,7 +9,7 @@ interface QuestionBankResponse {
   skill: string;
   niche: string;
   topics: string[];
-  questions: any[];
+  questions: unknown[];
   fromCache: boolean;
   hitCount: number;
 }

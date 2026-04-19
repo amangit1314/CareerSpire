@@ -42,9 +42,9 @@ export async function createMediaUploadUrlAction(input: unknown) {
       signedUrl,
       mediaId: mediaObject.id,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     throw new AppError(
-      error.message || 'Failed to create upload URL',
+      error instanceof Error ? error.message : 'Failed to create upload URL',
       'MEDIA_UPLOAD_ERROR',
       400
     );

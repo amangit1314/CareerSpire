@@ -24,8 +24,8 @@ export default function ForgotPasswordPage() {
             const result = await requestPasswordResetAction({ email });
             setIsSubmitted(true);
             toast.success(result.message);
-        } catch (error: any) {
-            toast.error(error.message || 'Failed to request password reset');
+        } catch (error: unknown) {
+            toast.error(error instanceof Error ? error.message : 'Failed to request password reset');
         } finally {
             setIsLoading(false);
         }

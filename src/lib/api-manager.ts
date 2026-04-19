@@ -1,5 +1,10 @@
 import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
-import type { ApiResponse, ApiError } from '@/types';
+import type { ApiResponse } from '@/types';
+
+interface ApiErrorWithMeta extends Error {
+  code?: string;
+  statusCode?: number;
+}
 
 class ApiManager {
   private client: AxiosInstance;
@@ -34,17 +39,17 @@ class ApiManager {
       (response) => {
         const contentType = response.headers['content-type'];
         if (contentType && contentType.includes('text/html')) {
-          const apiError = new Error('Received HTML response instead of JSON. Check if the API route exists.') as any;
+          const apiError: ApiErrorWithMeta = new Error('Received HTML response instead of JSON. Check if the API route exists.');
           apiError.code = 'INVALID_RESPONSE_FORMAT';
           apiError.statusCode = response.status;
           return Promise.reject(apiError);
         }
         return response;
       },
-      (error: AxiosError<any>) => {
+      (error: AxiosError<{ error?: { message?: string; code?: string }; message?: string; code?: string }>) => {
         // Check if the error response itself is HTML
         if (error.response?.headers['content-type']?.includes('text/html')) {
-          const apiError = new Error('Received HTML error page instead of JSON. Check backend logs.') as any;
+          const apiError: ApiErrorWithMeta = new Error('Received HTML error page instead of JSON. Check backend logs.');
           apiError.code = 'SERVER_ERROR_HTML';
           apiError.statusCode = error.response?.status;
           return Promise.reject(apiError);
@@ -53,7 +58,7 @@ class ApiManager {
         const responseData = error.response?.data;
         const message = responseData?.error?.message || responseData?.message || error.message || 'An error occurred';
 
-        const apiError = new Error(message) as any;
+        const apiError: ApiErrorWithMeta = new Error(message);
         apiError.code = responseData?.error?.code || responseData?.code || (error.code as string);
         apiError.statusCode = error.response?.status;
 

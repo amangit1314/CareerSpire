@@ -14,10 +14,10 @@ export async function GET() {
             message: 'Database is active',
             timestamp: new Date().toISOString()
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Cron Keep-Alive Error:', error);
         return NextResponse.json(
-            { error: 'Database check failed', details: error.message },
+            { error: 'Database check failed', details: error instanceof Error ? error.message : 'Unknown error' },
             { status: 500 }
         );
     }

@@ -2,11 +2,12 @@ import { prisma } from '@/lib/prisma';
 import { submitSolutionAction, startMockAction } from '../../app/actions/mock.actions';
 import { QuestionType, Difficulty, ProgrammingLanguage } from '@/types/enums';
 import { llmClient } from '../llmClient';
+import type { TestResult as CodeRunnerTestResult } from '../code-runner';
 
 export interface WorkflowResult {
     step: string;
     status: 'SUCCESS' | 'FAILURE';
-    details?: any;
+    details?: Record<string, unknown>;
     error?: string;
 }
 
@@ -30,9 +31,9 @@ export class DynamicTestEngine {
                 type,
                 difficulty: Difficulty.EASY,
                 language: type === QuestionType.DSA ? ProgrammingLanguage.JAVASCRIPT : undefined
-            } as any);
+            });
 
-            const session = sessionResult as any;
+            const session = sessionResult;
             const questionList = session.questions || [];
 
             results.push({
@@ -56,8 +57,8 @@ export class DynamicTestEngine {
                     timeSpent: 120
                 });
 
-                const submission = submissionResult as any;
-                const testResults = submission.testResults || {};
+                const submission = submissionResult;
+                const testResults = (submission.testResults as unknown as CodeRunnerTestResult) || { verdict: 'UNKNOWN', details: [] };
 
                 results.push({
                     step: `SUBMISSION_${q.id}`,
@@ -67,8 +68,8 @@ export class DynamicTestEngine {
                         verdict: testResults.verdict,
                         score: submission.score,
                         failures: (testResults.details || [])
-                            .filter((d: any) => !d.passed)
-                            .map((d: any) => ({ input: d.input, exp: d.expected, act: d.actual, err: d.error }))
+                            .filter((d) => !d.passed)
+                            .map((d) => ({ input: d.input, exp: d.expected, act: d.actual, err: d.error }))
                     }
                 });
             }
@@ -80,8 +81,8 @@ export class DynamicTestEngine {
                 status: finalSession?.status === 'COMPLETED' ? 'SUCCESS' : 'FAILURE'
             });
 
-        } catch (err: any) {
-            results.push({ step: 'WORKFLOW_FAILURE', status: 'FAILURE', error: err.message });
+        } catch (err: unknown) {
+            results.push({ step: 'WORKFLOW_FAILURE', status: 'FAILURE', error: err instanceof Error ? err.message : 'Unknown error' });
         }
 
         return results;
@@ -90,7 +91,7 @@ export class DynamicTestEngine {
     /**
      * Asks AI to produce a perfect solution for a question to test the engine's evaluation.
      */
-    private async synthesizeSolution(question: any, language: ProgrammingLanguage = ProgrammingLanguage.JAVASCRIPT): Promise<string> {
+    private async synthesizeSolution(question: { title: string; description: string; entryFunctionName?: string | null; starterCode?: string | null }, language: ProgrammingLanguage = ProgrammingLanguage.JAVASCRIPT): Promise<string> {
         const prompt = `Solve this interview problem exactly.
     Title: ${question.title}
     Description: ${question.description}

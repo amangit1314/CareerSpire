@@ -14,8 +14,9 @@ export async function llmClient(
             responseFormat: opts?.response_format === 'json_object' ? 'json_object' : 'text',
         });
         return result.content;
-    } catch (error: any) {
-        console.error('[LLM Client] AI call failed:', error.message);
-        throw new Error(error.message || 'AI request failed. Please try again.');
+    } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : 'AI request failed. Please try again.';
+        console.error('[LLM Client] AI call failed:', errorMessage);
+        throw new Error(errorMessage);
     }
 }

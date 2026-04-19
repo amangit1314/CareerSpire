@@ -1,9 +1,9 @@
 'use server';
 
 import { prisma } from '@/lib/prisma';
-import { MockSessionStatus, QuestionType, Difficulty, ProgrammingLanguage, Framework, QuestionFormat, AnswerFormat } from '@/types/enums';
+import { MockSessionStatus, QuestionType, Difficulty, ProgrammingLanguage, Framework, QuestionFormat, AnswerFormat, SubscriptionTier } from '@/types/enums';
 import type { MockSession } from '@/types';
-import { generateHRQuestions, generateCodingQuestions, generateFeedback } from '@/lib/llm';
+import { generateHRQuestions, generateCodingQuestions, generateFeedback, type Feedback } from '@/lib/llm';
 import { aiChat } from '@/lib/ai';
 import { AppError } from '@/lib/errors';
 import { getSignedUrl } from '@/lib/supabase/storage';
@@ -146,7 +146,7 @@ export async function startVideoMock(
     } else {
         // Paid tier — enforce video-specific monthly quota
         const { getPlanByTier } = await import('@/lib/pricing');
-        const plan = getPlanByTier(user.subscriptionTier as any);
+        const plan = getPlanByTier(user.subscriptionTier as SubscriptionTier);
         if (user.videoMocksUsedThisCycle >= plan.videoMocksPerMonth) {
             throw new AppError(
                 `You've used all ${plan.videoMocksPerMonth} video mocks this month. Buy a voice pack or upgrade.`,
@@ -316,7 +316,7 @@ export async function saveVideoRecording(
     videoUrl: string,
     thumbnailUrl?: string
 ): Promise<void> {
-    const session: any = await prisma.mockSession.findFirst({
+    const session = await prisma.mockSession.findFirst({
         where: { id: sessionId, userId },
     });
 
@@ -340,7 +340,7 @@ export async function toggleVideoPublic(
     userId: string,
     sessionId: string
 ): Promise<boolean> {
-    const session: any = await prisma.mockSession.findFirst({
+    const session = await prisma.mockSession.findFirst({
         where: { id: sessionId, userId },
     });
 
@@ -393,7 +393,7 @@ export async function getPublicVideoInterviews(
     ]);
 
     return {
-        videos: await Promise.all((sessions as any[]).map(async s => ({
+        videos: await Promise.all(sessions.map(async (s) => ({
             id: s.id,
             videoUrl: s.videoRecordingUrl ? await getSignedUrl(s.videoRecordingUrl).catch(() => null) : null,
             thumbnailUrl: s.videoThumbnailUrl ? await getSignedUrl(s.videoThumbnailUrl).catch(() => null) : null,
@@ -500,8 +500,8 @@ export async function submitVideoAnswer(
     questionId: string,
     transcript: string,
     timeSpent: number
-): Promise<{ score: number; feedback: any }> {
-    const session: any = await prisma.mockSession.findFirst({
+): Promise<{ score: number; feedback: Feedback }> {
+    const session = await prisma.mockSession.findFirst({
         where: { id: sessionId, userId },
     });
     if (!session) throw new AppError('Session not found', 'NOT_FOUND', 404);
@@ -532,7 +532,7 @@ export async function submitVideoAnswer(
             userCode: transcript || '(No response)',
             testResults: { passed: 0, total: 0, details: [] },
             score,
-            feedback: feedback as any,
+            feedback: feedback as unknown as Prisma.InputJsonValue,
             timeSpent,
         },
     });

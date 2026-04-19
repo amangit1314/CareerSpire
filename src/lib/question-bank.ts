@@ -1,11 +1,27 @@
 import { prisma } from '@/lib/prisma';
 import { aiChat } from '@/lib/ai';
+import type { TestCase } from '@/types';
+
+/** Shape of a question from the SkillQuestionBank cache */
+export interface BankQuestion {
+  question?: string;
+  answer_guide?: string;
+  topic?: string;
+  difficulty?: string;
+  testCases?: TestCase[];
+  test_cases?: TestCase[];
+  examples?: Array<{ input: string; output: string; explanation?: string }>;
+  entryFunctionName?: string;
+  entry_function_name?: string;
+  starterCode?: string;
+  starter_code?: string;
+}
 
 /**
  * Check SkillQuestionBank for cached questions.
  * Returns questions array if found with enough questions, null otherwise.
  */
-export async function getQuestionsFromBank(skill: string, minCount: number = 15): Promise<any[] | null> {
+export async function getQuestionsFromBank(skill: string, minCount: number = 15): Promise<BankQuestion[] | null> {
   try {
     const bank = await prisma.skillQuestionBank.findFirst({
       where: { skill: { equals: skill, mode: 'insensitive' } },
@@ -13,7 +29,7 @@ export async function getQuestionsFromBank(skill: string, minCount: number = 15)
 
     if (!bank) return null;
 
-    const questions = bank.questions as any[];
+    const questions = bank.questions as BankQuestion[];
     if (!Array.isArray(questions) || questions.length < minCount) return null;
 
     // Increment hit count (fire-and-forget)
@@ -61,7 +77,7 @@ Generate minimum 30 questions. Cover all difficulty levels. Cover all major topi
 export async function generateAndCacheQuestionBank(
   skill: string,
   niche: string
-): Promise<{ topics: string[]; questions: any[] }> {
+): Promise<{ topics: string[]; questions: BankQuestion[] }> {
   const prompt = buildQuestionBankPrompt(skill);
 
   try {
@@ -73,9 +89,9 @@ export async function generateAndCacheQuestionBank(
     if (questions.length > 0) {
       await prisma.skillQuestionBank.create({
         data: { skill, niche, topics, questions, hitCount: 1 },
-      }).catch((err: any) => {
+      }).catch((err: unknown) => {
         // Unique constraint — another request may have cached it already
-        console.warn('[QuestionBank] Could not cache (may already exist):', err.message);
+        console.warn('[QuestionBank] Could not cache (may already exist):', err instanceof Error ? err.message : err);
       });
       console.log(`[QuestionBank] Cached ${questions.length} new questions for "${skill}"`);
     }

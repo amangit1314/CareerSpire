@@ -34,8 +34,8 @@ export default function SignupPage() {
     try {
       await signUp({ email, password });
       router.push('/dashboard');
-    } catch (err: any) {
-      setError(err.message || 'An error occurred. Please try again.');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'An error occurred. Please try again.');
     }
   };
 

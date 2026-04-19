@@ -10,9 +10,9 @@ export interface TestResult {
   total: number;
   verdict: 'AC' | 'WA' | 'TLE' | 'RE' | 'CE' | 'UNKNOWN';
   details: Array<{
-    input: any;
-    expected: any;
-    actual: any;
+    input: unknown;
+    expected: unknown;
+    actual: unknown;
     passed: boolean;
     error?: string;
     stdout?: string;
@@ -25,7 +25,7 @@ const MEMORY_LIMIT_MB = 256;
 /**
  * Normalizes values for comparison (handles floats, whitespace, deep equality)
  */
-function isEqual(actual: any, expected: any): boolean {
+function isEqual(actual: unknown, expected: unknown): boolean {
   if (actual === expected) return true;
 
   // Handle floats with epsilon
@@ -53,7 +53,7 @@ function isEqual(actual: any, expected: any): boolean {
 
   // Deep equality for objects/arrays via JSON
   try {
-    const normalize = (val: any) => {
+    const normalize = (val: unknown): string => {
       if (typeof val === 'string') {
         const trimmed = val.trim();
         if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
@@ -80,7 +80,7 @@ export async function runTests(
   question: Question,
   language: 'javascript' | 'python' | 'java' | 'cpp' = 'javascript'
 ): Promise<TestResult> {
-  const testCases = (question.testCases || []) as any[];
+  const testCases = (question.testCases || []) as TestCase[];
   const lang = (language || 'javascript').toLowerCase();
 
   if (testCases.length === 0) {
@@ -103,23 +103,24 @@ export async function runTests(
       default:
         throw new Error(`Language ${language} is not supported yet.`);
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : 'Unknown error';
     return {
       passed: 0,
       total: testCases.length,
       verdict: 'RE',
       details: testCases.map(tc => ({
         input: tc.input,
-        expected: tc.expectedOutput || tc.output,
+        expected: tc.expectedOutput,
         actual: null,
         passed: false,
-        error: err.message
+        error: errorMessage
       }))
     };
   }
 }
 
-async function runJavaScriptTests(userCode: string, testCases: any[], entryName?: string | null): Promise<TestResult> {
+async function runJavaScriptTests(userCode: string, testCases: TestCase[], entryName?: string | null): Promise<TestResult> {
   const results: TestResult['details'] = [];
 
   // Block common vm escape patterns before execution
@@ -150,8 +151,8 @@ async function runJavaScriptTests(userCode: string, testCases: any[], entryName?
   });
   // Provide only safe globals
   context.console = {
-    log: (..._args: any[]) => {},
-    error: (..._args: any[]) => {},
+    log: (..._args: unknown[]) => {},
+    error: (..._args: unknown[]) => {},
   };
   context.Array = Array;
   context.Object = Object;
@@ -193,13 +194,13 @@ async function runJavaScriptTests(userCode: string, testCases: any[], entryName?
     if (!entryPoint) throw new Error("No function found. Please define a function.");
 
     for (const tc of testCases) {
-      const expected = tc.expectedOutput ?? tc.output ?? tc.expected ?? null;
-      let actual: any = null;
+      const expected = tc.expectedOutput ?? null;
+      let actual: unknown = null;
       let error: string | undefined;
 
       try {
         // Handle input parsing (if it's a string, try to parse as JSON or args)
-        let args: any[] = [];
+        let args: unknown[] = [];
         if (Array.isArray(tc.input)) {
           args = tc.input;
         } else if (typeof tc.input === 'string') {
@@ -237,17 +238,17 @@ async function runJavaScriptTests(userCode: string, testCases: any[], entryName?
           actual,
           passed: isEqual(actual, expected)
         });
-      } catch (err: any) {
+      } catch (err: unknown) {
         results.push({
           input: tc.input,
           expected,
           actual: null,
           passed: false,
-          error: err.message
+          error: err instanceof Error ? err.message : 'Unknown error'
         });
       }
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     throw err;
   }
 
@@ -260,7 +261,7 @@ async function runJavaScriptTests(userCode: string, testCases: any[], entryName?
   };
 }
 
-async function runPythonTests(code: string, testCases: any[], entryName?: string | null): Promise<TestResult> {
+async function runPythonTests(code: string, testCases: TestCase[], entryName?: string | null): Promise<TestResult> {
   // Block dangerous Python imports/calls
   const dangerousPyPatterns = [
     /\bimport\s+os\b/,
@@ -369,7 +370,7 @@ print(json.dumps(results))
         verdict: proc.error?.message?.includes('ETIMEDOUT') ? 'TLE' : 'RE',
         details: testCases.map(tc => ({
           input: tc.input,
-          expected: tc.expectedOutput || tc.output,
+          expected: tc.expectedOutput,
           actual: null,
           passed: false,
           error: proc.stderr || proc.error?.message || 'Unknown execution error'
@@ -377,7 +378,7 @@ print(json.dumps(results))
       };
     }
 
-    let rawResults: any[] = [];
+    let rawResults: Array<{ actual?: unknown; expected?: unknown; passed: boolean; error?: string }> = [];
     try {
       rawResults = JSON.parse(proc.stdout.trim());
     } catch {
@@ -386,7 +387,7 @@ print(json.dumps(results))
 
     const details = testCases.map((tc, i) => {
       const res = rawResults[i];
-      const expected = tc.expectedOutput ?? tc.output ?? tc.expected;
+      const expected = tc.expectedOutput ?? null;
       return {
         input: tc.input,
         expected,
@@ -410,7 +411,7 @@ print(json.dumps(results))
   }
 }
 
-async function runJavaTests(code: string, testCases: any[], entryName?: string | null): Promise<TestResult> {
+async function runJavaTests(code: string, testCases: TestCase[], entryName?: string | null): Promise<TestResult> {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mocky-java-'));
 
   try {
@@ -559,7 +560,7 @@ public class Runner {
         verdict: 'CE',
         details: testCases.map(tc => ({
           input: tc.input,
-          expected: tc.expectedOutput || tc.output,
+          expected: tc.expectedOutput,
           actual: null,
           passed: false,
           error: compile.stderr
@@ -582,7 +583,7 @@ public class Runner {
       const line = lines.find(l => l.startsWith('RES:') || l.startsWith('ERR:'));
       if (line) lines.splice(lines.indexOf(line), 1);
 
-      const expected = tc.expectedOutput ?? tc.output;
+      const expected = tc.expectedOutput ?? null;
       if (!line) return { input: tc.input, expected, actual: null, passed: false, error: 'No output' };
 
       if (line.startsWith('ERR:')) {

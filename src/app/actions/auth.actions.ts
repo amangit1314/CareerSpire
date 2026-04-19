@@ -7,22 +7,23 @@ import { sendEmailTemplate } from '@/lib/supabase/email';
 import { createNotificationAction } from './notification.actions';
 import { NotificationType } from '@/types/enums';
 import type { SignUpRequest, SignInRequest, AuthResponse, User } from '@/types';
+import type { User as PrismaUser } from '@prisma/client';
 import { UserLevel, SubscriptionTier } from '@/types/enums';
 import { z } from 'zod';
 import crypto from 'node:crypto';
 
 
 
-function toUserResponse(user: any): User {
+function toUserResponse(user: PrismaUser): User {
   return {
     id: user.id,
     email: user.email,
     emailVerified: user.emailVerified,
     name: user.name,
     image: user.image,
-    level: user.level,
+    level: user.level as unknown as UserLevel,
     freeMocksRemaining: user.freeMocksRemaining,
-    subscriptionTier: user.subscriptionTier,
+    subscriptionTier: user.subscriptionTier as unknown as SubscriptionTier | null,
     subscriptionEndsAt: user.subscriptionEndsAt,
     weakTopics: user.weakTopics,
     createdAt: user.createdAt,

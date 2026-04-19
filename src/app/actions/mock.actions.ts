@@ -1,14 +1,14 @@
 'use server';
 
 import { prisma } from '@/lib/prisma';
-import { Difficulty, QuestionType, MockSessionStatus, ProgrammingLanguage, Framework, QuestionFormat, AnswerFormat } from '@/types/enums';
+import { Difficulty, QuestionType, MockSessionStatus, ProgrammingLanguage, Framework, QuestionFormat, AnswerFormat, SubscriptionTier } from '@/types/enums';
 import type { StartMockRequest, MockSession, SubmitSolutionRequest, TestCase, Question as AppQuestion } from '@/types';
 import { generateDSAQuestions, generateCodingQuestions, generateHRQuestions, generateFeedback, normalizeEnum } from '@/lib/llm';
 import { AppError } from '@/lib/errors';
 import { runTests } from '@/lib/code-runner';
 import type { TestResult } from '@/lib/code-runner';
 import { getSignedUrl } from '@/lib/supabase/storage';
-import { generateAndCacheQuestionBank, getQuestionsFromBank } from '@/lib/question-bank';
+import { generateAndCacheQuestionBank, getQuestionsFromBank, type BankQuestion } from '@/lib/question-bank';
 import type { MockResult } from '@/types';
 import type { Feedback } from '@/lib/llm';
 import type {
@@ -24,20 +24,7 @@ type PrismaMockResultWithQuestion = PrismaMockResult & {
   question?: PrismaQuestion;
 };
 
-/** Shape of a question from the SkillQuestionBank cache */
-interface BankQuestion {
-  question?: string;
-  answer_guide?: string;
-  topic?: string;
-  difficulty?: string;
-  testCases?: TestCase[];
-  test_cases?: TestCase[];
-  examples?: Array<{ input: string; output: string; explanation?: string }>;
-  entryFunctionName?: string;
-  entry_function_name?: string;
-  starterCode?: string;
-  starter_code?: string;
-}
+// BankQuestion type imported from '@/lib/question-bank'
 
 // ============ Shared Helpers (DRY) ============
 
@@ -94,7 +81,7 @@ async function checkAndDeductMock(userId: string, user: PrismaUser): Promise<voi
   } else {
     // Paid tier — enforce monthly quota
     const { getPlanByTier } = await import('@/lib/pricing');
-    const plan = getPlanByTier(user.subscriptionTier as any);
+    const plan = getPlanByTier(user.subscriptionTier as SubscriptionTier);
     if (user.mocksUsedThisCycle >= plan.mocksPerMonth) {
       throw new AppError(
         `You've used all ${plan.mocksPerMonth} mocks this month. Buy a mock pack or upgrade.`,

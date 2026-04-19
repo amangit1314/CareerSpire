@@ -95,7 +95,7 @@ export interface Notification {
   type: NotificationType;
   title: string;
   body: string;
-  meta?: Record<string, any>;
+  meta?: Record<string, unknown>;
   readAt: Date | null;
   createdAt: Date;
 }
