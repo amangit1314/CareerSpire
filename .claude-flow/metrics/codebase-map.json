@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-04-18T16:40:53.098Z",
+  "timestamp": "2026-04-19T18:58:20.834Z",
   "projectRoot": "/Users/amanic/Developer/Personal/CareerSpire",
   "structure": {
     "hasPackageJson": true,
@@ -7,5 +7,5 @@
     "hasClaudeConfig": true,
     "hasClaudeFlow": true
   },
-  "scannedAt": 1776530453098
+  "scannedAt": 1776625100834
 }
