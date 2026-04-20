@@ -38,7 +38,9 @@ export function Navbar() {
   };
 
   // 'Features',
-  const links = ['Dashboard', 'Practice', 'Pricing', 'Community', 'Resources'];
+  const links = isAuthenticated
+    ? ['Dashboard', 'Practice', 'Pricing', 'Community', 'Resources']
+    : ['Practice', 'Pricing', 'Community', 'Resources'];
 
   return (
     <nav

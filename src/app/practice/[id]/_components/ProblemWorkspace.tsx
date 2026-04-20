@@ -13,6 +13,8 @@ import {
     type SubmitResult,
 } from '@/app/actions/practice.actions';
 import { CodeEditor } from '@/components/CodeEditor';
+import { useAuth } from '@/hooks/useAuth';
+import { useRouter } from 'next/navigation';
 import { dmSans } from '@/lib/fonts';
 import { cn } from '@/lib/utils';
 import { difficultyTone } from '@/lib/difficultyTone';
@@ -48,6 +50,8 @@ export function ProblemWorkspace({
     problem: ProblemDetail;
     coinBalance: number | null;
 }) {
+    const { isAuthenticated } = useAuth();
+    const router = useRouter();
     const tone = difficultyTone(problem.difficulty);
 
     const [language, setLanguage] = useState<ProblemLanguage>(
@@ -81,6 +85,10 @@ export function ProblemWorkspace({
     const handleCodeChange = useCallback((v: string | undefined) => setCode(v ?? ''), []);
 
     const handleRun = () => {
+        if (!isAuthenticated) {
+            router.push(`/auth/login?callback=/practice/${problem.id}`);
+            return;
+        }
         if (!code.trim()) {
             toast.error('Write some code first');
             return;
@@ -96,6 +104,10 @@ export function ProblemWorkspace({
     };
 
     const handleSubmit = () => {
+        if (!isAuthenticated) {
+            router.push(`/auth/login?callback=/practice/${problem.id}`);
+            return;
+        }
         if (!code.trim()) {
             toast.error('Write some code first');
             return;
