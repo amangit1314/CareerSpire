@@ -50,7 +50,7 @@ export default function RefundBillingPage() {
             <section>
                 <h2>5. How to Request a Refund</h2>
                 <p>
-                    Email <a href="mailto:support@careerspire.com">support@careerspire.com</a> with your registered email address, payment receipt or Razorpay order ID, and the reason for your refund request. We process eligible refunds within 5&ndash;7 business days. Refunds are issued to the original payment method.
+                    Email <a href="mailto:gitaman8481@gmail.com">gitaman8481@gmail.com</a> with your registered email address, payment receipt or Razorpay order ID, and the reason for your refund request. We process eligible refunds within 5&ndash;7 business days. Refunds are issued to the original payment method.
                 </p>
             </section>
 
@@ -71,7 +71,7 @@ export default function RefundBillingPage() {
             <section>
                 <h2>8. Contact</h2>
                 <p>
-                    For billing disputes or questions, email <a href="mailto:support@careerspire.com">support@careerspire.com</a>.
+                    For billing disputes or questions, email <a href="mailto:gitaman8481@gmail.com">gitaman8481@gmail.com</a>.
                 </p>
             </section>
         </StaticPageLayout>

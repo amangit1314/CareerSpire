@@ -51,7 +51,7 @@ export default function CancellationPolicyPage() {
             <section>
                 <h2>6. Permanent Account Deletion</h2>
                 <p>
-                    If you want to permanently delete your account and all associated data (interview recordings, submissions, progress, payment records), you can do so from <strong>Profile &rarr; Delete Account</strong> or by emailing <a href="mailto:support@careerspire.com">support@careerspire.com</a>. This action is irreversible and cannot be undone.
+                    If you want to permanently delete your account and all associated data (interview recordings, submissions, progress, payment records), you can do so from <strong>Profile &rarr; Delete Account</strong> or by emailing <a href="mailto:gitaman8481@gmail.com">gitaman8481@gmail.com</a>. This action is irreversible and cannot be undone.
                 </p>
             </section>
 

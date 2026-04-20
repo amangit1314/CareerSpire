@@ -122,7 +122,7 @@ export default function PrivacyPolicyPage() {
             <section>
                 <h2>11. Contact</h2>
                 <p>
-                    For privacy-related questions, data access requests, or concerns, email us at <a href="mailto:support@careerspire.com">support@careerspire.com</a>.
+                    For privacy-related questions, data access requests, or concerns, email us at <a href="mailto:gitaman8481@gmail.com">gitaman8481@gmail.com</a>.
                 </p>
             </section>
         </StaticPageLayout>

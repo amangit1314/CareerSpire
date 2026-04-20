@@ -62,7 +62,7 @@ export default function CookiePolicyPage() {
             <section>
                 <h2>6. Contact</h2>
                 <p>
-                    Questions about our cookie usage? Email <a href="mailto:support@careerspire.com">support@careerspire.com</a>.
+                    Questions about our cookie usage? Email <a href="mailto:gitaman8481@gmail.com">gitaman8481@gmail.com</a>.
                 </p>
             </section>
         </StaticPageLayout>

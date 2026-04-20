@@ -64,7 +64,7 @@ export default function LicensePage() {
             <section>
                 <h2>8. Contact</h2>
                 <p>
-                    For licensing questions or commercial use enquiries, email <a href="mailto:support@careerspire.com">support@careerspire.com</a>.
+                    For licensing questions or commercial use enquiries, email <a href="mailto:gitaman8481@gmail.com">gitaman8481@gmail.com</a>.
                 </p>
             </section>
         </StaticPageLayout>

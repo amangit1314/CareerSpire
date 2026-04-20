@@ -43,7 +43,7 @@ export default function FundingPage() {
                         </p>
                         <div className="pt-2">
                             <a
-                                href="mailto:support@careerspire.com"
+                                href="mailto:gitaman8481@gmail.com"
                                 className="inline-flex items-center px-6 py-3 rounded-xl bg-primary text-primary-foreground text-sm font-bold hover:opacity-90 transition-opacity"
                             >
                                 Get in Touch

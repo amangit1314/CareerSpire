@@ -80,7 +80,7 @@ export default function FAQPage() {
                 <h3 className="text-sm font-bold mb-1">Still have questions?</h3>
                 <p className="text-xs text-muted-foreground mb-4">Our support team is here to help.</p>
                 <a
-                    href="mailto:support@careerspire.com"
+                    href="mailto:gitaman8481@gmail.com"
                     className="inline-flex items-center px-5 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity"
                 >
                     Contact Support

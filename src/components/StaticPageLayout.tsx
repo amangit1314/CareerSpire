@@ -121,11 +121,11 @@ export function StaticPageLayout({
                                         Reach out for any legal or billing inquiries.
                                     </p>
                                     <a
-                                        href="mailto:support@CareerSpire.com"
+                                        href="mailto:gitaman8481@gmail.com"
                                         className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:text-primary/80 transition-colors"
                                     >
                                         <Mail className="h-3 w-3 shrink-0" />
-                                        support@CareerSpire.com
+                                        gitaman8481@gmail.com
                                     </a>
                                 </div>
                             </div>

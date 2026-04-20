@@ -50,7 +50,7 @@ export default function ReportIssuePage() {
                 </Button>
 
                 <p className="text-[0.6875rem] text-muted-foreground text-center">
-                    You can also email us directly at <a href="mailto:support@careerspire.com" className="text-primary font-medium">support@careerspire.com</a>.
+                    You can also email us directly at <a href="mailto:gitaman8481@gmail.com" className="text-primary font-medium">gitaman8481@gmail.com</a>.
                 </p>
             </div>
         </StaticPageLayout>

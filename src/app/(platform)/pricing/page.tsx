@@ -52,6 +52,15 @@ export default function PricingPage() {
         amount: number,
         description: string,
     ) => {
+        // TODO: Replace with Razorpay checkout once RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET are configured
+        if (!process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID) {
+            const planParam = itemId.startsWith('mock_') || itemId.startsWith('voice_')
+                ? itemId
+                : itemId;
+            window.location.href = `/auth/signup?plan=${planParam}`;
+            return;
+        }
+
         setProcessing(itemId);
         try {
             const response = await fetch('/api/payment/create-order', {

@@ -40,7 +40,7 @@ const footerLinks = [
     {
         title: 'Support',
         links: [
-            { name: 'Contact Us', href: 'mailto:support@CareerSpire.com' },
+            { name: 'Contact Us', href: 'mailto:gitaman8481@gmail.com' },
             { name: 'Help Center', href: '/faqs' },
             { name: 'Report Issue', href: '/report-issue' },
             { name: 'Give Feedback', href: '/feedback' },
@@ -51,8 +51,8 @@ const footerLinks = [
 
 const socialLinks = [
     // { name: 'GitHub', icon: Github, href: 'https://github.com' },
-    { name: 'X', icon: X, href: 'https://x.com' },
-     { name: 'Instagram', icon: Instagram, href: 'https://instagram.com' },
+    { name: 'X', icon: X, href: 'https://x.com/careerspire' },
+     { name: 'Instagram', icon: Instagram, href: 'https://instagram.com/careerspire' },
     // { name: 'LinkedIn', icon: Linkedin, href: 'https://linkedin.com' },
 ];
 

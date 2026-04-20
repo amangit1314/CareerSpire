@@ -209,6 +209,6 @@ export const PRICING_FAQS: FAQ[] = [
   },
   {
     question: 'What AI model powers the mocks?',
-    answer: 'We use advanced AI models to generate questions and evaluate your answers. The feedback quality is comparable to a senior engineer reviewing your work.',
+    answer: 'We use Groq (llama-3.3-70b) as primary and Gemini Flash as fallback for fast, accurate responses.',
   },
 ];

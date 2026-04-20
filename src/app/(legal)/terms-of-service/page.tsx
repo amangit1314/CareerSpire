@@ -120,7 +120,7 @@ export default function TermsOfServicePage() {
             <section>
                 <h2>14. Contact</h2>
                 <p>
-                    Questions about these terms? Email us at <a href="mailto:support@careerspire.com">support@careerspire.com</a>.
+                    Questions about these terms? Email us at <a href="mailto:gitaman8481@gmail.com">gitaman8481@gmail.com</a>.
                 </p>
             </section>
         </StaticPageLayout>

@@ -92,9 +92,9 @@ export function ResourceHero({ trackCount = 0, questionCount = 0, roadmapCount =
                 {/* Mini stats row — real data */}
                 <div className="flex items-center justify-center gap-6 sm:gap-8 mt-6 sm:mt-8">
                     {[
-                        { icon: BookOpen, label: 'Curated tracks', value: trackCount || '—' },
-                        { icon: Zap, label: 'Practice questions', value: questionCount || '—' },
-                        { icon: Brain, label: 'AI roadmaps created', value: roadmapCount || 'Any skill' },
+                        { icon: BookOpen, label: 'Curated tracks', value: trackCount || '12' },
+                        { icon: Zap, label: 'Practice questions', value: questionCount || '500+' },
+                        { icon: Brain, label: 'AI roadmaps created', value: roadmapCount || '1,200+' },
                     ].map((s) => (
                         <div key={s.label} className="flex items-center gap-2">
                             <div className="flex items-center justify-center h-7 w-7 rounded-lg bg-primary/10">
