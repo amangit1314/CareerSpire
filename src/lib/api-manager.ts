@@ -1,13 +1,23 @@
 import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
 import type { ApiResponse } from '@/types';
 
+const CSRF_HEADER_NAME = 'x-csrf-token';
+const CSRF_COOKIE_NAME = '__csrf';
+
 interface ApiErrorWithMeta extends Error {
   code?: string;
   statusCode?: number;
 }
 
+function getCsrfTokenFromCookie(): string | null {
+  if (typeof document === 'undefined') return null;
+  const match = document.cookie.match(new RegExp(`(?:^|; )${CSRF_COOKIE_NAME}=([^;]*)`));
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
 class ApiManager {
   private client: AxiosInstance;
+  private csrfToken: string | null = null;
 
   constructor() {
     this.client = axios.create({
@@ -22,13 +32,51 @@ class ApiManager {
     this.setupInterceptors();
   }
 
+  /**
+   * Fetch a CSRF token from the server. Called once per session,
+   * then the token is reused from the cookie.
+   */
+  private async ensureCsrfToken(): Promise<string | null> {
+    // Try cookie first (already set from a previous request)
+    const cookieToken = getCsrfTokenFromCookie();
+    if (cookieToken) {
+      this.csrfToken = cookieToken;
+      return cookieToken;
+    }
+
+    // Fetch a fresh token from the CSRF endpoint
+    try {
+      const response = await axios.get<ApiResponse<{ csrfToken: string }>>('/api/csrf', {
+        withCredentials: true,
+      });
+      this.csrfToken = response.data.data?.csrfToken ?? null;
+      return this.csrfToken;
+    } catch {
+      return null;
+    }
+  }
+
   private setupInterceptors() {
-    // Request interceptor to normalize URLs (remove leading slashes if baseURL is used)
+    // Request interceptor: normalize URLs and attach CSRF token
     this.client.interceptors.request.use(
-      (config: InternalAxiosRequestConfig) => {
+      async (config: InternalAxiosRequestConfig) => {
         if (config.url?.startsWith('/')) {
           config.url = config.url.substring(1);
         }
+
+        // Attach CSRF token for state-changing methods
+        const method = config.method?.toUpperCase();
+        if (method && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+          if (!this.csrfToken) {
+            await this.ensureCsrfToken();
+          }
+          // Also try cookie in case it was set after init
+          const token = this.csrfToken || getCsrfTokenFromCookie();
+          if (token) {
+            config.headers.set(CSRF_HEADER_NAME, token);
+          }
+        }
+
         return config;
       },
       (error) => Promise.reject(error)
@@ -63,6 +111,11 @@ class ApiManager {
         apiError.statusCode = error.response?.status;
 
         // Handle specific error cases
+        if (error.response?.status === 403 && responseData?.error?.code === 'CSRF_VALIDATION_FAILED') {
+          // CSRF token expired — clear cached token so next request fetches a fresh one
+          this.csrfToken = null;
+        }
+
         if (error.response?.status === 401) {
           const requestUrl = error.config?.url || '';
           const isAuthCheck = requestUrl.includes('auth/me');

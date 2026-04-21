@@ -38,24 +38,25 @@ function toUserResponse(user: PrismaUser): User {
 }
 
 const signUpSchema = z.object({
-  email: z.string().email('Please enter a valid email address'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
-  name: z.string().optional(),
+  email: z.string().email('Please enter a valid email address').max(255),
+  password: z.string()
+    .min(8, 'Password must be at least 8 characters')
+    .max(128, 'Password must be less than 128 characters')
+    .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
+    .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+    .regex(/[0-9]/, 'Password must contain at least one number'),
+  name: z.string().max(100).optional(),
 });
 
 export async function signUpAction(data: SignUpRequest): Promise<AuthResponse> {
-  console.log('signUpAction: Validating input...');
   try {
     const validated = signUpSchema.parse(data);
-    console.log('signUpAction: Input validated.');
 
-    console.log('signUpAction: Checking existing user...');
     const existingUser = await prisma.user.findUnique({
       where: { email: validated.email },
     });
 
     if (existingUser) {
-      console.log('signUpAction: Email already exists:', validated.email);
       throw new AppError(
         'This email is already registered. Please use a different email or try logging in.',
         'EMAIL_EXISTS',
@@ -63,10 +64,8 @@ export async function signUpAction(data: SignUpRequest): Promise<AuthResponse> {
       );
     }
 
-    console.log('signUpAction: Hashing password...');
     const passwordHash = await hashPassword(validated.password);
 
-    console.log('signUpAction: Creating user in DB...');
     const user = await prisma.user.create({
       data: {
         email: validated.email,
@@ -87,56 +86,34 @@ export async function signUpAction(data: SignUpRequest): Promise<AuthResponse> {
       },
     });
 
-    console.log('signUpAction: User created successfully ID:', user.id);
-
     const tokenPayload = { userId: user.id, email: user.email };
-    console.log('signUpAction: Generating tokens...');
     const accessToken = generateAccessToken(tokenPayload);
     const refreshToken = generateRefreshToken(tokenPayload);
 
-    console.log('signUpAction: Setting auth cookies...');
     await setAuthCookies(accessToken, refreshToken, user.id);
-    console.log('signUpAction: Auth cookies set.');
 
-    // Send welcome email
-    try {
-      console.log('signUpAction: Sending welcome email...');
-      await sendEmailTemplate('welcome', user.email, {
-        name: user.name || 'there',
-      });
-      console.log('signUpAction: Welcome email sent.');
-    } catch (emailError) {
-      console.error('signUpAction: Failed to send welcome email:', emailError);
-    }
+    // Send welcome email (non-blocking)
+    sendEmailTemplate('welcome', user.email, {
+      name: user.name || 'there',
+    }).catch(() => {});
 
-    // Create welcome notification
-    try {
-      console.log('signUpAction: Creating welcome notification...');
-      await createNotificationAction({
-        userId: user.id,
-        type: NotificationType.SYSTEM,
-        title: 'Welcome to CareerSpire!',
-        body: 'You have 3 free mock interviews every month to get started. Start practicing now!',
-        sendEmail: false,
-      });
-      console.log('signUpAction: Welcome notification created.');
-    } catch (notifError) {
-      console.error('signUpAction: Failed to create welcome notification:', notifError);
-    }
+    // Create welcome notification (non-blocking)
+    createNotificationAction({
+      userId: user.id,
+      type: NotificationType.SYSTEM,
+      title: 'Welcome to CareerSpire!',
+      body: 'You have 3 free mock interviews every month to get started. Start practicing now!',
+      sendEmail: false,
+    }).catch(() => {});
 
-    const response = {
+    return {
       user: toUserResponse(user),
       session: {
-        accessToken,
-        refreshToken,
         expiresAt: new Date(Date.now() + 6 * 60 * 60 * 1000), // 6 hours
       },
     };
-    console.log('signUpAction: Success! Returning response.');
-    return response;
 
   } catch (error) {
-    console.error('signUpAction: CRITICAL FAILURE:', error);
     if (error instanceof AppError) throw error;
     if (error instanceof z.ZodError) {
       throw new AppError(
@@ -145,7 +122,7 @@ export async function signUpAction(data: SignUpRequest): Promise<AuthResponse> {
         400
       );
     }
-    throw new AppError(`Failed to create account: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`, 'SIGNUP_ERROR', 500);
+    throw new AppError('Failed to create account. Please try again.', 'SIGNUP_ERROR', 500);
   }
 }
 
@@ -192,8 +169,6 @@ export async function signInAction(data: SignInRequest): Promise<AuthResponse> {
     return {
       user: toUserResponse(user),
       session: {
-        accessToken,
-        refreshToken,
         expiresAt: new Date(Date.now() + 6 * 60 * 60 * 1000), // 6 hours
       },
     };
@@ -253,8 +228,7 @@ export async function requestPasswordResetAction(data: { email: string }): Promi
     });
 
     if (!user) {
-      // Don't reveal if user exists or not for security, but we can log it
-      console.log(`Password reset requested for non-existent email: ${validated.email}`);
+      // Don't reveal if user exists — return same message regardless
       return { message: 'If an account exists with this email, a reset link has been sent.' };
     }
 
@@ -287,7 +261,12 @@ export async function requestPasswordResetAction(data: { email: string }): Promi
 
 const resetPasswordSchema = z.object({
   token: z.string().min(1, 'Token is required'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  password: z.string()
+    .min(8, 'Password must be at least 8 characters')
+    .max(128, 'Password must be less than 128 characters')
+    .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
+    .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+    .regex(/[0-9]/, 'Password must contain at least one number'),
 });
 
 export async function resetPasswordAction(data: z.infer<typeof resetPasswordSchema>): Promise<{ success: boolean }> {
@@ -325,7 +304,12 @@ export async function resetPasswordAction(data: z.infer<typeof resetPasswordSche
 
 const changePasswordSchema = z.object({
   currentPassword: z.string().min(1, 'Current password is required'),
-  newPassword: z.string().min(6, 'New password must be at least 6 characters'),
+  newPassword: z.string()
+    .min(8, 'New password must be at least 8 characters')
+    .max(128, 'Password must be less than 128 characters')
+    .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
+    .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+    .regex(/[0-9]/, 'Password must contain at least one number'),
 });
 
 export async function changePasswordAction(data: z.infer<typeof changePasswordSchema>): Promise<{ success: boolean }> {

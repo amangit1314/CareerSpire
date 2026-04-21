@@ -13,8 +13,16 @@ function requireEnv(name: string): string {
   return value;
 }
 
-const JWT_SECRET: string = requireEnv('JWT_SECRET');
-const JWT_REFRESH_SECRET: string = requireEnv('JWT_REFRESH_SECRET');
+function requireSecureSecret(name: string): string {
+  const value = requireEnv(name);
+  if (process.env.NODE_ENV === 'production' && value.length < 32) {
+    throw new Error(`FATAL: ${name} must be at least 32 characters in production. Generate with: openssl rand -hex 32`);
+  }
+  return value;
+}
+
+const JWT_SECRET: string = requireSecureSecret('JWT_SECRET');
+const JWT_REFRESH_SECRET: string = requireSecureSecret('JWT_REFRESH_SECRET');
 const ACCESS_TOKEN_EXPIRY = '6h';
 const REFRESH_TOKEN_EXPIRY = '7d';
 
@@ -109,12 +117,10 @@ export async function setAuthCookies(
   const cookieStore = await cookies();
 
   // Store refresh token hash in database
-  console.log('setAuthCookies: hashing refresh token...');
   const refreshTokenHash = await hash(refreshToken, 12);
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + 7); // 7 days
 
-  console.log('setAuthCookies: creating session in DB...');
   await prisma.session.create({
     data: {
       userId,
@@ -123,13 +129,12 @@ export async function setAuthCookies(
       expires: expiresAt,
     },
   });
-  console.log('setAuthCookies: session created.');
 
   // Set HTTP-only cookies
   cookieStore.set('access_token', accessToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    sameSite: 'strict',
     maxAge: 6 * 60 * 60, // 6 hours
     path: '/',
   });
@@ -137,7 +142,7 @@ export async function setAuthCookies(
   cookieStore.set('refresh_token', refreshToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    sameSite: 'strict',
     maxAge: 7 * 24 * 60 * 60, // 7 days
     path: '/',
   });

@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { signUpAction } from '@/app/actions/auth.actions';
 import { checkRateLimit, RATE_LIMITS, getRateLimitHeaders } from '@/lib/rate-limit';
+import { validateCsrfToken, CSRF_HEADER_NAME } from '@/lib/csrf';
 import { createErrorResponse } from '@/lib/errors';
 import type { ApiResponse, AuthResponse } from '@/types';
 
 export async function POST(request: NextRequest) {
   try {
-    const ip = request.headers.get('x-forwarded-for') || 'unknown';
+    // CSRF validation
+    await validateCsrfToken(request.headers.get(CSRF_HEADER_NAME));
+
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
     const rateLimit = await checkRateLimit(ip, RATE_LIMITS.AUTH);
 
     if (!rateLimit.allowed) {
@@ -24,20 +28,15 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    console.log('POST /api/auth/signup body:', { email: body.email });
     const response = await signUpAction(body);
-    console.log('POST /api/auth/signup action response data:', JSON.stringify(response, null, 2));
 
     const headers = await getRateLimitHeaders(rateLimit);
-    const apiResponse: ApiResponse<AuthResponse> = { data: response };
-    console.log('POST /api/auth/signup sending ApiResponse:', JSON.stringify(apiResponse, null, 2));
 
     return NextResponse.json<ApiResponse<AuthResponse>>(
-      apiResponse,
+      { data: response },
       { headers, status: 201 }
     );
   } catch (error) {
-    console.error('POST /api/auth/signup error:', error);
     const errorResponse = createErrorResponse(error);
     return NextResponse.json<ApiResponse<never>>(errorResponse, {
       status: errorResponse.error.statusCode || 400,

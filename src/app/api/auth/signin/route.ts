@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { signInAction } from '@/app/actions/auth.actions';
 import { checkRateLimit, RATE_LIMITS, getRateLimitHeaders } from '@/lib/rate-limit';
+import { validateCsrfToken, CSRF_HEADER_NAME } from '@/lib/csrf';
 import { createErrorResponse } from '@/lib/errors';
 import type { ApiResponse, AuthResponse } from '@/types';
 
 export async function POST(request: NextRequest) {
   try {
-    const ip = request.headers.get('x-forwarded-for') || 'unknown';
+    // CSRF validation
+    await validateCsrfToken(request.headers.get(CSRF_HEADER_NAME));
+
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
     const rateLimit = await checkRateLimit(ip, RATE_LIMITS.AUTH);
 
     if (!rateLimit.allowed) {

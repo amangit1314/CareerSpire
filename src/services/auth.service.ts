@@ -24,7 +24,6 @@ export const authService = {
       throw new Error(typeof response.error === 'string' ? response.error : response.error.message);
     }
     if (!response.data) throw new Error('No data returned from signin');
-    console.log("Signing response: ", JSON.stringify(response));
     return response.data;
   },
 

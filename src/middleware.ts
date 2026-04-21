@@ -2,9 +2,21 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { verifyAccessToken } from '@/lib/auth-edge';
 
-const publicRoutes = ['/auth/login', '/auth/signup', '/pricing', '/funding', '/feedback', '/press-kit', '/privacy', '/privacy-policy', '/terms-of-service', '/refund-billing', '/report-issue', '/request-feature', '/roadmap', '/license', '/resources', '/about', '/changelog', '/cookies', '/cancellation-policy', '/cookie-policy', '/faqs', '/terms'];
+const publicRoutes = ['/auth/login', '/auth/signup', '/auth/forgot-password', '/auth/reset-password', '/pricing', '/funding', '/feedback', '/press-kit', '/privacy', '/privacy-policy', '/terms-of-service', '/refund-billing', '/report-issue', '/request-feature', '/roadmap', '/license', '/resources', '/about', '/changelog', '/cookies', '/cancellation-policy', '/cookie-policy', '/faqs', '/terms', '/practice', '/community', '/mock/video'];
 const publicExactRoutes = ['/'];
 const apiPublicRoutes = ['/api/auth/signup', '/api/auth/signin'];
+
+function addSecurityHeaders(response: NextResponse): NextResponse {
+  response.headers.set('X-Content-Type-Options', 'nosniff');
+  response.headers.set('X-Frame-Options', 'DENY');
+  response.headers.set('X-XSS-Protection', '1; mode=block');
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  response.headers.set('Permissions-Policy', 'camera=(self), microphone=(self), geolocation=()');
+  if (process.env.NODE_ENV === 'production') {
+    response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  }
+  return response;
+}
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -14,9 +26,10 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/_next') ||
     pathname.startsWith('/api/auth/signup') ||
     pathname.startsWith('/api/auth/signin') ||
-    pathname.startsWith('/api/auth/refresh')
+    pathname.startsWith('/api/auth/refresh') ||
+    pathname.startsWith('/api/csrf')
   ) {
-    return NextResponse.next();
+    return addSecurityHeaders(NextResponse.next());
   }
 
   // Check if route is public
@@ -25,7 +38,7 @@ export async function middleware(request: NextRequest) {
     publicRoutes.some((route) => pathname === route || pathname.startsWith(route + '/'));
 
   if (isPublicRoute) {
-    return NextResponse.next();
+    return addSecurityHeaders(NextResponse.next());
   }
 
   // Check authentication for protected routes
@@ -43,7 +56,7 @@ export async function middleware(request: NextRequest) {
 
   try {
     await verifyAccessToken(accessToken);
-    return NextResponse.next();
+    return addSecurityHeaders(NextResponse.next());
   } catch (error) {
     // Token expired or invalid - try refresh
     const refreshToken = request.cookies.get('refresh_token')?.value;
@@ -60,11 +73,11 @@ export async function middleware(request: NextRequest) {
 
         if (refreshResponse.ok) {
           const { accessToken: newAccessToken } = await refreshResponse.json();
-          const response = NextResponse.next();
+          const response = addSecurityHeaders(NextResponse.next());
           response.cookies.set('access_token', newAccessToken, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
+            sameSite: 'strict',
             maxAge: 6 * 60 * 60, // 6 hours
             path: '/',
           });
@@ -214,7 +227,7 @@ function addCorsHeaders(response: NextResponse) {
 //           response.cookies.set('access_token', newAccessToken, {
 //             httpOnly: true,
 //             secure: process.env.NODE_ENV === 'production',
-//             sameSite: 'lax',
+//             sameSite: 'strict',
 //             maxAge: 15 * 60,
 //             path: '/',
 //           });

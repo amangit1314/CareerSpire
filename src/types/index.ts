@@ -247,8 +247,6 @@ export interface SignInRequest {
 export interface AuthResponse {
   user: User;
   session: {
-    accessToken: string;
-    refreshToken?: string;
     expiresAt: Date;
   };
 }

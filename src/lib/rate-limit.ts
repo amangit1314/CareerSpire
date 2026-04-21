@@ -12,9 +12,13 @@ interface RateLimitResult {
   resetAt: Date;
 }
 
-// In-memory store for rate limiting (use Redis in production)
-const rateLimitStore = new Map<string, { count: number; resetAt: Date }>();
-
+/**
+ * Postgres-backed rate limiting that survives serverless cold starts
+ * and works correctly across multiple instances.
+ *
+ * Uses a simple sliding window approach with Prisma raw queries
+ * against a lightweight rate_limit_entries table.
+ */
 export async function checkRateLimit(
   identifier: string,
   config: RateLimitConfig
@@ -22,47 +26,67 @@ export async function checkRateLimit(
   const { windowMs, maxRequests, keyPrefix } = config;
   const key = `${keyPrefix}:${identifier}`;
   const now = new Date();
+  const windowStart = new Date(now.getTime() - windowMs);
+  const resetAt = new Date(now.getTime() + windowMs);
 
-  // Clean up expired entries periodically
-  if (Math.random() < 0.01) {
-    // 1% chance to clean up
-    for (const [k, v] of rateLimitStore.entries()) {
-      if (v.resetAt < now) {
-        rateLimitStore.delete(k);
-      }
+  try {
+    // Clean up expired entries and count current window in one transaction
+    const [, countResult] = await prisma.$transaction([
+      // Prune expired entries older than 2x window to prevent table bloat
+      prisma.rateLimitEntry.deleteMany({
+        where: {
+          key,
+          createdAt: { lt: new Date(now.getTime() - windowMs * 2) },
+        },
+      }),
+      // Count entries within current window
+      prisma.rateLimitEntry.count({
+        where: {
+          key,
+          createdAt: { gte: windowStart },
+        },
+      }),
+    ]);
+
+    if (countResult >= maxRequests) {
+      // Find the oldest entry in the window to calculate accurate reset time
+      const oldestEntry = await prisma.rateLimitEntry.findFirst({
+        where: {
+          key,
+          createdAt: { gte: windowStart },
+        },
+        orderBy: { createdAt: 'asc' },
+      });
+
+      return {
+        allowed: false,
+        remaining: 0,
+        resetAt: oldestEntry
+          ? new Date(oldestEntry.createdAt.getTime() + windowMs)
+          : resetAt,
+      };
     }
-  }
 
-  const entry = rateLimitStore.get(key);
+    // Record this request
+    await prisma.rateLimitEntry.create({
+      data: { key, createdAt: now },
+    });
 
-  if (!entry || entry.resetAt < now) {
-    // Create new entry
-    const resetAt = new Date(now.getTime() + windowMs);
-    rateLimitStore.set(key, { count: 1, resetAt });
     return {
       allowed: true,
-      remaining: maxRequests - 1,
+      remaining: maxRequests - countResult - 1,
+      resetAt,
+    };
+  } catch (error) {
+    // If rate limiting fails (DB issue), allow the request but log it
+    // This prevents rate limiting infrastructure from causing outages
+    console.error('Rate limit check failed, allowing request:', error);
+    return {
+      allowed: true,
+      remaining: maxRequests,
       resetAt,
     };
   }
-
-  if (entry.count >= maxRequests) {
-    return {
-      allowed: false,
-      remaining: 0,
-      resetAt: entry.resetAt,
-    };
-  }
-
-  // Increment count
-  entry.count++;
-  rateLimitStore.set(key, entry);
-
-  return {
-    allowed: true,
-    remaining: maxRequests - entry.count,
-    resetAt: entry.resetAt,
-  };
 }
 
 export async function getRateLimitHeaders(result: RateLimitResult): Promise<HeadersInit> {
@@ -98,5 +122,10 @@ export const RATE_LIMITS = {
     windowMs: 24 * 60 * 60 * 1000, // 24 hours
     maxRequests: 5,
     keyPrefix: 'qbank:search',
+  },
+  PASSWORD_RESET: {
+    windowMs: 60 * 60 * 1000, // 1 hour
+    maxRequests: 3,
+    keyPrefix: 'pwd:reset',
   },
 } as const;
