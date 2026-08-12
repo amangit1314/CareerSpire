@@ -4,7 +4,7 @@ import { verifyAccessToken } from '@/lib/auth-edge';
 
 const publicRoutes = ['/auth/login', '/auth/signup', '/auth/forgot-password', '/auth/reset-password', '/pricing', '/funding', '/feedback', '/press-kit', '/privacy', '/privacy-policy', '/terms-of-service', '/refund-billing', '/report-issue', '/request-feature', '/roadmap', '/license', '/resources', '/about', '/changelog', '/cookies', '/cancellation-policy', '/cookie-policy', '/faqs', '/terms', '/practice', '/community', '/mock/video'];
 const publicExactRoutes = ['/'];
-const apiPublicRoutes = ['/api/auth/signup', '/api/auth/signin'];
+const apiPublicRoutes = ['/api/auth/signup', '/api/auth/signin', '/api/health'];
 
 function addSecurityHeaders(response: NextResponse): NextResponse {
   response.headers.set('X-Content-Type-Options', 'nosniff');
@@ -27,7 +27,8 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/api/auth/signup') ||
     pathname.startsWith('/api/auth/signin') ||
     pathname.startsWith('/api/auth/refresh') ||
-    pathname.startsWith('/api/csrf')
+    pathname.startsWith('/api/csrf') ||
+    pathname.startsWith('/api/health')
   ) {
     return addSecurityHeaders(NextResponse.next());
   }
