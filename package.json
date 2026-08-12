@@ -9,6 +9,7 @@
     "postinstall": "prisma generate",
     "start": "next start",
     "lint": "next lint",
+    "test": "vitest run",
     "test:pipeline": "tsx scripts/test-runner.ts",
     "verify:platform": "tsx scripts/verify-platform.ts"
   },
@@ -77,7 +78,8 @@
     "prisma": "^7.4.0",
     "tailwindcss": "^4.1.18",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.10"
   },
   "prisma": {
     "seed": "tsx scripts/seed-db.ts"
