@@ -1,3 +1,5 @@
+import { withSentryConfig } from '@sentry/nextjs';
+
 const nextConfig = {
   reactStrictMode: true,
   images: {
@@ -23,7 +25,14 @@ const nextConfig = {
   serverExternalPackages: ['@prisma/client', 'pg', '@prisma/adapter-pg'],
 };
 
-export default nextConfig;
+export default withSentryConfig(nextConfig, {
+  silent: true,
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  // No SENTRY_AUTH_TOKEN yet (no Sentry account) — skip source map upload
+  // rather than fail the build.
+  disableSourceMapUpload: !process.env.SENTRY_AUTH_TOKEN,
+});
 
 // // next.config.js
 // /** @type {import('next').NextConfig} */
