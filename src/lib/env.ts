@@ -6,11 +6,22 @@
 export const REQUIRED_ENV_VARS = [
   'DATABASE_URL',
   'JWT_SECRET',
+  'JWT_REFRESH_SECRET',
   'NEXT_PUBLIC_SUPABASE_URL',
   'NEXT_PUBLIC_SUPABASE_ANON_KEY',
   'SUPABASE_SERVICE_ROLE_KEY',
   'GROQ_API_KEY',
   'GOOGLE_AI_API_KEY',
+] as const;
+
+/**
+ * Optional vars that should warn if missing, but don't crash the app.
+ * Some features may be limited if these are not configured.
+ */
+const OPTIONAL_ENV_VARS = [
+  'RAZORPAY_KEY_ID',
+  'RAZORPAY_KEY_SECRET',
+  'NEXT_PUBLIC_APP_URL',
 ] as const;
 
 export function validateEnv(): void {
@@ -20,6 +31,15 @@ export function validateEnv(): void {
     throw new Error(
       `Missing required environment variable(s): ${missing.join(', ')}. ` +
         `Set these before starting the app — see docs/PRODUCTION_FEATURES.md#configuration.`
+    );
+  }
+
+  // Warn about missing optional vars, but don't crash
+  const missingOptional = OPTIONAL_ENV_VARS.filter((key) => !process.env[key]);
+  if (missingOptional.length > 0) {
+    console.warn(
+      `[ENV] Missing optional environment variables: ${missingOptional.join(', ')}. ` +
+        `Some features may be limited without these — see docs/PRODUCTION_FEATURES.md#configuration.`
     );
   }
 }
