@@ -1,5 +1,6 @@
 import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
 import type { ApiResponse } from '@/types';
+import { ROUTES } from '@/config/routes';
 
 const CSRF_HEADER_NAME = 'x-csrf-token';
 const CSRF_COOKIE_NAME = '__csrf';
@@ -122,7 +123,7 @@ class ApiManager {
           if (typeof window !== 'undefined' && !isAuthCheck) {
             const isAuthPage = window.location.pathname.startsWith('/auth/');
             if (!isAuthPage) {
-              window.location.href = '/auth/login';
+              window.location.href = ROUTES.LOGIN;
             }
           }
         }

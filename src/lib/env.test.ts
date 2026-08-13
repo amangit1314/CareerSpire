@@ -14,6 +14,8 @@ describe('validateEnv', () => {
     process.env.RAZORPAY_KEY_ID = 'test-value';
     process.env.RAZORPAY_KEY_SECRET = 'test-value';
     process.env.NEXT_PUBLIC_APP_URL = 'test-value';
+    process.env.GOOGLE_AI_API_KEY = 'test-value';
+    process.env.OPENROUTER_API_KEY = 'test-value';
     console.warn = vi.fn();
   });
 

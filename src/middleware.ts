@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { verifyAccessToken } from '@/lib/auth-edge';
+import { ROUTES } from '@/config/routes';
 
-const publicRoutes = ['/auth/login', '/auth/signup', '/auth/forgot-password', '/auth/reset-password', '/pricing', '/funding', '/feedback', '/press-kit', '/privacy', '/privacy-policy', '/terms-of-service', '/refund-billing', '/report-issue', '/request-feature', '/roadmap', '/license', '/resources', '/about', '/changelog', '/cookies', '/cancellation-policy', '/cookie-policy', '/faqs', '/terms', '/practice', '/community', '/mock/video'];
+const publicRoutes = [ROUTES.LOGIN, ROUTES.SIGNUP, '/auth/forgot-password', '/auth/reset-password', '/pricing', '/funding', '/feedback', '/press-kit', '/privacy', '/privacy-policy', '/terms-of-service', '/refund-billing', '/report-issue', '/request-feature', '/roadmap', '/license', '/resources', '/about', '/changelog', '/cookies', '/cancellation-policy', '/cookie-policy', '/faqs', '/terms', '/practice', '/community', '/mock/video'];
 const publicExactRoutes = ['/'];
-const apiPublicRoutes = ['/api/auth/signup', '/api/auth/signin', '/api/health'];
 
 function addSecurityHeaders(response: NextResponse): NextResponse {
   response.headers.set('X-Content-Type-Options', 'nosniff');
@@ -64,7 +64,7 @@ export async function middleware(request: NextRequest) {
         { status: 401 }
       );
     }
-    return NextResponse.redirect(new URL('/auth/login', request.url));
+    return NextResponse.redirect(new URL(ROUTES.LOGIN, request.url));
   }
 
   try {
@@ -107,7 +107,7 @@ export async function middleware(request: NextRequest) {
         { error: { message: 'Session expired. Please log in again.', code: 'TOKEN_EXPIRED' } },
         { status: 401 }
       )
-      : NextResponse.redirect(new URL('/auth/login', request.url));
+      : NextResponse.redirect(new URL(ROUTES.LOGIN, request.url));
 
     response.cookies.delete('access_token');
     response.cookies.delete('refresh_token');
@@ -126,166 +126,3 @@ export const config = {
     '/((?!_next/static|_next/image|favicon.ico).*)',
   ],
 };
-
-
-// CORS headers configuration
-const corsHeaders = {
-  'Access-Control-Allow-Origin': process.env.NODE_ENV === 'production'
-    ? (process.env.NEXT_LIVE_APP_URL || 'https://careerspire.vercel.app')
-    : 'http://localhost:3000',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS, PATCH',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, Cookie, X-Requested-With, Accept, Origin',
-  'Access-Control-Allow-Credentials': 'true',
-  'Access-Control-Max-Age': '86400', // 24 hours
-} as const;
-
-// Helper to add CORS headers to a response
-function addCorsHeaders(response: NextResponse) {
-  Object.entries(corsHeaders).forEach(([key, value]) => {
-    response.headers.set(key, value);
-  });
-  return response;
-}
-
-// // Helper to create a CORS-enabled response
-// function corsResponse(status: number = 200, body?: any) {
-//   const response = body
-//     ? NextResponse.json(body, { status })
-//     : new NextResponse(null, { status });
-
-//   return addCorsHeaders(response);
-// }
-
-// export async function middleware(request: NextRequest) {
-//   const { pathname } = request.nextUrl;
-//   const isApiRoute = pathname.startsWith('/api');
-
-//   // ==================== HANDLE PREFLIGHT REQUESTS (OPTIONS) ====================
-//   if (request.method === 'OPTIONS') {
-//     return corsResponse(200);
-//   }
-
-//   // ==================== SKIP MIDDLEWARE FOR CERTAIN ROUTES ====================
-//   if (
-//     pathname.startsWith('/_next') ||
-//     pathname.startsWith('/api/auth/signup') ||
-//     pathname.startsWith('/api/auth/signin') ||
-//     pathname.startsWith('/api/auth/refresh')
-//   ) {
-//     const response = NextResponse.next();
-//     // Only add CORS headers for API routes
-//     if (isApiRoute) {
-//       return addCorsHeaders(response);
-//     }
-//     return response;
-//   }
-
-//   // ==================== CHECK IF ROUTE IS PUBLIC ====================
-//   const isPublicRoute = publicRoutes.some((route) =>
-//     pathname === route || pathname.startsWith(route)
-//   );
-
-//   if (isPublicRoute) {
-//     const response = NextResponse.next();
-//     // Only add CORS headers for API routes
-//     if (isApiRoute) {
-//       return addCorsHeaders(response);
-//     }
-//     return response;
-//   }
-
-//   // ==================== CHECK AUTHENTICATION FOR PROTECTED ROUTES ====================
-//   const accessToken = request.cookies.get('access_token')?.value;
-
-//   if (!accessToken) {
-//     if (isApiRoute) {
-//       return corsResponse(401, {
-//         error: {
-//           message: 'Unauthorized. Please log in to continue.',
-//           code: 'UNAUTHORIZED'
-//         }
-//       });
-//     }
-//     const redirectResponse = NextResponse.redirect(new URL('/auth/login', request.url));
-//     return addCorsHeaders(redirectResponse);
-//   }
-
-//   try {
-//     await verifyAccessToken(accessToken);
-//     const response = NextResponse.next();
-//     // Only add CORS headers for API routes
-//     if (isApiRoute) {
-//       return addCorsHeaders(response);
-//     }
-//     return response;
-//   } catch (error) {
-//     // Token expired or invalid - try refresh
-//     const refreshToken = request.cookies.get('refresh_token')?.value;
-
-//     if (refreshToken && isApiRoute) {
-//       // Try to refresh token for API routes
-//       try {
-//         const refreshResponse = await fetch(new URL('/api/auth/refresh', request.url), {
-//           method: 'POST',
-//           headers: {
-//             Cookie: `refresh_token=${refreshToken}`,
-//           },
-//         });
-
-//         if (refreshResponse.ok) {
-//           const { accessToken: newAccessToken } = await refreshResponse.json();
-//           const response = NextResponse.next();
-
-//           // Set new access token
-//           response.cookies.set('access_token', newAccessToken, {
-//             httpOnly: true,
-//             secure: process.env.NODE_ENV === 'production',
-//             sameSite: 'strict',
-//             maxAge: 15 * 60,
-//             path: '/',
-//           });
-
-//           // Only add CORS headers for API routes
-//           if (isApiRoute) {
-//             return addCorsHeaders(response);
-//           }
-//           return response;
-//         }
-//       } catch (refreshError) {
-//         // Refresh failed - continue to error handling
-//       }
-//     }
-
-//     // Clear invalid tokens
-//     const response = isApiRoute
-//       ? NextResponse.json({
-//         error: {
-//           message: 'Session expired. Please log in again.',
-//           code: 'TOKEN_EXPIRED'
-//         }
-//       }, { status: 401 })
-//       : NextResponse.redirect(new URL('/auth/login', request.url));
-
-//     // Clear cookies
-//     response.cookies.delete('access_token');
-//     response.cookies.delete('refresh_token');
-
-//     // Only add CORS headers for API routes
-//     if (isApiRoute) {
-//       return addCorsHeaders(response);
-//     }
-//     return response;
-//   }
-// }
-
-// export const config = {
-//   matcher: [
-//     /*
-//      * Match all request paths except for the ones starting with:
-//      * - _next/static (static files)
-//      * - _next/image (image optimization files)
-//      * - favicon.ico (favicon file)
-//      */
-//     '/((?!_next/static|_next/image|favicon.ico).*)',
-//   ],
-// };

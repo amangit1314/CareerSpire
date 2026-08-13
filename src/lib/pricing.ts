@@ -1,4 +1,6 @@
 import { SubscriptionTier } from '@/types/enums';
+import { PLAN_IDS, type PlanId } from '@/constants/plans';
+import { AI_MODEL_LABELS } from '@/lib/ai/models';
 
 // ─── Plan Definitions ────────────────────────────────────────────────────────
 // DB enum mapping: FREE → Free, STARTER → Pro, PRO → Placement
@@ -11,7 +13,7 @@ export interface PlanFeature {
 }
 
 export interface Plan {
-  id: string;
+  id: PlanId;
   tier: SubscriptionTier;
   name: string;
   tagline: string;
@@ -31,7 +33,7 @@ export interface Plan {
 
 export const PLANS: Plan[] = [
   {
-    id: 'free',
+    id: PLAN_IDS.FREE,
     tier: SubscriptionTier.FREE,
     name: 'Free',
     tagline: 'Start your prep journey — no card needed',
@@ -55,7 +57,7 @@ export const PLANS: Plan[] = [
     ctaLoggedInLabel: 'Current Plan',
   },
   {
-    id: 'pro',
+    id: PLAN_IDS.PRO,
     tier: SubscriptionTier.STARTER,
     name: 'Pro',
     tagline: 'Serious prep for your upcoming interviews',
@@ -80,7 +82,7 @@ export const PLANS: Plan[] = [
     highlight: 'Most Popular',
   },
   {
-    id: 'placement',
+    id: PLAN_IDS.PLACEMENT,
     tier: SubscriptionTier.PRO,
     name: 'Placement',
     tagline: 'Go all-in for placement season',
@@ -149,15 +151,11 @@ export const ADDON_LEARNING_PATH_PRICE = 29;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-export function formatPrice(amount: number): string {
-  return `\u20B9${amount.toLocaleString('en-IN')}`;
-}
-
 export function getPlanByTier(tier: SubscriptionTier): Plan {
   return PLANS.find((p) => p.tier === tier) ?? PLANS[0];
 }
 
-export function getPlanById(id: string): Plan | undefined {
+export function getPlanById(id: PlanId): Plan | undefined {
   return PLANS.find((p) => p.id === id);
 }
 
@@ -209,6 +207,6 @@ export const PRICING_FAQS: FAQ[] = [
   },
   {
     question: 'What AI model powers the mocks?',
-    answer: 'We use Groq (llama-3.3-70b) as primary and Gemini Flash as fallback for fast, accurate responses.',
+    answer: `We use ${AI_MODEL_LABELS.GROQ} as primary, with automatic fallback to ${AI_MODEL_LABELS.GEMINI} and then ${AI_MODEL_LABELS.OPENROUTER} for fast, reliable responses.`,
   },
 ];

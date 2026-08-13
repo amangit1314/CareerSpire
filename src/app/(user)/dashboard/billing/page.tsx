@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Script from 'next/script';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/features/auth/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { apiManager } from '@/lib/api-manager';
 import {
@@ -25,25 +25,20 @@ import {
   Loader2,
   AlertTriangle,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, formatPrice } from '@/lib/utils';
 import { dmSans } from '@/lib/fonts';
 import { toast } from 'sonner';
 import {
   PLANS,
   MOCK_PACKS,
   VOICE_PACKS,
-  formatPrice,
   getPlanByTier,
   isUpgrade,
 } from '@/lib/pricing';
 import { SubscriptionTier, PaymentStatus } from '@/types/enums';
 import type { BillingData } from '@/app/actions/billing.actions';
-
-declare global {
-  interface Window {
-    Razorpay: any;
-  }
-}
+import { ROUTES } from '@/config/routes';
+// Window.Razorpay is declared globally in src/types/global.d.ts
 
 export default function BillingPage() {
   const { user, isLoading: authLoading, isAuthenticated } = useAuth();
@@ -56,7 +51,7 @@ export default function BillingPage() {
   useEffect(() => {
     if (authLoading) return;
     if (!isAuthenticated) {
-      router.push('/auth/login');
+      router.push(ROUTES.LOGIN);
       return;
     }
     fetchBilling();
@@ -104,7 +99,7 @@ export default function BillingPage() {
       };
 
       const rzp = new window.Razorpay(options);
-      rzp.on('payment.failed', (res: any) => {
+      rzp.on('payment.failed', (res) => {
         toast.error(res.error.description || 'Payment failed');
       });
       rzp.open();

@@ -10,9 +10,9 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Mic } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, formatPrice } from '@/lib/utils';
 import { dmSans } from '@/lib/fonts';
-import { VOICE_PACKS, formatPrice } from '@/lib/pricing';
+import { VOICE_PACKS } from '@/lib/pricing';
 import { useState } from 'react';
 
 interface VoiceCreditsGateProps {

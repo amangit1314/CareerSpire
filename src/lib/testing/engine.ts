@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { submitSolutionAction, startMockAction } from '../../app/actions/mock.actions';
 import { QuestionType, Difficulty, ProgrammingLanguage } from '@/types/enums';
-import { llmClient } from '../llmClient';
+import { llmClient } from '../ai/llmClient';
 import type { TestResult as CodeRunnerTestResult } from '../code-runner';
 
 export interface WorkflowResult {

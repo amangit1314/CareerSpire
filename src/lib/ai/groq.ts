@@ -1,4 +1,5 @@
 import Groq from 'groq-sdk';
+import { AI_MODELS } from './models';
 
 let groqClient: Groq | null = null;
 
@@ -20,7 +21,7 @@ export interface GroqChatOptions {
   responseFormat?: 'json_object' | 'text';
 }
 
-const DEFAULT_MODEL = 'llama-3.3-70b-versatile';
+const DEFAULT_MODEL = AI_MODELS.GROQ;
 
 export async function groqChat(
   prompt: string,

@@ -9,9 +9,9 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Loader2, BookOpen } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, formatPrice } from '@/lib/utils';
 import { dmSans } from '@/lib/fonts';
-import { ADDON_LEARNING_PATH_PRICE, formatPrice } from '@/lib/pricing';
+import { ADDON_LEARNING_PATH_PRICE } from '@/lib/pricing';
 import { useState } from 'react';
 import Link from 'next/link';
 

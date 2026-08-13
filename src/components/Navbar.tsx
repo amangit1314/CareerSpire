@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { Button } from './ui/button';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/features/auth/hooks/useAuth';
 import { NotificationBell } from './NotificationBell';
 import { useRouter, usePathname } from 'next/navigation';
 import { useState } from 'react';
@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/avatar"
 import { CareerSpireLogo } from './CareerSpireLogo';
 import { cn } from '@/lib/utils';
+import { ROUTES } from '@/config/routes';
 
 export function Navbar() {
   const { user, signOut, isAuthenticated } = useAuth();
@@ -56,7 +57,7 @@ export function Navbar() {
             {links.map((item) => {
               const href =
                 item === 'Dashboard'
-                  ? '/dashboard'
+                  ? ROUTES.DASHBOARD
                   : item === 'Practice'
                     ? '/practice'
                     : item === 'Pricing'
@@ -131,7 +132,7 @@ export function Navbar() {
             ) : (
               <div className="flex items-center space-x-4">
                 <ThemeToggle />
-                <Link href="/auth/login">
+                <Link href={ROUTES.LOGIN}>
                   <Button variant="ghost" size="sm" className="rounded-xl hover:bg-primary/5">
                     Log in
                   </Button>
@@ -169,7 +170,7 @@ export function Navbar() {
                 key={item}
                 href={
                   item === 'Dashboard'
-                    ? '/dashboard'
+                    ? ROUTES.DASHBOARD
                     : item === 'Practice'
                       ? '/practice'
                       : item === 'Pricing'
@@ -193,7 +194,7 @@ export function Navbar() {
                 </Button>
               ) : (
                 <>
-                  <Link href="/auth/login" className="block w-full">
+                  <Link href={ROUTES.LOGIN} className="block w-full">
                     <Button variant="ghost" className="w-full rounded-2xl">Login</Button>
                   </Link>
                   <Link href="/auth/signup" className="block w-full">

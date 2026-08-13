@@ -22,7 +22,7 @@ import { CheckCircle2, Loader2, Mic, HelpCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { dmSans } from '@/lib/fonts';
 import { toast } from 'sonner';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/features/auth/hooks/useAuth';
 import {
   PLANS,
   MOCK_PACKS,

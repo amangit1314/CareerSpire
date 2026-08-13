@@ -3,11 +3,12 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/features/auth/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, Eye, EyeOff } from 'lucide-react';
 import { dmSans } from '@/lib/fonts';
+import { ROUTES } from '@/config/routes';
 
 export default function SignupPage() {
   const router = useRouter();
@@ -40,7 +41,7 @@ export default function SignupPage() {
 
     try {
       await signUp({ email, password });
-      router.push('/dashboard');
+      router.push(ROUTES.DASHBOARD);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'An error occurred. Please try again.');
     }
@@ -137,7 +138,7 @@ export default function SignupPage() {
           </form>
           <div className="mt-4 text-center text-sm">
             <span className="text-muted-foreground">Already have an account? </span>
-            <Link href="/auth/login" className="text-primary hover:underline">
+            <Link href={ROUTES.LOGIN} className="text-primary hover:underline">
               Sign in
             </Link>
           </div>

@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
+import { razorpayConfig } from '@/lib/razorpay';
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,7 +13,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify webhook signature
-    const secret = process.env.RAZORPAY_WEBHOOK_SECRET!;
+    const secret = razorpayConfig.webhookSecret;
     const expectedSignature = crypto
       .createHmac('sha256', secret)
       .update(body)

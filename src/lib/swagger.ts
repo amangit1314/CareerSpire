@@ -1,4 +1,6 @@
 import swaggerJsdoc from 'swagger-jsdoc';
+import { AI_MODEL_LABELS } from '@/lib/ai/models';
+import { appUrl } from '@/config/site';
 
 const swaggerDefinition = {
   openapi: '3.0.0',
@@ -7,14 +9,14 @@ const swaggerDefinition = {
     version: '1.0.0',
     description:
       'AI-powered mock interview & skill learning platform API. ' +
-      'Groq (llama-3.3-70b) for generation/evaluation, Gemini Flash for reports.',
+      `${AI_MODEL_LABELS.GROQ} for generation/evaluation, ${AI_MODEL_LABELS.GEMINI} for reports, ${AI_MODEL_LABELS.OPENROUTER} as final fallback.`,
     contact: {
       name: 'CareerSpire',
     },
   },
   servers: [
     {
-      url: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+      url: appUrl,
       description: 'Current environment',
     },
   ],

@@ -1,4 +1,4 @@
-import { runTests, TestResult } from '../lib/code-runner';
+import { runTests, TestResult } from '../src/lib/code-runner';
 import { QuestionType, Difficulty } from '../types/enums';
 import { Question } from '../types';
 import fs from 'node:fs';

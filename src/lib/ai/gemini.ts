@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { AI_MODELS } from './models';
 
 let geminiClient: GoogleGenerativeAI | null = null;
 
@@ -20,7 +21,7 @@ export interface GeminiChatOptions {
   responseFormat?: 'json_object' | 'text';
 }
 
-const DEFAULT_MODEL = 'gemini-2.0-flash';
+const DEFAULT_MODEL = AI_MODELS.GEMINI;
 
 export async function geminiChat(
   prompt: string,

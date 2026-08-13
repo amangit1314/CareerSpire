@@ -1,9 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
 import { prisma } from '@/lib/prisma';
 import { EmailStatus } from '@/types/enums';
+import { supabasePublicConfig, supabaseServiceConfig } from './config';
+import { appUrl } from '@/config/site';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const supabaseUrl = supabasePublicConfig.url;
+const supabaseServiceKey = supabaseServiceConfig.serviceRoleKey;
 
 if (!supabaseUrl || !supabaseServiceKey) {
   throw new Error('Missing Supabase configuration');
@@ -119,7 +121,7 @@ export async function sendEmailTemplate(
           <p>Hi ${d.name || 'there'},</p>
           <p>Thank you for joining CareerSpire! You now have <strong>3 free mock interviews every month</strong> to get started.</p>
           <p>Start practicing and improve your interview skills today!</p>
-          <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard" style="display: inline-block; padding: 12px 24px; background: #3b82f6; color: white; text-decoration: none; border-radius: 6px; margin-top: 20px;">Go to Dashboard</a>
+          <a href="${appUrl}/dashboard" style="display: inline-block; padding: 12px 24px; background: #3b82f6; color: white; text-decoration: none; border-radius: 6px; margin-top: 20px;">Go to Dashboard</a>
         </div>
       `,
     },
@@ -131,7 +133,7 @@ export async function sendEmailTemplate(
           <p>Hi ${d.name || 'there'},</p>
           <p>Your mock interview has been completed with a score of <strong>${d.score}%</strong>.</p>
           <p>${d.feedback || 'Check your dashboard for detailed feedback.'}</p>
-          <a href="${process.env.NEXT_PUBLIC_APP_URL}/mock/${d.sessionId}" style="display: inline-block; padding: 12px 24px; background: #3b82f6; color: white; text-decoration: none; border-radius: 6px; margin-top: 20px;">View Results</a>
+          <a href="${appUrl}/mock/${d.sessionId}" style="display: inline-block; padding: 12px 24px; background: #3b82f6; color: white; text-decoration: none; border-radius: 6px; margin-top: 20px;">View Results</a>
         </div>
       `,
     },
@@ -143,7 +145,7 @@ export async function sendEmailTemplate(
           <p>Hi ${d.name || 'there'},</p>
           <p>Your payment of ₹${d.amount} has been processed successfully.</p>
           <p>Your ${d.tier} subscription is now active.</p>
-          <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard" style="display: inline-block; padding: 12px 24px; background: #3b82f6; color: white; text-decoration: none; border-radius: 6px; margin-top: 20px;">Go to Dashboard</a>
+          <a href="${appUrl}/dashboard" style="display: inline-block; padding: 12px 24px; background: #3b82f6; color: white; text-decoration: none; border-radius: 6px; margin-top: 20px;">Go to Dashboard</a>
         </div>
       `,
     },

@@ -11,6 +11,7 @@ import { Loader2, Lock, ArrowLeft, CheckCircle2, AlertCircle, Eye, EyeOff } from
 import { dmSans } from '@/lib/fonts';
 import { resetPasswordAction } from '@/app/actions/auth.actions';
 import { toast } from 'sonner';
+import { ROUTES } from '@/config/routes';
 
 function ResetPasswordForm() {
     const router = useRouter();
@@ -58,7 +59,7 @@ function ResetPasswordForm() {
             setIsSuccess(true);
             toast.success('Password reset successfully');
             setTimeout(() => {
-                router.push('/auth/login');
+                router.push(ROUTES.LOGIN);
             }, 3000);
         } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : 'Failed to reset password';
@@ -83,7 +84,7 @@ function ResetPasswordForm() {
                 </CardHeader>
                 <CardFooter>
                     <Button asChild className="w-full text-white">
-                        <Link href="/auth/login">Login Now</Link>
+                        <Link href={ROUTES.LOGIN}>Login Now</Link>
                     </Button>
                 </CardFooter>
             </Card>
@@ -115,7 +116,7 @@ function ResetPasswordForm() {
         <Card className="w-full max-w-md">
             <CardHeader className="space-y-1">
                 <div className="flex items-center gap-2 mb-2">
-                    <Link href="/auth/login" className="text-muted-foreground hover:text-primary transition-colors">
+                    <Link href={ROUTES.LOGIN} className="text-muted-foreground hover:text-primary transition-colors">
                         <ArrowLeft className="h-4 w-4" />
                     </Link>
                     <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Authentication</span>

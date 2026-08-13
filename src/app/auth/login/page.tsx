@@ -3,11 +3,12 @@
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/features/auth/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, Eye, EyeOff } from 'lucide-react';
 import { dmSans } from '@/lib/fonts';
+import { ROUTES } from '@/config/routes';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -25,7 +26,7 @@ export default function LoginPage() {
     try {
       await signIn({ email, password });
       const callback = searchParams.get('callback');
-      router.push(callback && callback.startsWith('/') ? callback : '/dashboard');
+      router.push(callback && callback.startsWith('/') ? callback : ROUTES.DASHBOARD);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'An error occurred. Please try again.');
     }

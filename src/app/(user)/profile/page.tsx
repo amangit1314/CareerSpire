@@ -7,14 +7,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useAuth } from '@/hooks/useAuth';
-import { authService } from '@/services/auth.service';
+import { useAuth } from '@/features/auth/hooks/useAuth';
+import { authService } from '@/features/auth/services/auth.service';
 import { changePasswordAction, deleteAccountAction } from '@/app/actions/auth.actions';
 import { getUserPracticeStats, type UserPracticeStats } from '@/app/actions/practice.actions';
 import { toast } from 'sonner';
 import { AnimatePresence, motion } from 'framer-motion';
 import { dmSans } from '@/lib/fonts';
 import { cn } from '@/lib/utils';
+import { ROUTES } from '@/config/routes';
 import {
     Trophy,
     Flame,
@@ -102,7 +103,7 @@ export default function ProfilePage() {
     }, [isAuthenticated]);
 
     useEffect(() => { if (user?.name) setName(user.name); }, [user]);
-    useEffect(() => { if (!isLoading && !isAuthenticated) router.push('/auth/login'); }, [isLoading, isAuthenticated, router]);
+    useEffect(() => { if (!isLoading && !isAuthenticated) router.push(ROUTES.LOGIN); }, [isLoading, isAuthenticated, router]);
 
     const handleSave = async () => {
         setSaving(true);

@@ -1,12 +1,14 @@
-import { groqChat, type GroqChatOptions } from './groq';
+import { groqChat } from './groq';
 import { geminiChat } from './gemini';
+import { openRouterChat } from './openrouter';
+import { AI_MODEL_LABELS } from './models';
 
 export interface AIChatOptions {
   temperature?: number;
   maxTokens?: number;
   responseFormat?: 'json_object' | 'text';
   /** Force a specific provider instead of auto-fallback */
-  provider?: 'groq' | 'gemini';
+  provider?: 'groq' | 'gemini' | 'openrouter';
   /** Use Gemini for final report generation (as per spec) */
   useGemini?: boolean;
   /** Abort a single provider call after this many ms. Default 20000. */
@@ -15,7 +17,7 @@ export interface AIChatOptions {
 
 export interface AIResult {
   content: string;
-  provider: 'groq' | 'gemini';
+  provider: 'groq' | 'gemini' | 'openrouter';
 }
 
 const DEFAULT_TIMEOUT_MS = 20_000;
@@ -40,7 +42,7 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): 
   ]);
 }
 
-function logMetrics(provider: 'groq' | 'gemini', durationMs: number, success: boolean, promptChars: number) {
+function logMetrics(provider: 'groq' | 'gemini' | 'openrouter', durationMs: number, success: boolean, promptChars: number) {
   // Deliberately a plain console.log line, not a dashboard call — cheapest
   // possible observability win. Structured so it's greppable/parseable from
   // Vercel logs (or any log drain) later without changing this call site.
@@ -50,10 +52,12 @@ function logMetrics(provider: 'groq' | 'gemini', durationMs: number, success: bo
 }
 
 /**
- * Unified AI caller — tries Groq first, falls back to Gemini on 429, failure,
- * or timeout. Never exposes raw errors to the caller — returns a typed error
- * object. Every call is time-boxed so a hung upstream provider can't hang
- * the whole request until the platform's own function timeout.
+ * Unified AI caller — tries Groq first, falls back to Gemini (only if
+ * GOOGLE_AI_API_KEY is configured — it's optional), then OpenRouter as the
+ * final fallback on 429, failure, or timeout. Never exposes raw errors to
+ * the caller — returns a typed error object. Every call is time-boxed so a
+ * hung upstream provider can't hang the whole request until the platform's
+ * own function timeout.
  */
 export async function aiChat(
   prompt: string,
@@ -69,26 +73,44 @@ export async function aiChat(
     return callGroq(prompt, options, timeoutMs);
   }
 
+  if (options.provider === 'openrouter') {
+    return callOpenRouter(prompt, options, timeoutMs);
+  }
+
+  const errors: string[] = [];
+
   try {
     return await callGroq(prompt, options, timeoutMs);
   } catch (groqError) {
     const isRate = isRateLimitError(groqError);
+    const groqMsg = groqError instanceof Error ? groqError.message : 'Unknown error';
+    errors.push(`Groq: ${groqMsg}`);
     console.warn(
-      `[AI] Groq ${isRate ? 'rate limited (429)' : 'failed'}: ${groqError instanceof Error ? groqError.message : 'Unknown error'}. Falling back to Gemini.`
+      `[AI] Groq ${isRate ? 'rate limited (429)' : 'failed'}: ${groqMsg}. Falling back...`
     );
+  }
 
+  if (process.env.GOOGLE_AI_API_KEY) {
     try {
       return await callGemini(prompt, options, timeoutMs);
     } catch (geminiError) {
-      console.error(
-        `[AI] Gemini fallback also failed: ${geminiError instanceof Error ? geminiError.message : 'Unknown error'}`
-      );
-      throw new AICallError(
-        'Both Groq and Gemini failed. Please try again later.',
-        'both',
-        false
-      );
+      const geminiMsg = geminiError instanceof Error ? geminiError.message : 'Unknown error';
+      errors.push(`Gemini: ${geminiMsg}`);
+      console.warn(`[AI] Gemini fallback failed: ${geminiMsg}. Falling back to OpenRouter.`);
     }
+  }
+
+  try {
+    return await callOpenRouter(prompt, options, timeoutMs);
+  } catch (openRouterError) {
+    const openRouterMsg = openRouterError instanceof Error ? openRouterError.message : 'Unknown error';
+    errors.push(`OpenRouter: ${openRouterMsg}`);
+    console.error(`[AI] All providers failed: ${errors.join(' | ')}`);
+    throw new AICallError(
+      'All AI providers failed. Please try again later.',
+      'all',
+      false
+    );
   }
 }
 
@@ -105,7 +127,7 @@ async function callGroq(prompt: string, options: AIChatOptions, timeoutMs: numbe
       'Groq'
     );
     logMetrics('groq', Date.now() - startedAt, true, prompt.length);
-    console.log('[AI] Response from: Groq (llama-3.3-70b-versatile)');
+    console.log(`[AI] Response from: ${AI_MODEL_LABELS.GROQ}`);
     return { content, provider: 'groq' };
   } catch (error) {
     logMetrics('groq', Date.now() - startedAt, false, prompt.length);
@@ -126,10 +148,31 @@ async function callGemini(prompt: string, options: AIChatOptions, timeoutMs: num
       'Gemini'
     );
     logMetrics('gemini', Date.now() - startedAt, true, prompt.length);
-    console.log('[AI] Response from: Gemini (gemini-2.0-flash)');
+    console.log(`[AI] Response from: ${AI_MODEL_LABELS.GEMINI}`);
     return { content, provider: 'gemini' };
   } catch (error) {
     logMetrics('gemini', Date.now() - startedAt, false, prompt.length);
+    throw error;
+  }
+}
+
+async function callOpenRouter(prompt: string, options: AIChatOptions, timeoutMs: number): Promise<AIResult> {
+  const startedAt = Date.now();
+  try {
+    const content = await withTimeout(
+      openRouterChat(prompt, {
+        temperature: options.temperature,
+        maxTokens: options.maxTokens,
+        responseFormat: options.responseFormat,
+      }),
+      timeoutMs,
+      'OpenRouter'
+    );
+    logMetrics('openrouter', Date.now() - startedAt, true, prompt.length);
+    console.log(`[AI] Response from: ${AI_MODEL_LABELS.OPENROUTER}`);
+    return { content, provider: 'openrouter' };
+  } catch (error) {
+    logMetrics('openrouter', Date.now() - startedAt, false, prompt.length);
     throw error;
   }
 }
@@ -141,7 +184,7 @@ async function callGemini(prompt: string, options: AIChatOptions, timeoutMs: num
 export async function aiChatJSON<T = unknown>(
   prompt: string,
   options: Omit<AIChatOptions, 'responseFormat'> = {}
-): Promise<{ data: T; provider: 'groq' | 'gemini' }> {
+): Promise<{ data: T; provider: 'groq' | 'gemini' | 'openrouter' }> {
   const jsonPrompt = prompt + '\n\nReturn ONLY valid JSON. No markdown. No backticks. No explanation. No preamble.';
 
   let lastError: Error | null = null;

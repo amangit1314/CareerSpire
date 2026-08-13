@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Bell } from 'lucide-react';
 import { Button } from './ui/button';
-import { useNotifications } from '@/hooks/useNotifications';
+import { useNotifications } from '@/features/notifications/hooks/useNotifications';
 import { Skeleton } from './ui/skeleton';
 import Link from 'next/link';
 

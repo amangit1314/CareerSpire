@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
-import { getQuestionsFromBank, generateAndCacheQuestionBank } from '@/lib/question-bank';
+import { getQuestionsFromBank, generateAndCacheQuestionBank } from '@/lib/practice/question-bank';
 import { checkRateLimit, RATE_LIMITS, getRateLimitHeaders } from '@/lib/rate-limit';
 import { createErrorResponse } from '@/lib/errors';
 import type { ApiResponse } from '@/types';

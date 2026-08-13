@@ -10,9 +10,9 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Loader2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, formatPrice } from '@/lib/utils';
 import { dmSans } from '@/lib/fonts';
-import { MOCK_PACKS, PLANS, formatPrice } from '@/lib/pricing';
+import { MOCK_PACKS, PLANS } from '@/lib/pricing';
 import { useState } from 'react';
 
 interface MockCreditsGateProps {

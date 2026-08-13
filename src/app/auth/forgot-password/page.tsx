@@ -10,6 +10,7 @@ import { Loader2, ArrowLeft, Mail, CheckCircle2 } from 'lucide-react';
 import { dmSans } from '@/lib/fonts';
 import { requestPasswordResetAction } from '@/app/actions/auth.actions';
 import { toast } from 'sonner';
+import { ROUTES } from '@/config/routes';
 
 export default function ForgotPasswordPage() {
     const [email, setEmail] = useState('');
@@ -51,7 +52,7 @@ export default function ForgotPasswordPage() {
                     </CardContent>
                     <CardFooter className="flex flex-col space-y-2">
                         <Button asChild variant="outline" className="w-full">
-                            <Link href="/auth/login">Back to Login</Link>
+                            <Link href={ROUTES.LOGIN}>Back to Login</Link>
                         </Button>
                         <button
                             onClick={() => setIsSubmitted(false)}
@@ -70,7 +71,7 @@ export default function ForgotPasswordPage() {
             <Card className="w-full max-w-md">
                 <CardHeader className="space-y-1">
                     <div className="flex items-center gap-2 mb-2">
-                        <Link href="/auth/login" className="text-muted-foreground hover:text-primary transition-colors">
+                        <Link href={ROUTES.LOGIN} className="text-muted-foreground hover:text-primary transition-colors">
                             <ArrowLeft className="h-4 w-4" />
                         </Link>
                         <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Authentication</span>
@@ -112,7 +113,7 @@ export default function ForgotPasswordPage() {
                 <CardFooter className="justify-center border-t p-4">
                     <div className="text-sm text-muted-foreground">
                         Remember your password?{' '}
-                        <Link href="/auth/login" className="text-primary hover:underline font-medium">
+                        <Link href={ROUTES.LOGIN} className="text-primary hover:underline font-medium">
                             Login
                         </Link>
                     </div>

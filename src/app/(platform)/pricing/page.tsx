@@ -20,27 +20,21 @@ import {
     Zap,
     Video,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, formatPrice } from '@/lib/utils';
 import { dmSans } from '@/lib/fonts';
 import { toast } from 'sonner';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/features/auth/hooks/useAuth';
 import {
     PLANS,
     MOCK_PACKS,
     VOICE_PACKS,
     PRICING_FAQS,
-    formatPrice,
     isUpgrade,
     getYearlySavings,
     type Plan,
 } from '@/lib/pricing';
 import { SubscriptionTier } from '@/types/enums';
-
-declare global {
-    interface Window {
-        Razorpay: any;
-    }
-}
+// Window.Razorpay is declared globally in src/types/global.d.ts
 
 export default function PricingPage() {
     const [billing, setBilling] = useState<'monthly' | 'yearly'>('monthly');
@@ -52,12 +46,11 @@ export default function PricingPage() {
         amount: number,
         description: string,
     ) => {
-        // TODO: Replace with Razorpay checkout once RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET are configured
+        // Defensive fallback, not expected in production: if the public Razorpay
+        // key isn't configured, send unauthenticated users to sign up instead of
+        // opening a checkout widget that can't load.
         if (!process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID) {
-            const planParam = itemId.startsWith('mock_') || itemId.startsWith('voice_')
-                ? itemId
-                : itemId;
-            window.location.href = `/auth/signup?plan=${planParam}`;
+            window.location.href = `/auth/signup?plan=${itemId}`;
             return;
         }
 
@@ -91,7 +84,7 @@ export default function PricingPage() {
             };
 
             const rzp = new window.Razorpay(options);
-            rzp.on('payment.failed', (res: any) => {
+            rzp.on('payment.failed', (res) => {
                 toast.error(res.error.description || 'Payment failed');
             });
             rzp.open();

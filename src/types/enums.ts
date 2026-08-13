@@ -61,6 +61,11 @@ export enum NotificationType {
   PAYMENT = 'PAYMENT',
   REMINDER = 'REMINDER',
   SECURITY = 'SECURITY',
+  // Was missing from this hand-written enum despite being in the Prisma
+  // schema and already used at lib/practice/rewards.ts:221 — every
+  // achievement notification's `type` field silently didn't match this
+  // app-level type anywhere it was checked against it.
+  ACHIEVEMENT = 'ACHIEVEMENT',
 }
 
 export enum EmailStatus {

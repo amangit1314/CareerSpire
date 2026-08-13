@@ -11,6 +11,7 @@ import type { User as PrismaUser } from '@prisma/client';
 import { UserLevel, SubscriptionTier } from '@/types/enums';
 import { z } from 'zod';
 import crypto from 'node:crypto';
+import { appUrl } from '@/config/site';
 
 
 
@@ -243,7 +244,7 @@ export async function requestPasswordResetAction(data: { email: string }): Promi
       },
     });
 
-    const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL}/auth/reset-password?token=${token}`;
+    const resetUrl = `${appUrl}/auth/reset-password?token=${token}`;
 
     await sendEmailTemplate('password-reset', user.email, {
       name: user.name || 'there',

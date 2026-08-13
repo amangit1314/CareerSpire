@@ -40,8 +40,8 @@ export default function Home() {
             const { ScrollTrigger } = await import('gsap/dist/ScrollTrigger');
             gsap.registerPlugin(ScrollTrigger);
 
-            const cards = gsap.utils.toArray('.bento-item');
-            cards.forEach((card: any, i: number) => {
+            const cards = gsap.utils.toArray('.bento-item') as Element[];
+            cards.forEach((card, i: number) => {
                 gsap.fromTo(
                     card,
                     { opacity: 0, y: 30, scale: 0.95 },
