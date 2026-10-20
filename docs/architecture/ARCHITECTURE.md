@@ -89,43 +89,50 @@ src/
 ## Architecture Decisions
 
 ### 1. AI Provider Strategy
+
 - **Primary**: Groq (llama-3.3-70b-versatile) — FREE, fast inference
 - **Fallback**: Google Gemini Flash — FREE, auto-fallback on Groq 429
 - **Report generation**: Always Gemini Flash (richer output)
 - **Pattern**: `lib/ai/index.ts` exports `aiChat()` — single entry point for all AI calls
 
 ### 2. Question Bank Cache (Core Differentiator)
+
 ```
 User searches "React" → DB lookup (case-insensitive)
   → Found? Return from cache (instant, free)
   → Not found? Generate via AI → save to SkillQuestionBank → return
 ```
+
 - `lib/question-bank.ts` — shared logic used by API route + mock session creation
 - `hitCount` tracks cache utilization
 - Mock sessions pull from cache before generating fresh questions
 
 ### 3. Authentication
+
 - Custom JWT (NOT NextAuth) — access token 6h + refresh token 7d
 - Both tokens in HTTP-only cookies
 - Token rotation on refresh, sessions stored in DB with revocation
 - bcryptjs 12 rounds for password hashing
 
 ### 4. Rate Limiting
-| Endpoint | Limit | Window |
-|----------|-------|--------|
-| Auth (login/signup) | 5 | 15 min |
-| Mock start | 10 | 1 hour |
-| Mock submit | 20 | 1 min |
-| Question bank search | 5 | 24 hours |
-| General API | 60 | 1 min |
+
+| Endpoint             | Limit | Window   |
+| -------------------- | ----- | -------- |
+| Auth (login/signup)  | 5     | 15 min   |
+| Mock start           | 10    | 1 hour   |
+| Mock submit          | 20    | 1 min    |
+| Question bank search | 5     | 24 hours |
+| General API          | 60    | 1 min    |
 
 ### 5. Code Execution Sandbox
+
 - JavaScript: `node:vm` with isolated context, 3s timeout
 - Python: temp directory + `spawnSync`, 3s timeout
 - Java: compile + run in temp dir, 3s timeout
 - Entry function detection: explicit `entryFunctionName` or fallback search
 
 ### 6. Scoring Formula
+
 ```
 testScore (40%) = tests_passed / tests_total * 40
 codeQuality (30%) = ai_code_quality / 100 * 30
@@ -134,10 +141,12 @@ finalScore = round(testScore + codeQuality + timeScore)
 ```
 
 ## API Documentation
+
 - **JSON spec**: `GET /api/docs`
 - **Swagger UI**: `/docs`
 
 ## Key Patterns
+
 - **Server Actions** (`app/actions/`) for all business logic
 - **API Routes** (`app/api/`) as thin HTTP handlers (auth + rate limit + delegate to actions)
 - **Services** (`services/`) for client-side API calls via `apiManager`

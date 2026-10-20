@@ -1,7 +1,8 @@
-import { AlertTriangle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { dmSans } from '@/lib/fonts';
-import { cn } from '@/lib/utils';
+import { AlertTriangle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { dmSans } from "@/lib/fonts";
+import { cn } from "@/lib/utils";
+import { TIME_UP_OVERLAY_CONTENT } from "@/config/content";
 
 interface TimeUpOverlayProps {
   show: boolean;
@@ -9,7 +10,11 @@ interface TimeUpOverlayProps {
   onUseGracePeriod: () => void;
 }
 
-export function TimeUpOverlay({ show, onEndNow, onUseGracePeriod }: TimeUpOverlayProps) {
+export function TimeUpOverlay({
+  show,
+  onEndNow,
+  onUseGracePeriod,
+}: TimeUpOverlayProps) {
   if (!show) return null;
 
   return (
@@ -18,16 +23,22 @@ export function TimeUpOverlay({ show, onEndNow, onUseGracePeriod }: TimeUpOverla
         <div className="w-14 h-14 rounded-full bg-red-500/10 flex items-center justify-center mx-auto">
           <AlertTriangle className="h-7 w-7 text-red-500" />
         </div>
-        <h3 className={cn(dmSans.className, "text-xl font-bold")}>Time&apos;s Up!</h3>
+        <h3 className={cn(dmSans.className, "text-xl font-bold")}>
+          {TIME_UP_OVERLAY_CONTENT.TITLE}
+        </h3>
         <p className="text-sm text-muted-foreground leading-relaxed">
-          Your session time has ended. You have a <span className="font-semibold text-foreground">2-minute grace period</span> to finish your current answer and submit.
+          {TIME_UP_OVERLAY_CONTENT.DESCRIPTION_PREFIX}{" "}
+          <span className="font-semibold text-foreground">
+            {TIME_UP_OVERLAY_CONTENT.GRACE_PERIOD}
+          </span>{" "}
+          {TIME_UP_OVERLAY_CONTENT.DESCRIPTION_SUFFIX}
         </p>
         <div className="flex gap-3 pt-2">
           <Button variant="outline" className="flex-1" onClick={onEndNow}>
-            End Now
+            {TIME_UP_OVERLAY_CONTENT.END_NOW}
           </Button>
           <Button className="flex-1 dark:text-white" onClick={onUseGracePeriod}>
-            Use Grace Period
+            {TIME_UP_OVERLAY_CONTENT.USE_GRACE_PERIOD}
           </Button>
         </div>
       </div>

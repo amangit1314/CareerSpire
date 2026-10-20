@@ -8,48 +8,18 @@
     "language": "javascript",
     "testCases": [
       {
-        "input": [
-          [
-            2,
-            7,
-            11,
-            15
-          ],
-          9
-        ],
-        "expectedOutput": [
-          0,
-          1
-        ],
+        "input": [[2, 7, 11, 15], 9],
+        "expectedOutput": [0, 1],
         "isHidden": false
       },
       {
-        "input": [
-          [
-            3,
-            2,
-            4
-          ],
-          6
-        ],
-        "expectedOutput": [
-          1,
-          2
-        ],
+        "input": [[3, 2, 4], 6],
+        "expectedOutput": [1, 2],
         "isHidden": false
       },
       {
-        "input": [
-          [
-            3,
-            3
-          ],
-          6
-        ],
-        "expectedOutput": [
-          0,
-          1
-        ],
+        "input": [[3, 3], 6],
+        "expectedOutput": [0, 1],
         "isHidden": true
       }
     ],
@@ -68,35 +38,17 @@
     "language": "javascript",
     "testCases": [
       {
-        "input": [
-          1,
-          2,
-          3,
-          4,
-          5
-        ],
-        "expectedOutput": [
-          5,
-          4,
-          3,
-          2,
-          1
-        ],
+        "input": [[1, 2, 3, 4, 5]],
+        "expectedOutput": [5, 4, 3, 2, 1],
         "isHidden": false
       },
       {
-        "input": [
-          1,
-          2
-        ],
-        "expectedOutput": [
-          2,
-          1
-        ],
+        "input": [[1, 2]],
+        "expectedOutput": [2, 1],
         "isHidden": false
       },
       {
-        "input": [],
+        "input": [[]],
         "expectedOutput": [],
         "isHidden": true
       }
@@ -116,35 +68,17 @@
     "language": "javascript",
     "testCases": [
       {
-        "input": [
-          -2,
-          1,
-          -3,
-          4,
-          -1,
-          2,
-          1,
-          -5,
-          4
-        ],
+        "input": [[-2, 1, -3, 4, -1, 2, 1, -5, 4]],
         "expectedOutput": 6,
         "isHidden": false
       },
       {
-        "input": [
-          1
-        ],
+        "input": [[1]],
         "expectedOutput": 1,
         "isHidden": false
       },
       {
-        "input": [
-          5,
-          4,
-          -1,
-          7,
-          8
-        ],
+        "input": [[5, 4, -1, 7, 8]],
         "expectedOutput": 23,
         "isHidden": true
       }

@@ -7,6 +7,7 @@ This document outlines all the production-level features implemented in Mocky.
 ### 1. Authentication & Security
 
 #### JWT with Refresh Tokens
+
 - **Access Tokens**: 15-minute expiry, stored in HTTP-only cookies
 - **Refresh Tokens**: 7-day expiry, stored in HTTP-only cookies
 - **Token Rotation**: Refresh tokens are rotated on each use
@@ -14,6 +15,7 @@ This document outlines all the production-level features implemented in Mocky.
 - **Password Security**: bcryptjs with 12 rounds for password hashing
 
 #### Middleware Protection
+
 - Route-level authentication checks
 - Automatic token refresh for expired access tokens
 - Secure cookie configuration (HttpOnly, Secure, SameSite)
@@ -21,6 +23,7 @@ This document outlines all the production-level features implemented in Mocky.
 ### 2. Rate Limiting
 
 #### Implementation
+
 - In-memory rate limiting (can be upgraded to Redis)
 - Per-IP and per-user rate limits
 - Configurable limits for different endpoints:
@@ -30,18 +33,21 @@ This document outlines all the production-level features implemented in Mocky.
   - General API: 60 requests per minute
 
 #### Rate Limit Headers
+
 - `X-RateLimit-Remaining`: Remaining requests
 - `X-RateLimit-Reset`: Reset timestamp
 
 ### 3. Notification System
 
 #### Features
+
 - **In-App Notifications**: Real-time notification feed
 - **Email Notifications**: Supabase email integration with templates
 - **Notification Preferences**: User-configurable (email only, in-app only, both)
 - **Notification Types**: SYSTEM, MOCK_RESULT, PAYMENT, REMINDER, SECURITY
 
 #### Email Templates
+
 - Welcome email
 - Mock result notification
 - Payment success
@@ -50,6 +56,7 @@ This document outlines all the production-level features implemented in Mocky.
 ### 4. Media Storage (Supabase)
 
 #### Features
+
 - Signed upload URLs for secure file uploads
 - Signed download URLs with expiration
 - File type validation (images, PDFs)
@@ -59,12 +66,14 @@ This document outlines all the production-level features implemented in Mocky.
 ### 5. Error Handling
 
 #### User-Friendly Error Messages
+
 - Specific error messages instead of generic "something went wrong"
 - Field-level validation errors
 - Rate limit messages with wait times
 - Authentication error messages
 
 #### Error Normalization
+
 - Consistent error format across all APIs
 - Error codes for programmatic handling
 - Proper HTTP status codes
@@ -72,6 +81,7 @@ This document outlines all the production-level features implemented in Mocky.
 ### 6. Loading States
 
 #### Skeleton Components
+
 - Dashboard skeleton
 - Mock session skeleton
 - Notification skeleton
@@ -80,17 +90,20 @@ This document outlines all the production-level features implemented in Mocky.
 ### 7. Performance Optimizations
 
 #### Caching
+
 - React Query for client-side caching
 - Server-side cache headers
 - Stale-while-revalidate strategy
 - Cache tags for invalidation
 
 #### Code Splitting
+
 - Dynamic imports for heavy components
 - Lazy loading for Monaco editor
 - Route-based code splitting
 
 #### Debouncing & Throttling
+
 - `useDebounce` hook for search inputs
 - Throttle utilities for scroll/resize events
 - Debounced API calls
@@ -98,6 +111,7 @@ This document outlines all the production-level features implemented in Mocky.
 ### 8. Type Safety
 
 #### TypeScript
+
 - Strict TypeScript configuration
 - Comprehensive type definitions
 - Enum-based constants
@@ -132,6 +146,7 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 ## 📊 Database Schema
 
 ### Key Models
+
 - `User`: User accounts with authentication
 - `Session`: Refresh token sessions
 - `Notification`: In-app notifications

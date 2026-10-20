@@ -1,12 +1,22 @@
-'use client';
+"use client";
 
-import { CheckCircle2, XCircle, AlertCircle, TrendingUp, Code2, Lightbulb, Sparkles, ChevronDown } from 'lucide-react';
-import { MockResult, QuestionFormat } from '@/types';
-import { cn } from '@/lib/utils';
-import { dmSans } from '@/lib/fonts';
-import { useState } from 'react';
-import { CodeEditor } from './CodeEditor';
-import { formatCodeAsync } from '@/lib/utils/formatCode';
+import {
+  CheckCircle2,
+  XCircle,
+  AlertCircle,
+  TrendingUp,
+  Code2,
+  Lightbulb,
+  Sparkles,
+  ChevronDown,
+} from "lucide-react";
+import { MockResult, QuestionFormat } from "@/types";
+import { cn } from "@/lib/utils";
+import { dmSans } from "@/lib/fonts";
+import { useState } from "react";
+import { CodeEditor } from "./CodeEditor";
+import { formatCodeAsync } from "@/lib/utils/formatCode";
+import { FEEDBACK_PANEL_CONTENT } from "@/config/content";
 
 interface FeedbackPanelProps {
   result: MockResult;
@@ -16,22 +26,47 @@ function ScoreRing({ score, size = 80 }: { score: number; size?: number }) {
   const radius = (size - 8) / 2;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (score / 100) * circumference;
-  const color = score >= 80 ? 'text-emerald-500' : score >= 50 ? 'text-amber-500' : 'text-red-500';
-  const bgColor = score >= 80 ? 'stroke-emerald-500/10' : score >= 50 ? 'stroke-amber-500/10' : 'stroke-red-500/10';
+  const color =
+    score >= 80
+      ? "text-emerald-500"
+      : score >= 50
+        ? "text-amber-500"
+        : "text-red-500";
+  const bgColor =
+    score >= 80
+      ? "stroke-emerald-500/10"
+      : score >= 50
+        ? "stroke-amber-500/10"
+        : "stroke-red-500/10";
 
   return (
     <div className="relative" style={{ width: size, height: size }}>
       <svg className="transform -rotate-90" width={size} height={size}>
-        <circle cx={size / 2} cy={size / 2} r={radius} fill="none" className={bgColor} strokeWidth={6} />
         <circle
-          cx={size / 2} cy={size / 2} r={radius} fill="none"
-          className={color} strokeWidth={6} strokeLinecap="round"
-          strokeDasharray={circumference} strokeDashoffset={offset}
-          style={{ transition: 'stroke-dashoffset 1s ease-out' }}
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          className={bgColor}
+          strokeWidth={6}
+        />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          className={color}
+          strokeWidth={6}
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+          style={{ transition: "stroke-dashoffset 1s ease-out" }}
         />
       </svg>
       <div className="absolute inset-0 flex items-center justify-center">
-        <span className={cn(dmSans.className, "text-lg font-bold", color)}>{score}</span>
+        <span className={cn(dmSans.className, "text-lg font-bold", color)}>
+          {score}
+        </span>
       </div>
     </div>
   );
@@ -59,12 +94,16 @@ function CollapsibleSection({
       >
         <div className="flex items-center gap-2">
           <Icon className={cn("h-4 w-4", iconColor)} />
-          <h3 className={cn(dmSans.className, "text-sm font-semibold")}>{title}</h3>
+          <h3 className={cn(dmSans.className, "text-sm font-semibold")}>
+            {title}
+          </h3>
         </div>
-        <ChevronDown className={cn(
-          "h-4 w-4 text-muted-foreground transition-transform",
-          open ? "rotate-0" : "-rotate-90"
-        )} />
+        <ChevronDown
+          className={cn(
+            "h-4 w-4 text-muted-foreground transition-transform",
+            open ? "rotate-0" : "-rotate-90",
+          )}
+        />
       </button>
       {open && <div className="mt-3">{children}</div>}
     </div>
@@ -73,15 +112,17 @@ function CollapsibleSection({
 
 // Helper to format values for display
 const formatValue = (val: unknown) => {
-  if (val === null || val === undefined) return 'null';
-  if (typeof val === 'string') {
+  if (val === null || val === undefined)
+    return FEEDBACK_PANEL_CONTENT.NULL_VALUE;
+  if (typeof val === "string") {
     const trimmed = val.trim();
     if (
-      (trimmed.startsWith('[') && trimmed.endsWith(']')) ||
-      (trimmed.startsWith('{') && trimmed.endsWith('}')) ||
+      (trimmed.startsWith("[") && trimmed.endsWith("]")) ||
+      (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
       (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
-      trimmed.includes(',')
-    ) return trimmed;
+      trimmed.includes(",")
+    )
+      return trimmed;
     return `"${trimmed}"`;
   }
   return JSON.stringify(val);
@@ -89,32 +130,49 @@ const formatValue = (val: unknown) => {
 
 export function FeedbackPanel({ result }: FeedbackPanelProps) {
   const { feedback, testResults, score } = result;
-  const [formattedCode, setFormattedCode] = useState<string>('');
+  const [formattedCode, setFormattedCode] = useState<string>("");
   const questionFormat = result.question?.questionFormat;
 
   // Format corrected code on first render
-  const rawCode = feedback.correctedCode?.replace(/```[\w]*\n?|```/g, '').trim() || '';
+  const rawCode =
+    feedback.correctedCode?.replace(/```[\w]*\n?|```/g, "").trim() || "";
 
   // Detect if correctedCode is actual code vs plain text explanation
   const isActualCode = (() => {
     if (!rawCode) return false;
-    const codeIndicators = [/\bfunction\b/, /\bconst\b/, /\blet\b/, /\bvar\b/, /\breturn\b/,
-      /\bclass\b/, /\bimport\b/, /\bexport\b/, /=>/, /\{[\s\S]*\}/, /;\s*$/, /\bdef\b/, /\bif\s*\(/];
-    const matches = codeIndicators.filter(r => r.test(rawCode)).length;
+    const codeIndicators = [
+      /\bfunction\b/,
+      /\bconst\b/,
+      /\blet\b/,
+      /\bvar\b/,
+      /\breturn\b/,
+      /\bclass\b/,
+      /\bimport\b/,
+      /\bexport\b/,
+      /=>/,
+      /\{[\s\S]*\}/,
+      /;\s*$/,
+      /\bdef\b/,
+      /\bif\s*\(/,
+    ];
+    const matches = codeIndicators.filter((r) => r.test(rawCode)).length;
     return matches >= 2; // at least 2 code indicators = likely code
   })();
 
   if (isActualCode && rawCode && !formattedCode) {
-    formatCodeAsync(rawCode, 'javascript').then(setFormattedCode);
+    formatCodeAsync(rawCode, "javascript").then(setFormattedCode);
     setFormattedCode(rawCode);
   }
 
   const hasTestCases = testResults.details && testResults.details.length > 0;
-  const showCodeMetrics = questionFormat !== QuestionFormat.THEORY &&
+  const showCodeMetrics =
+    questionFormat !== QuestionFormat.THEORY &&
     questionFormat !== QuestionFormat.OUTPUT_PREDICTION;
-  const codeDisplayValue = isActualCode ? (formattedCode || rawCode) : '';
-  const textExplanation = !isActualCode ? rawCode : '';
-  const codeLineCount = codeDisplayValue ? codeDisplayValue.split('\n').length : 0;
+  const codeDisplayValue = isActualCode ? formattedCode || rawCode : "";
+  const textExplanation = !isActualCode ? rawCode : "";
+  const codeLineCount = codeDisplayValue
+    ? codeDisplayValue.split("\n").length
+    : 0;
 
   return (
     <div className="space-y-5">
@@ -123,12 +181,18 @@ export function FeedbackPanel({ result }: FeedbackPanelProps) {
         <ScoreRing score={score} />
         <div className="flex-1 space-y-2">
           <h2 className={cn(dmSans.className, "text-lg font-bold")}>
-            {score >= 80 ? 'Excellent work!' : score >= 50 ? 'Good effort' : 'Keep practicing'}
+            {score >= 80
+              ? FEEDBACK_PANEL_CONTENT.SCORE_EXCELLENT
+              : score >= 50
+                ? FEEDBACK_PANEL_CONTENT.SCORE_GOOD
+                : FEEDBACK_PANEL_CONTENT.SCORE_NEEDS_WORK}
           </h2>
           <div className="flex gap-4">
             {hasTestCases && (
               <div>
-                <p className="text-xs text-muted-foreground">Tests</p>
+                <p className="text-xs text-muted-foreground">
+                  {FEEDBACK_PANEL_CONTENT.TESTS_LABEL}
+                </p>
                 <p className={cn(dmSans.className, "text-sm font-bold")}>
                   {testResults.passed}/{testResults.total}
                 </p>
@@ -137,12 +201,20 @@ export function FeedbackPanel({ result }: FeedbackPanelProps) {
             {showCodeMetrics && (
               <>
                 <div>
-                  <p className="text-xs text-muted-foreground">Quality</p>
-                  <p className={cn(dmSans.className, "text-sm font-bold")}>{feedback.codeQuality}/100</p>
+                  <p className="text-xs text-muted-foreground">
+                    {FEEDBACK_PANEL_CONTENT.QUALITY_LABEL}
+                  </p>
+                  <p className={cn(dmSans.className, "text-sm font-bold")}>
+                    {feedback.codeQuality}/100
+                  </p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Complexity</p>
-                  <p className={cn(dmSans.className, "text-sm font-bold")}>{feedback.timeComplexity}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {FEEDBACK_PANEL_CONTENT.COMPLEXITY_LABEL}
+                  </p>
+                  <p className={cn(dmSans.className, "text-sm font-bold")}>
+                    {feedback.timeComplexity}
+                  </p>
                 </div>
               </>
             )}
@@ -155,20 +227,32 @@ export function FeedbackPanel({ result }: FeedbackPanelProps) {
         <div className="p-4 rounded-xl bg-primary/5 border border-primary/10 space-y-2">
           <div className="flex items-center gap-2 text-sm font-semibold">
             <Sparkles className="h-4 w-4 text-primary" />
-            AI Insights
+            {FEEDBACK_PANEL_CONTENT.AI_INSIGHTS}
           </div>
-          <p className="text-sm leading-relaxed text-foreground/80">{feedback.approachSummary}</p>
+          <p className="text-sm leading-relaxed text-foreground/80">
+            {feedback.approachSummary}
+          </p>
           {feedback.isCodeCorrect !== undefined && (
-            <div className={cn(
-              "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium",
-              feedback.isCodeCorrect
-                ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                : "bg-amber-500/10 text-amber-600 dark:text-amber-400"
-            )}>
+            <div
+              className={cn(
+                "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium",
+                feedback.isCodeCorrect
+                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                  : "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+              )}
+            >
               {feedback.isCodeCorrect ? (
-                <><CheckCircle2 className="h-3 w-3" /> Correct solution</>
+                <>
+                  <CheckCircle2 className="h-3 w-3" />{" "}
+                  {FEEDBACK_PANEL_CONTENT.CORRECT_SOLUTION}
+                </>
               ) : (
-                <><AlertCircle className="h-3 w-3" /> {isActualCode ? 'See corrected code below' : 'See model answer below'}</>
+                <>
+                  <AlertCircle className="h-3 w-3" />{" "}
+                  {isActualCode
+                    ? FEEDBACK_PANEL_CONTENT.SEE_CORRECTED_CODE
+                    : FEEDBACK_PANEL_CONTENT.SEE_MODEL_ANSWER}
+                </>
               )}
             </div>
           )}
@@ -178,7 +262,11 @@ export function FeedbackPanel({ result }: FeedbackPanelProps) {
       {/* Corrected/Annotated Code — only when it's actual code */}
       {codeDisplayValue && (
         <CollapsibleSection
-          title={feedback.isCodeCorrect ? 'Your Code (Annotated)' : 'Corrected Code'}
+          title={
+            feedback.isCodeCorrect
+              ? FEEDBACK_PANEL_CONTENT.YOUR_CODE_ANNOTATED
+              : FEEDBACK_PANEL_CONTENT.CORRECTED_CODE
+          }
           icon={Code2}
           iconColor="text-blue-500"
         >
@@ -188,7 +276,7 @@ export function FeedbackPanel({ result }: FeedbackPanelProps) {
               language="javascript"
               readOnly
               height={`${Math.max(120, (codeLineCount + 2) * 22)}px`}
-              onChange={() => { }}
+              onChange={() => {}}
             />
           </div>
         </CollapsibleSection>
@@ -197,12 +285,14 @@ export function FeedbackPanel({ result }: FeedbackPanelProps) {
       {/* Text explanation — when AI returned text instead of code */}
       {textExplanation && (
         <CollapsibleSection
-          title="Model Answer"
+          title={FEEDBACK_PANEL_CONTENT.MODEL_ANSWER}
           icon={Lightbulb}
           iconColor="text-blue-500"
         >
           <div className="p-4 bg-muted/30 rounded-lg">
-            <p className="text-sm leading-relaxed whitespace-pre-wrap">{textExplanation}</p>
+            <p className="text-sm leading-relaxed whitespace-pre-wrap">
+              {textExplanation}
+            </p>
           </div>
         </CollapsibleSection>
       )}
@@ -210,7 +300,7 @@ export function FeedbackPanel({ result }: FeedbackPanelProps) {
       {/* Step-by-Step Breakdown */}
       {feedback.codeExplanation && feedback.codeExplanation.length > 0 && (
         <CollapsibleSection
-          title="Step-by-Step Breakdown"
+          title={FEEDBACK_PANEL_CONTENT.STEP_BY_STEP_BREAKDOWN}
           icon={Lightbulb}
           iconColor="text-amber-500"
         >
@@ -230,9 +320,18 @@ export function FeedbackPanel({ result }: FeedbackPanelProps) {
       {/* Test Results */}
       {hasTestCases && (
         <CollapsibleSection
-          title={`Test Results (${testResults.passed}/${testResults.total} passed)`}
-          icon={testResults.passed === testResults.total ? CheckCircle2 : XCircle}
-          iconColor={testResults.passed === testResults.total ? "text-emerald-500" : "text-red-500"}
+          title={FEEDBACK_PANEL_CONTENT.TEST_RESULTS(
+            testResults.passed,
+            testResults.total,
+          )}
+          icon={
+            testResults.passed === testResults.total ? CheckCircle2 : XCircle
+          }
+          iconColor={
+            testResults.passed === testResults.total
+              ? "text-emerald-500"
+              : "text-red-500"
+          }
         >
           <div className="space-y-2">
             {testResults.details.map((test, idx) => (
@@ -242,7 +341,7 @@ export function FeedbackPanel({ result }: FeedbackPanelProps) {
                   "p-3 rounded-lg border text-sm",
                   test.passed
                     ? "bg-emerald-500/5 border-emerald-500/15"
-                    : "bg-red-500/5 border-red-500/15"
+                    : "bg-red-500/5 border-red-500/15",
                 )}
               >
                 <div className="flex items-center gap-2 mb-1.5">
@@ -251,20 +350,34 @@ export function FeedbackPanel({ result }: FeedbackPanelProps) {
                   ) : (
                     <XCircle className="h-3.5 w-3.5 text-red-500" />
                   )}
-                  <span className="font-mono text-xs text-muted-foreground">Test {idx + 1}</span>
+                  <span className="font-mono text-xs text-muted-foreground">
+                    {FEEDBACK_PANEL_CONTENT.TEST_LABEL(idx + 1)}
+                  </span>
                 </div>
                 <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-xs font-mono pl-5">
-                  <span className="text-muted-foreground">Input:</span>
+                  <span className="text-muted-foreground">
+                    {FEEDBACK_PANEL_CONTENT.INPUT_LABEL}
+                  </span>
                   <span>{formatValue(test.input)}</span>
-                  <span className="text-muted-foreground">Expected:</span>
+                  <span className="text-muted-foreground">
+                    {FEEDBACK_PANEL_CONTENT.EXPECTED_LABEL}
+                  </span>
                   <span>{formatValue(test.expected)}</span>
-                  <span className="text-muted-foreground">Got:</span>
-                  <span className={test.passed ? "text-emerald-500" : "text-red-500"}>
+                  <span className="text-muted-foreground">
+                    {FEEDBACK_PANEL_CONTENT.GOT_LABEL}
+                  </span>
+                  <span
+                    className={
+                      test.passed ? "text-emerald-500" : "text-red-500"
+                    }
+                  >
                     {formatValue(test.actual)}
                   </span>
                 </div>
                 {test.error && (
-                  <p className="text-xs text-red-400 mt-1.5 pl-5 italic">{test.error}</p>
+                  <p className="text-xs text-red-400 mt-1.5 pl-5 italic">
+                    {test.error}
+                  </p>
                 )}
               </div>
             ))}
@@ -279,7 +392,9 @@ export function FeedbackPanel({ result }: FeedbackPanelProps) {
             <div>
               <div className="flex items-center gap-2 mb-3">
                 <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                <h3 className={cn(dmSans.className, "text-sm font-semibold")}>Strengths</h3>
+                <h3 className={cn(dmSans.className, "text-sm font-semibold")}>
+                  {FEEDBACK_PANEL_CONTENT.STRENGTHS}
+                </h3>
               </div>
               <ul className="space-y-1.5">
                 {feedback.strengths.map((s, i) => (
@@ -295,7 +410,9 @@ export function FeedbackPanel({ result }: FeedbackPanelProps) {
             <div>
               <div className="flex items-center gap-2 mb-3">
                 <AlertCircle className="h-4 w-4 text-amber-500" />
-                <h3 className={cn(dmSans.className, "text-sm font-semibold")}>To Improve</h3>
+                <h3 className={cn(dmSans.className, "text-sm font-semibold")}>
+                  {FEEDBACK_PANEL_CONTENT.TO_IMPROVE}
+                </h3>
               </div>
               <ul className="space-y-1.5">
                 {feedback.improvements.map((s, i) => (
@@ -313,8 +430,12 @@ export function FeedbackPanel({ result }: FeedbackPanelProps) {
       {/* Next Question Recommendation */}
       {feedback.nextQuestion && (
         <div className="border-t border-border/50 pt-4">
-          <p className="text-xs text-muted-foreground mb-1">Recommended Next</p>
-          <p className={cn(dmSans.className, "text-sm font-semibold")}>{feedback.nextQuestion}</p>
+          <p className="text-xs text-muted-foreground mb-1">
+            {FEEDBACK_PANEL_CONTENT.RECOMMENDED_NEXT}
+          </p>
+          <p className={cn(dmSans.className, "text-sm font-semibold")}>
+            {feedback.nextQuestion}
+          </p>
         </div>
       )}
     </div>

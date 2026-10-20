@@ -1,30 +1,35 @@
-import { cookies } from 'next/headers';
-import { verify, sign } from 'jsonwebtoken';
-import { hash, compare } from 'bcryptjs';
-import crypto from 'node:crypto';
-import { prisma } from '@/lib/prisma';
-import { AppError } from './errors';
+import { cookies } from "next/headers";
+import { verify, sign } from "jsonwebtoken";
+import { hash, compare } from "bcryptjs";
+import crypto from "node:crypto";
+import { prisma } from "@/lib/prisma";
+import { AppError } from "./errors";
+import { ErrorCode } from "@/types/enums";
 
 function requireEnv(name: string): string {
   const value = process.env[name];
   if (!value) {
-    throw new Error(`FATAL: ${name} environment variable is not set. Refusing to start with insecure defaults.`);
+    throw new Error(
+      `FATAL: ${name} environment variable is not set. Refusing to start with insecure defaults.`,
+    );
   }
   return value;
 }
 
 function requireSecureSecret(name: string): string {
   const value = requireEnv(name);
-  if (process.env.NODE_ENV === 'production' && value.length < 32) {
-    throw new Error(`FATAL: ${name} must be at least 32 characters in production. Generate with: openssl rand -hex 32`);
+  if (process.env.NODE_ENV === "production" && value.length < 32) {
+    throw new Error(
+      `FATAL: ${name} must be at least 32 characters in production. Generate with: openssl rand -hex 32`,
+    );
   }
   return value;
 }
 
-const JWT_SECRET: string = requireSecureSecret('JWT_SECRET');
-const JWT_REFRESH_SECRET: string = requireSecureSecret('JWT_REFRESH_SECRET');
-const ACCESS_TOKEN_EXPIRY = '6h';
-const REFRESH_TOKEN_EXPIRY = '7d';
+const JWT_SECRET: string = requireSecureSecret("JWT_SECRET");
+const JWT_REFRESH_SECRET: string = requireSecureSecret("JWT_REFRESH_SECRET");
+const ACCESS_TOKEN_EXPIRY = "6h";
+const REFRESH_TOKEN_EXPIRY = "7d";
 
 export interface TokenPayload {
   userId: string;
@@ -44,7 +49,11 @@ export async function verifyAccessToken(token: string): Promise<TokenPayload> {
     const decoded = verify(token, JWT_SECRET) as TokenPayload;
     return decoded;
   } catch (error) {
-    throw new AppError('Token expired or invalid', 'INVALID_TOKEN', 401);
+    throw new AppError(
+      "Token expired or invalid",
+      ErrorCode.INVALID_TOKEN,
+      401,
+    );
   }
 }
 
@@ -58,22 +67,26 @@ export async function verifyRefreshToken(token: string): Promise<TokenPayload> {
         userId: decoded.userId,
         revokedAt: null,
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
 
     if (!session) {
-      throw new Error('Session not found');
+      throw new Error("Session not found");
     }
 
     // Verify refresh token hash matches
     const isValid = await compare(token, session.refreshTokenHash);
     if (!isValid) {
-      throw new Error('Invalid refresh token');
+      throw new Error("Invalid refresh token");
     }
 
     return decoded;
   } catch (error) {
-    throw new AppError('Refresh token expired or invalid', 'INVALID_REFRESH_TOKEN', 401);
+    throw new AppError(
+      "Refresh token expired or invalid",
+      ErrorCode.INVALID_REFRESH_TOKEN,
+      401,
+    );
   }
 }
 
@@ -81,14 +94,17 @@ export async function hashPassword(password: string): Promise<string> {
   return hash(password, 12);
 }
 
-export async function verifyPassword(password: string, hash: string): Promise<boolean> {
+export async function verifyPassword(
+  password: string,
+  hash: string,
+): Promise<boolean> {
   return compare(password, hash);
 }
 
 export async function getCurrentUserId(): Promise<string | null> {
   try {
     const cookieStore = await cookies();
-    const accessToken = cookieStore.get('access_token')?.value;
+    const accessToken = cookieStore.get("access_token")?.value;
 
     if (!accessToken) {
       return null;
@@ -104,7 +120,11 @@ export async function getCurrentUserId(): Promise<string | null> {
 export async function requireAuth(): Promise<string> {
   const userId = await getCurrentUserId();
   if (!userId) {
-    throw new AppError('Unauthorized. Please log in to continue.', 'UNAUTHORIZED', 401);
+    throw new AppError(
+      "Unauthorized. Please log in to continue.",
+      ErrorCode.UNAUTHORIZED,
+      401,
+    );
   }
   return userId;
 }
@@ -112,7 +132,7 @@ export async function requireAuth(): Promise<string> {
 export async function setAuthCookies(
   accessToken: string,
   refreshToken: string,
-  userId: string
+  userId: string,
 ): Promise<void> {
   const cookieStore = await cookies();
 
@@ -131,27 +151,25 @@ export async function setAuthCookies(
   });
 
   // Set HTTP-only cookies
-  cookieStore.set('access_token', accessToken, {
+  cookieStore.set("access_token", accessToken, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
     maxAge: 6 * 60 * 60, // 6 hours
-    path: '/',
+    path: "/",
   });
 
-  cookieStore.set('refresh_token', refreshToken, {
+  cookieStore.set("refresh_token", refreshToken, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
     maxAge: 7 * 24 * 60 * 60, // 7 days
-    path: '/',
+    path: "/",
   });
 }
 
 export async function clearAuthCookies(): Promise<void> {
   const cookieStore = await cookies();
-  cookieStore.delete('access_token');
-  cookieStore.delete('refresh_token');
+  cookieStore.delete("access_token");
+  cookieStore.delete("refresh_token");
 }
-
-

@@ -1,19 +1,24 @@
-'use server';
+"use server";
 
-import { prisma } from '@/lib/prisma';
-import { hashPassword, verifyPassword, generateAccessToken, generateRefreshToken, setAuthCookies, clearAuthCookies } from '@/lib/auth';
-import { AppError } from '@/lib/errors';
-import { sendEmailTemplate } from '@/lib/supabase/email';
-import { createNotificationAction } from './notification.actions';
-import { NotificationType } from '@/types/enums';
-import type { SignUpRequest, SignInRequest, AuthResponse, User } from '@/types';
-import type { User as PrismaUser } from '@prisma/client';
-import { UserLevel, SubscriptionTier } from '@/types/enums';
-import { z } from 'zod';
-import crypto from 'node:crypto';
-import { appUrl } from '@/config/site';
-
-
+import { prisma } from "@/lib/prisma";
+import {
+  hashPassword,
+  verifyPassword,
+  generateAccessToken,
+  generateRefreshToken,
+  setAuthCookies,
+  clearAuthCookies,
+} from "@/lib/auth";
+import { AppError } from "@/lib/errors";
+import { sendEmailTemplate } from "@/lib/supabase/email";
+import { createNotificationAction } from "./notification.actions";
+import { NotificationType } from "@/types/enums";
+import type { SignUpRequest, SignInRequest, AuthResponse, User } from "@/types";
+import type { User as PrismaUser } from "@prisma/client";
+import { UserLevel, SubscriptionTier, ErrorCode } from "@/types/enums";
+import { z } from "zod";
+import crypto from "node:crypto";
+import { appUrl } from "@/config/site";
 
 function toUserResponse(user: PrismaUser): User {
   return {
@@ -24,7 +29,8 @@ function toUserResponse(user: PrismaUser): User {
     image: user.image,
     level: user.level as unknown as UserLevel,
     freeMocksRemaining: user.freeMocksRemaining,
-    subscriptionTier: user.subscriptionTier as unknown as SubscriptionTier | null,
+    subscriptionTier:
+      user.subscriptionTier as unknown as SubscriptionTier | null,
     subscriptionEndsAt: user.subscriptionEndsAt,
     weakTopics: user.weakTopics,
     createdAt: user.createdAt,
@@ -39,13 +45,14 @@ function toUserResponse(user: PrismaUser): User {
 }
 
 const signUpSchema = z.object({
-  email: z.string().email('Please enter a valid email address').max(255),
-  password: z.string()
-    .min(8, 'Password must be at least 8 characters')
-    .max(128, 'Password must be less than 128 characters')
-    .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
-    .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
-    .regex(/[0-9]/, 'Password must contain at least one number'),
+  email: z.string().email("Please enter a valid email address").max(255),
+  password: z
+    .string()
+    .min(8, "Password must be at least 8 characters")
+    .max(128, "Password must be less than 128 characters")
+    .regex(/[a-z]/, "Password must contain at least one lowercase letter")
+    .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+    .regex(/[0-9]/, "Password must contain at least one number"),
   name: z.string().max(100).optional(),
 });
 
@@ -59,9 +66,9 @@ export async function signUpAction(data: SignUpRequest): Promise<AuthResponse> {
 
     if (existingUser) {
       throw new AppError(
-        'This email is already registered. Please use a different email or try logging in.',
-        'EMAIL_EXISTS',
-        400
+        "This email is already registered. Please use a different email or try logging in.",
+        ErrorCode.EMAIL_EXISTS,
+        400,
       );
     }
 
@@ -94,16 +101,16 @@ export async function signUpAction(data: SignUpRequest): Promise<AuthResponse> {
     await setAuthCookies(accessToken, refreshToken, user.id);
 
     // Send welcome email (non-blocking)
-    sendEmailTemplate('welcome', user.email, {
-      name: user.name || 'there',
+    sendEmailTemplate("welcome", user.email, {
+      name: user.name || "there",
     }).catch(() => {});
 
     // Create welcome notification (non-blocking)
     createNotificationAction({
       userId: user.id,
       type: NotificationType.SYSTEM,
-      title: 'Welcome to CareerSpire!',
-      body: 'You have 3 free mock interviews every month to get started. Start practicing now!',
+      title: "Welcome to CareerSpire!",
+      body: "You have 3 free mock interviews every month to get started. Start practicing now!",
       sendEmail: false,
     }).catch(() => {});
 
@@ -113,23 +120,26 @@ export async function signUpAction(data: SignUpRequest): Promise<AuthResponse> {
         expiresAt: new Date(Date.now() + 6 * 60 * 60 * 1000), // 6 hours
       },
     };
-
   } catch (error) {
     if (error instanceof AppError) throw error;
     if (error instanceof z.ZodError) {
       throw new AppError(
-        error.issues[0]?.message || 'Invalid input',
-        'VALIDATION_ERROR',
-        400
+        error.issues[0]?.message || "Invalid input",
+        ErrorCode.VALIDATION_ERROR,
+        400,
       );
     }
-    throw new AppError('Failed to create account. Please try again.', 'SIGNUP_ERROR', 500);
+    throw new AppError(
+      "Failed to create account. Please try again.",
+      ErrorCode.SIGNUP_ERROR,
+      500,
+    );
   }
 }
 
 const signInSchema = z.object({
-  email: z.string().email('Please enter a valid email address'),
-  password: z.string().min(1, 'Password is required'),
+  email: z.string().email("Please enter a valid email address"),
+  password: z.string().min(1, "Password is required"),
 });
 
 export async function signInAction(data: SignInRequest): Promise<AuthResponse> {
@@ -142,18 +152,18 @@ export async function signInAction(data: SignInRequest): Promise<AuthResponse> {
 
     if (!user || !user.passwordHash) {
       throw new AppError(
-        'The email or password you entered is incorrect. Please check and try again.',
-        'INVALID_CREDENTIALS',
-        401
+        "The email or password you entered is incorrect. Please check and try again.",
+        ErrorCode.INVALID_CREDENTIALS,
+        401,
       );
     }
 
     const isValid = await verifyPassword(validated.password, user.passwordHash);
     if (!isValid) {
       throw new AppError(
-        'The email or password you entered is incorrect. Please check and try again.',
-        'INVALID_CREDENTIALS',
-        401
+        "The email or password you entered is incorrect. Please check and try again.",
+        ErrorCode.INVALID_CREDENTIALS,
+        401,
       );
     }
 
@@ -177,15 +187,18 @@ export async function signInAction(data: SignInRequest): Promise<AuthResponse> {
     if (error instanceof AppError) throw error;
     if (error instanceof z.ZodError) {
       throw new AppError(
-        error.issues[0]?.message || 'Invalid input',
-        'VALIDATION_ERROR',
-        400
+        error.issues[0]?.message || "Invalid input",
+        ErrorCode.VALIDATION_ERROR,
+        400,
       );
     }
-    throw new AppError('Failed to sign in. Please try again.', 'SIGNIN_ERROR', 500);
+    throw new AppError(
+      "Failed to sign in. Please try again.",
+      ErrorCode.SIGNIN_ERROR,
+      500,
+    );
   }
 }
-
 
 export async function signOutAction(userId: string): Promise<void> {
   await prisma.session.updateMany({
@@ -195,15 +208,18 @@ export async function signOutAction(userId: string): Promise<void> {
   await clearAuthCookies();
 }
 
-export async function refreshTokenAction(refreshToken: string): Promise<{ accessToken: string }> {
-  const { verifyRefreshToken, generateAccessToken } = await import('@/lib/auth');
+export async function refreshTokenAction(
+  refreshToken: string,
+): Promise<{ accessToken: string }> {
+  const { verifyRefreshToken, generateAccessToken } =
+    await import("@/lib/auth");
   const payload = await verifyRefreshToken(refreshToken);
   const accessToken = generateAccessToken(payload);
   return { accessToken };
 }
 
 export async function getCurrentUserAction(): Promise<User> {
-  const { requireAuth } = await import('@/lib/auth');
+  const { requireAuth } = await import("@/lib/auth");
   const userId = await requireAuth();
 
   const user = await prisma.user.findUnique({
@@ -211,17 +227,19 @@ export async function getCurrentUserAction(): Promise<User> {
   });
 
   if (!user) {
-    throw new AppError('User not found', 'USER_NOT_FOUND', 404);
+    throw new AppError("User not found", ErrorCode.USER_NOT_FOUND, 404);
   }
 
   return toUserResponse(user);
 }
 
 const forgotPasswordSchema = z.object({
-  email: z.string().email('Please enter a valid email address'),
+  email: z.string().email("Please enter a valid email address"),
 });
 
-export async function requestPasswordResetAction(data: { email: string }): Promise<{ message: string }> {
+export async function requestPasswordResetAction(data: {
+  email: string;
+}): Promise<{ message: string }> {
   try {
     const validated = forgotPasswordSchema.parse(data);
     const user = await prisma.user.findUnique({
@@ -230,7 +248,10 @@ export async function requestPasswordResetAction(data: { email: string }): Promi
 
     if (!user) {
       // Don't reveal if user exists — return same message regardless
-      return { message: 'If an account exists with this email, a reset link has been sent.' };
+      return {
+        message:
+          "If an account exists with this email, a reset link has been sent.",
+      };
     }
 
     const token = crypto.randomUUID();
@@ -246,31 +267,45 @@ export async function requestPasswordResetAction(data: { email: string }): Promi
 
     const resetUrl = `${appUrl}/auth/reset-password?token=${token}`;
 
-    await sendEmailTemplate('password-reset', user.email, {
-      name: user.name || 'there',
+    await sendEmailTemplate("password-reset", user.email, {
+      name: user.name || "there",
       resetUrl,
     });
 
-    return { message: 'If an account exists with this email, a reset link has been sent.' };
+    return {
+      message:
+        "If an account exists with this email, a reset link has been sent.",
+    };
   } catch (error) {
     if (error instanceof z.ZodError) {
-      throw new AppError(error.issues[0]?.message || 'Invalid input', 'VALIDATION_ERROR', 400);
+      throw new AppError(
+        error.issues[0]?.message || "Invalid input",
+        ErrorCode.VALIDATION_ERROR,
+        400,
+      );
     }
-    throw new AppError('Failed to process password reset request', 'FORGOT_PASSWORD_ERROR', 500);
+    throw new AppError(
+      "Failed to process password reset request",
+      ErrorCode.FORGOT_PASSWORD_ERROR,
+      500,
+    );
   }
 }
 
 const resetPasswordSchema = z.object({
-  token: z.string().min(1, 'Token is required'),
-  password: z.string()
-    .min(8, 'Password must be at least 8 characters')
-    .max(128, 'Password must be less than 128 characters')
-    .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
-    .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
-    .regex(/[0-9]/, 'Password must contain at least one number'),
+  token: z.string().min(1, "Token is required"),
+  password: z
+    .string()
+    .min(8, "Password must be at least 8 characters")
+    .max(128, "Password must be less than 128 characters")
+    .regex(/[a-z]/, "Password must contain at least one lowercase letter")
+    .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+    .regex(/[0-9]/, "Password must contain at least one number"),
 });
 
-export async function resetPasswordAction(data: z.infer<typeof resetPasswordSchema>): Promise<{ success: boolean }> {
+export async function resetPasswordAction(
+  data: z.infer<typeof resetPasswordSchema>,
+): Promise<{ success: boolean }> {
   try {
     const validated = resetPasswordSchema.parse(data);
 
@@ -279,7 +314,11 @@ export async function resetPasswordAction(data: z.infer<typeof resetPasswordSche
     });
 
     if (!verificationToken || verificationToken.expires < new Date()) {
-      throw new AppError('Invalid or expired reset token. Please request a new one.', 'INVALID_TOKEN', 400);
+      throw new AppError(
+        "Invalid or expired reset token. Please request a new one.",
+        ErrorCode.INVALID_TOKEN,
+        400,
+      );
     }
 
     const passwordHash = await hashPassword(validated.password);
@@ -297,25 +336,36 @@ export async function resetPasswordAction(data: z.infer<typeof resetPasswordSche
   } catch (error) {
     if (error instanceof AppError) throw error;
     if (error instanceof z.ZodError) {
-      throw new AppError(error.issues[0]?.message || 'Invalid input', 'VALIDATION_ERROR', 400);
+      throw new AppError(
+        error.issues[0]?.message || "Invalid input",
+        ErrorCode.VALIDATION_ERROR,
+        400,
+      );
     }
-    throw new AppError('Failed to reset password', 'RESET_PASSWORD_ERROR', 500);
+    throw new AppError(
+      "Failed to reset password",
+      ErrorCode.RESET_PASSWORD_ERROR,
+      500,
+    );
   }
 }
 
 const changePasswordSchema = z.object({
-  currentPassword: z.string().min(1, 'Current password is required'),
-  newPassword: z.string()
-    .min(8, 'New password must be at least 8 characters')
-    .max(128, 'Password must be less than 128 characters')
-    .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
-    .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
-    .regex(/[0-9]/, 'Password must contain at least one number'),
+  currentPassword: z.string().min(1, "Current password is required"),
+  newPassword: z
+    .string()
+    .min(8, "New password must be at least 8 characters")
+    .max(128, "Password must be less than 128 characters")
+    .regex(/[a-z]/, "Password must contain at least one lowercase letter")
+    .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+    .regex(/[0-9]/, "Password must contain at least one number"),
 });
 
-export async function changePasswordAction(data: z.infer<typeof changePasswordSchema>): Promise<{ success: boolean }> {
+export async function changePasswordAction(
+  data: z.infer<typeof changePasswordSchema>,
+): Promise<{ success: boolean }> {
   try {
-    const { requireAuth } = await import('@/lib/auth');
+    const { requireAuth } = await import("@/lib/auth");
     const userId = await requireAuth();
 
     const validated = changePasswordSchema.parse(data);
@@ -325,12 +375,23 @@ export async function changePasswordAction(data: z.infer<typeof changePasswordSc
     });
 
     if (!user || !user.passwordHash) {
-      throw new AppError('User not found or password not set', 'USER_NOT_FOUND', 404);
+      throw new AppError(
+        "User not found or password not set",
+        ErrorCode.USER_NOT_FOUND,
+        404,
+      );
     }
 
-    const isValid = await verifyPassword(validated.currentPassword, user.passwordHash);
+    const isValid = await verifyPassword(
+      validated.currentPassword,
+      user.passwordHash,
+    );
     if (!isValid) {
-      throw new AppError('The current password you entered is incorrect.', 'INVALID_PASSWORD', 401);
+      throw new AppError(
+        "The current password you entered is incorrect.",
+        ErrorCode.INVALID_PASSWORD,
+        401,
+      );
     }
 
     const passwordHash = await hashPassword(validated.newPassword);
@@ -344,15 +405,23 @@ export async function changePasswordAction(data: z.infer<typeof changePasswordSc
   } catch (error) {
     if (error instanceof AppError) throw error;
     if (error instanceof z.ZodError) {
-      throw new AppError(error.issues[0]?.message || 'Invalid input', 'VALIDATION_ERROR', 400);
+      throw new AppError(
+        error.issues[0]?.message || "Invalid input",
+        ErrorCode.VALIDATION_ERROR,
+        400,
+      );
     }
-    throw new AppError('Failed to change password', 'CHANGE_PASSWORD_ERROR', 500);
+    throw new AppError(
+      "Failed to change password",
+      ErrorCode.CHANGE_PASSWORD_ERROR,
+      500,
+    );
   }
 }
 
 export async function deleteAccountAction(): Promise<{ success: boolean }> {
   try {
-    const { requireAuth } = await import('@/lib/auth');
+    const { requireAuth } = await import("@/lib/auth");
     const userId = await requireAuth();
 
     await prisma.user.delete({
@@ -363,6 +432,10 @@ export async function deleteAccountAction(): Promise<{ success: boolean }> {
 
     return { success: true };
   } catch (error) {
-    throw new AppError('Failed to delete account. Please try again later.', 'DELETE_ACCOUNT_ERROR', 500);
+    throw new AppError(
+      "Failed to delete account. Please try again later.",
+      ErrorCode.DELETE_ACCOUNT_ERROR,
+      500,
+    );
   }
 }

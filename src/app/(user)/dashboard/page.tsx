@@ -1,21 +1,29 @@
-'use client';
+"use client";
 
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/features/auth/hooks/useAuth';
-import { useDashboard } from '@/features/dashboard/hooks/useDashboard';
-import { StatsCard } from '@/components/StatsCard';
-import { DashboardSkeleton } from '@/components/skeletons/DashboardSkeleton';
-import { ErrorMessage } from '@/components/ui/error-message';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { TrendingUp, Target, Clock, Award, Play, FileText } from 'lucide-react';
-import Link from 'next/link';
-import { dmSans } from '@/lib/fonts';
-import { cn } from '@/lib/utils';
-import { ROUTES } from '@/config/routes';
-import { TrendBadge } from './_components/TrendBadge';
-import { ScoreTrendChart } from './_components/ScoreTrendChart';
-import { RecentMockRow } from './_components/RecentMockRow';
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/features/auth/hooks/useAuth";
+import { useDashboard } from "@/features/dashboard/hooks/useDashboard";
+import { StatsCard } from "@/components/StatsCard";
+import { DashboardSkeleton } from "@/components/skeletons/DashboardSkeleton";
+import { ErrorMessage } from "@/components/ui/error-message";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { TrendingUp, Target, Clock, Award, Play, FileText } from "lucide-react";
+import Link from "next/link";
+import { dmSans } from "@/lib/fonts";
+import { cn } from "@/lib/utils";
+import { ROUTES } from "@/config/routes";
+import { DASHBOARD_CONTENT } from "@/config/content";
+import { DASHBOARD_MESSAGES } from "@/config/messages";
+import { TrendBadge } from "./_components/TrendBadge";
+import { ScoreTrendChart } from "./_components/ScoreTrendChart";
+import { RecentMockRow } from "./_components/RecentMockRow";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -35,11 +43,8 @@ export default function DashboardPage() {
     return (
       <div className="mx-auto w-full max-w-[88rem] px-3 sm:px-4 lg:px-6 py-8">
         <ErrorMessage
-          title="Failed to load dashboard"
-          message={
-            error?.message ||
-            'We couldn\'t load your dashboard data. Please refresh the page or try again later.'
-          }
+          title={DASHBOARD_CONTENT.LOAD_ERROR_TITLE}
+          message={error?.message || DASHBOARD_MESSAGES.LOAD_ERROR_FALLBACK}
         />
       </div>
     );
@@ -48,9 +53,13 @@ export default function DashboardPage() {
   return (
     <div className="mx-auto w-full max-w-[88rem] px-3 sm:px-4 lg:px-6 py-6 sm:py-8">
       <div className="mb-6 sm:mb-8">
-        <h1 className={`${dmSans.className} text-2xl sm:text-3xl font-bold mb-2`}>Dashboard</h1>
+        <h1
+          className={`${dmSans.className} text-2xl sm:text-3xl font-bold mb-2`}
+        >
+          {DASHBOARD_CONTENT.TITLE}
+        </h1>
         <p className="text-sm sm:text-base text-muted-foreground">
-          Track your progress and improve your interview skills
+          {DASHBOARD_CONTENT.SUBTITLE}
         </p>
       </div>
 
@@ -60,17 +69,24 @@ export default function DashboardPage() {
           <CardContent className="pt-6">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div className="min-w-0">
-                <h3 className={`${dmSans.className} text-base sm:text-lg font-semibold mb-1 sm:mb-2`}>
-                  {stats.freeMocksRemaining} Free Mock{stats.freeMocksRemaining > 1 ? 's' : ''} Remaining
+                <h3
+                  className={`${dmSans.className} text-base sm:text-lg font-semibold mb-1 sm:mb-2`}
+                >
+                  {DASHBOARD_CONTENT.FREE_MOCKS_REMAINING(
+                    stats.freeMocksRemaining,
+                  )}
                 </h3>
                 <p className="text-xs sm:text-sm text-muted-foreground">
-                  Start practicing now to improve your skills
+                  {DASHBOARD_CONTENT.FREE_MOCKS_HINT}
                 </p>
               </div>
-              <Link href="/mock/new" className="w-full sm:w-auto">
-                <Button size="lg" className={`${dmSans.className} w-full sm:w-auto text-primary-foreground`}>
+              <Link href={ROUTES.MOCK_NEW} className="w-full sm:w-auto">
+                <Button
+                  size="lg"
+                  className={`${dmSans.className} w-full sm:w-auto text-primary-foreground`}
+                >
                   <Play className="mr-2 h-4 w-4" />
-                  Start Mock Interview
+                  {DASHBOARD_CONTENT.START_MOCK}
                 </Button>
               </Link>
             </div>
@@ -81,22 +97,22 @@ export default function DashboardPage() {
       {/* Stats Grid */}
       <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4 mb-6 sm:mb-8">
         <StatsCard
-          title="Total Mocks"
+          title={DASHBOARD_CONTENT.STAT_TOTAL_MOCKS}
           value={stats.totalMocks}
           icon={Target}
         />
         <StatsCard
-          title="Average Score"
+          title={DASHBOARD_CONTENT.STAT_AVERAGE_SCORE}
           value={`${stats.averageScore}%`}
           icon={Award}
         />
         <StatsCard
-          title="Completed"
+          title={DASHBOARD_CONTENT.STAT_COMPLETED}
           value={stats.completedMocks}
           icon={TrendingUp}
         />
         <StatsCard
-          title="Free Mocks Left"
+          title={DASHBOARD_CONTENT.STAT_FREE_MOCKS_LEFT}
           value={stats.freeMocksRemaining}
           icon={Clock}
         />
@@ -107,11 +123,11 @@ export default function DashboardPage() {
         <Card className="mb-6 sm:mb-8 overflow-hidden">
           <CardHeader className="flex flex-row items-start sm:items-center justify-between gap-4 space-y-0">
             <div className="min-w-0">
-              <CardTitle className={cn(dmSans.className, 'text-lg sm:text-xl')}>
-                Performance Trend
+              <CardTitle className={cn(dmSans.className, "text-lg sm:text-xl")}>
+                {DASHBOARD_CONTENT.TREND_TITLE}
               </CardTitle>
               <CardDescription className="mt-1">
-                Your practice scores over time
+                {DASHBOARD_CONTENT.TREND_SUBTITLE}
               </CardDescription>
             </div>
             <TrendBadge stats={stats} />
@@ -126,9 +142,11 @@ export default function DashboardPage() {
       {stats.weakTopics.length > 0 && (
         <Card className="mb-6 sm:mb-8">
           <CardHeader>
-            <CardTitle className={cn(dmSans.className, 'text-lg sm:text-xl')}>Focus Areas</CardTitle>
+            <CardTitle className={cn(dmSans.className, "text-lg sm:text-xl")}>
+              {DASHBOARD_CONTENT.FOCUS_AREAS_TITLE}
+            </CardTitle>
             <CardDescription className="mt-1">
-              These topics need more practice
+              {DASHBOARD_CONTENT.FOCUS_AREAS_SUBTITLE}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -149,9 +167,11 @@ export default function DashboardPage() {
       {/* Recent Mocks */}
       <Card>
         <CardHeader>
-          <CardTitle className={cn(dmSans.className, 'text-lg sm:text-xl')}>Recent Mock Interviews</CardTitle>
+          <CardTitle className={cn(dmSans.className, "text-lg sm:text-xl")}>
+            {DASHBOARD_CONTENT.RECENT_MOCKS_TITLE}
+          </CardTitle>
           <CardDescription className="mt-1">
-            Your latest practice sessions
+            {DASHBOARD_CONTENT.RECENT_MOCKS_SUBTITLE}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -160,14 +180,21 @@ export default function DashboardPage() {
               <div className="mx-auto w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mb-4">
                 <FileText className="h-6 w-6 text-primary" />
               </div>
-              <p className="text-sm sm:text-base font-medium mb-1">No mock interviews yet</p>
-              <p className="text-xs sm:text-sm text-muted-foreground mb-5">
-                Start your first session to see results here.
+              <p className="text-sm sm:text-base font-medium mb-1">
+                {DASHBOARD_CONTENT.EMPTY_RECENT_MOCKS_TITLE}
               </p>
-              <Link href="/mock/new" className="inline-block">
-                <Button className={cn(dmSans.className, 'text-primary-foreground cursor-pointer')}>
+              <p className="text-xs sm:text-sm text-muted-foreground mb-5">
+                {DASHBOARD_CONTENT.EMPTY_RECENT_MOCKS_HINT}
+              </p>
+              <Link href={ROUTES.MOCK_NEW} className="inline-block">
+                <Button
+                  className={cn(
+                    dmSans.className,
+                    "text-primary-foreground cursor-pointer",
+                  )}
+                >
                   <Play className="mr-2 h-4 w-4" />
-                  Start Mock Interview
+                  {DASHBOARD_CONTENT.START_MOCK}
                 </Button>
               </Link>
             </div>

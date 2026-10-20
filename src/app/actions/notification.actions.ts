@@ -1,11 +1,11 @@
-'use server';
+"use server";
 
-import { prisma } from '@/lib/prisma';
-import { sendEmail, sendEmailTemplate } from '@/lib/supabase/email';
-import { NotificationType } from '@/types/enums';
-import { AppError } from '@/lib/errors';
-import { z } from 'zod';
-import type { Prisma } from '@prisma/client';
+import { prisma } from "@/lib/prisma";
+import { sendEmail, sendEmailTemplate } from "@/lib/supabase/email";
+import { ErrorCode, NotificationType } from "@/types/enums";
+import { AppError } from "@/lib/errors";
+import { z } from "zod";
+import type { Prisma } from "@prisma/client";
 
 const createNotificationSchema = z.object({
   userId: z.string().uuid(),
@@ -56,32 +56,44 @@ export async function createNotificationAction(input: unknown) {
           }
         } catch (emailError) {
           // Don't fail notification creation if email fails
-          console.error('Failed to send notification email:', emailError);
+          console.error("Failed to send notification email:", emailError);
         }
       }
 
       return notification;
     }
 
-    throw new AppError('Notification preferences disabled', 'NOTIFICATIONS_DISABLED', 400);
+    throw new AppError(
+      "Notification preferences disabled",
+      ErrorCode.NOTIFICATIONS_DISABLED,
+      400,
+    );
   } catch (error) {
     if (error instanceof AppError) throw error;
     if (error instanceof z.ZodError) {
       throw new AppError(
-        'Invalid notification data',
-        'VALIDATION_ERROR',
+        "Invalid notification data",
+        ErrorCode.VALIDATION_ERROR,
         400,
-        error.flatten().fieldErrors
+        error.flatten().fieldErrors,
       );
     }
-    throw new AppError('Failed to create notification', 'NOTIFICATION_ERROR', 500);
+    throw new AppError(
+      "Failed to create notification",
+      ErrorCode.NOTIFICATION_ERROR,
+      500,
+    );
   }
 }
 
-export async function getNotificationsAction(userId: string, limit: number = 20, offset: number = 0) {
+export async function getNotificationsAction(
+  userId: string,
+  limit: number = 20,
+  offset: number = 0,
+) {
   const notifications = await prisma.notification.findMany({
     where: { userId },
-    orderBy: { createdAt: 'desc' },
+    orderBy: { createdAt: "desc" },
     take: limit,
     skip: offset,
   });
@@ -100,7 +112,10 @@ export async function getNotificationsAction(userId: string, limit: number = 20,
   };
 }
 
-export async function markNotificationReadAction(userId: string, notificationId: string) {
+export async function markNotificationReadAction(
+  userId: string,
+  notificationId: string,
+) {
   const notification = await prisma.notification.findFirst({
     where: {
       id: notificationId,
@@ -109,7 +124,7 @@ export async function markNotificationReadAction(userId: string, notificationId:
   });
 
   if (!notification) {
-    throw new AppError('Notification not found', 'NOT_FOUND', 404);
+    throw new AppError("Notification not found", ErrorCode.NOT_FOUND, 404);
   }
 
   if (notification.readAt) {
@@ -160,7 +175,7 @@ export async function updateNotificationPreferencesAction(
     emailEnabled?: boolean;
     inAppEnabled?: boolean;
     digestEnabled?: boolean;
-  }
+  },
 ) {
   return prisma.notificationPreference.upsert({
     where: { userId },
@@ -183,7 +198,7 @@ export async function sendMockResultNotification(
   userId: string,
   sessionId: string,
   score: number,
-  feedback: string
+  feedback: string,
 ) {
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -193,7 +208,7 @@ export async function sendMockResultNotification(
   await createNotificationAction({
     userId,
     type: NotificationType.MOCK_RESULT,
-    title: 'Mock Interview Completed',
+    title: "Mock Interview Completed",
     body: `Your mock interview has been completed with a score of ${score}%. ${feedback}`,
     meta: { sessionId, score },
     sendEmail: true,
@@ -207,7 +222,7 @@ export async function sendMockResultNotification(
     });
 
     if (userEmail) {
-      await sendEmailTemplate('mock-result', userEmail.email, {
+      await sendEmailTemplate("mock-result", userEmail.email, {
         name: userEmail.name,
         score,
         sessionId,
@@ -215,6 +230,6 @@ export async function sendMockResultNotification(
       });
     }
   } catch (error) {
-    console.error('Failed to send mock result email:', error);
+    console.error("Failed to send mock result email:", error);
   }
 }

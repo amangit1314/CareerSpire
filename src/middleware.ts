@@ -1,31 +1,73 @@
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
-import { verifyAccessToken } from '@/lib/auth-edge';
-import { ROUTES } from '@/config/routes';
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { verifyAccessToken } from "@/lib/auth-edge";
+import { ROUTES } from "@/config/routes";
 
-const publicRoutes = [ROUTES.LOGIN, ROUTES.SIGNUP, '/auth/forgot-password', '/auth/reset-password', '/pricing', '/funding', '/feedback', '/press-kit', '/privacy', '/privacy-policy', '/terms-of-service', '/refund-billing', '/report-issue', '/request-feature', '/roadmap', '/license', '/resources', '/about', '/changelog', '/cookies', '/cancellation-policy', '/cookie-policy', '/faqs', '/terms', '/practice', '/community', '/mock/video'];
-const publicExactRoutes = ['/'];
+const publicRoutes = [
+  ROUTES.LOGIN,
+  ROUTES.SIGNUP,
+  "/auth/forgot-password",
+  "/auth/reset-password",
+  "/pricing",
+  "/funding",
+  "/feedback",
+  "/press-kit",
+  "/privacy",
+  "/privacy-policy",
+  "/terms-of-service",
+  "/refund-billing",
+  "/report-issue",
+  "/request-feature",
+  "/roadmap",
+  "/license",
+  "/resources",
+  "/about",
+  "/changelog",
+  "/cookies",
+  "/cancellation-policy",
+  "/cookie-policy",
+  "/faqs",
+  "/terms",
+  "/practice",
+  "/community",
+  "/mock/video",
+];
+const publicExactRoutes = ["/"];
 
 function addSecurityHeaders(response: NextResponse): NextResponse {
-  response.headers.set('X-Content-Type-Options', 'nosniff');
-  response.headers.set('X-Frame-Options', 'DENY');
-  response.headers.set('X-XSS-Protection', '1; mode=block');
-  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-  response.headers.set('Permissions-Policy', 'camera=(self), microphone=(self), geolocation=()');
-  if (process.env.NODE_ENV === 'production') {
-    response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  response.headers.set("X-Content-Type-Options", "nosniff");
+  response.headers.set("X-Frame-Options", "DENY");
+  response.headers.set("X-XSS-Protection", "1; mode=block");
+  response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  response.headers.set(
+    "Permissions-Policy",
+    "camera=(self), microphone=(self), geolocation=()",
+  );
+  if (process.env.NODE_ENV === "production") {
+    response.headers.set(
+      "Strict-Transport-Security",
+      "max-age=31536000; includeSubDomains",
+    );
   }
   response.headers.set(
-    'Content-Security-Policy',
+    "Content-Security-Policy",
     [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval'", // Next.js dev/hydration requires these; tighten post-launch with nonces
+      // 'unsafe-inline'/'unsafe-eval' — Next.js dev/hydration requires these; tighten post-launch with nonces.
+      // *.razorpay.com — the pricing page's checkout widget pulls in more than
+      // just checkout.js (e.g. cdn.razorpay.com's risk-detection bundle), so a
+      // single subdomain allowlist isn't enough; confirmed by actually loading
+      // the checkout flow and watching what CSP blocks, not guessed upfront.
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.razorpay.com",
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: https://*.supabase.co https://lh3.googleusercontent.com https://avatars.githubusercontent.com",
+      "img-src 'self' data: https://*.supabase.co https://lh3.googleusercontent.com https://avatars.githubusercontent.com https://*.razorpay.com",
       "font-src 'self' data:",
-      "connect-src 'self' https://*.supabase.co https://*.ingest.sentry.io",
+      // api.razorpay.com — the checkout widget's own network calls (order verification, payment methods).
+      "connect-src 'self' https://*.supabase.co https://*.ingest.sentry.io https://*.razorpay.com",
+      // Razorpay's checkout widget renders in an iframe/popup — without this it silently fails to open.
+      "frame-src 'self' https://checkout.razorpay.com https://api.razorpay.com",
       "frame-ancestors 'none'",
-    ].join('; ')
+    ].join("; "),
   );
   return response;
 }
@@ -35,12 +77,12 @@ export async function middleware(request: NextRequest) {
 
   // Skip middleware for static files and API routes that don't need auth
   if (
-    pathname.startsWith('/_next') ||
-    pathname.startsWith('/api/auth/signup') ||
-    pathname.startsWith('/api/auth/signin') ||
-    pathname.startsWith('/api/auth/refresh') ||
-    pathname.startsWith('/api/csrf') ||
-    pathname.startsWith('/api/health')
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/api/auth/signup") ||
+    pathname.startsWith("/api/auth/signin") ||
+    pathname.startsWith("/api/auth/refresh") ||
+    pathname.startsWith("/api/csrf") ||
+    pathname.startsWith("/api/health")
   ) {
     return addSecurityHeaders(NextResponse.next());
   }
@@ -48,20 +90,27 @@ export async function middleware(request: NextRequest) {
   // Check if route is public
   const isPublicRoute =
     publicExactRoutes.includes(pathname) ||
-    publicRoutes.some((route) => pathname === route || pathname.startsWith(route + '/'));
+    publicRoutes.some(
+      (route) => pathname === route || pathname.startsWith(route + "/"),
+    );
 
   if (isPublicRoute) {
     return addSecurityHeaders(NextResponse.next());
   }
 
   // Check authentication for protected routes
-  const accessToken = request.cookies.get('access_token')?.value;
+  const accessToken = request.cookies.get("access_token")?.value;
 
   if (!accessToken) {
-    if (pathname.startsWith('/api')) {
+    if (pathname.startsWith("/api")) {
       return NextResponse.json(
-        { error: { message: 'Unauthorized. Please log in to continue.', code: 'UNAUTHORIZED' } },
-        { status: 401 }
+        {
+          error: {
+            message: "Unauthorized. Please log in to continue.",
+            code: "UNAUTHORIZED",
+          },
+        },
+        { status: 401 },
       );
     }
     return NextResponse.redirect(new URL(ROUTES.LOGIN, request.url));
@@ -72,27 +121,30 @@ export async function middleware(request: NextRequest) {
     return addSecurityHeaders(NextResponse.next());
   } catch (error) {
     // Token expired or invalid - try refresh
-    const refreshToken = request.cookies.get('refresh_token')?.value;
+    const refreshToken = request.cookies.get("refresh_token")?.value;
 
-    if (refreshToken && pathname.startsWith('/api')) {
+    if (refreshToken && pathname.startsWith("/api")) {
       // Try to refresh token for API routes
       try {
-        const refreshResponse = await fetch(new URL('/api/auth/refresh', request.url), {
-          method: 'POST',
-          headers: {
-            Cookie: `refresh_token=${refreshToken}`,
+        const refreshResponse = await fetch(
+          new URL("/api/auth/refresh", request.url),
+          {
+            method: "POST",
+            headers: {
+              Cookie: `refresh_token=${refreshToken}`,
+            },
           },
-        });
+        );
 
         if (refreshResponse.ok) {
           const { accessToken: newAccessToken } = await refreshResponse.json();
           const response = addSecurityHeaders(NextResponse.next());
-          response.cookies.set('access_token', newAccessToken, {
+          response.cookies.set("access_token", newAccessToken, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict',
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "strict",
             maxAge: 6 * 60 * 60, // 6 hours
-            path: '/',
+            path: "/",
           });
           return response;
         }
@@ -102,15 +154,20 @@ export async function middleware(request: NextRequest) {
     }
 
     // Clear invalid tokens
-    const response = pathname.startsWith('/api')
+    const response = pathname.startsWith("/api")
       ? NextResponse.json(
-        { error: { message: 'Session expired. Please log in again.', code: 'TOKEN_EXPIRED' } },
-        { status: 401 }
-      )
+          {
+            error: {
+              message: "Session expired. Please log in again.",
+              code: "TOKEN_EXPIRED",
+            },
+          },
+          { status: 401 },
+        )
       : NextResponse.redirect(new URL(ROUTES.LOGIN, request.url));
 
-    response.cookies.delete('access_token');
-    response.cookies.delete('refresh_token');
+    response.cookies.delete("access_token");
+    response.cookies.delete("refresh_token");
     return response;
   }
 }
@@ -123,6 +180,6 @@ export const config = {
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      */
-    '/((?!_next/static|_next/image|favicon.ico).*)',
+    "/((?!_next/static|_next/image|favicon.ico).*)",
   ],
 };

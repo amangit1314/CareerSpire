@@ -103,15 +103,18 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 ## Troubleshooting
 
 ### "Unauthorized" errors
+
 - Check that your Supabase keys are correct
 - Verify RLS policies are enabled in Supabase
 
 ### LLM API errors
+
 - Verify your API key is correct
 - Check your API quota/credits
 - Try a different model if one doesn't work
 
 ### Database errors
+
 - Make sure you ran the migration
 - Check that all tables exist in Supabase
 - Verify RLS policies are set up correctly

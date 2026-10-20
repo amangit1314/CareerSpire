@@ -5,18 +5,21 @@ This guide helps you migrate from the Supabase-based implementation to the new P
 ## Key Changes
 
 ### 1. Database
+
 - **Before:** Supabase PostgreSQL with direct client access
 - **After:** Prisma ORM with PostgreSQL connection string
 - **Migration:** Run Prisma migrations to set up the schema
 
 ### 2. Authentication
+
 - **Before:** Supabase Auth with JWT tokens
 - **After:** Custom JWT-based auth with bcryptjs for password hashing
 - **Migration:** Users need to sign up again (or migrate existing users)
 
 ### 3. API Architecture
+
 - **Before:** Direct Supabase client calls in components
-- **After:** 
+- **After:**
   - Server Actions (`app/actions/*`)
   - API Routes (`app/api/*`) that use server actions
   - Frontend Services (`services/*`)
@@ -24,8 +27,9 @@ This guide helps you migrate from the Supabase-based implementation to the new P
   - UI Components
 
 ### 4. TypeScript Types
+
 - **Before:** Basic types in `types/index.ts`
-- **After:** 
+- **After:**
   - Enums in `types/enums.ts`
   - Comprehensive types with generics in `types/index.ts`
   - Prisma-generated types
@@ -63,6 +67,7 @@ npx prisma db seed
 ### 4. Update Environment Variables
 
 Copy `.env.local.example` to `.env.local` and fill in:
+
 - `DATABASE_URL`
 - `JWT_SECRET` (generate a secure random string)
 - LLM API keys
@@ -142,15 +147,18 @@ npm run dev
 ## Troubleshooting
 
 ### Database Connection Issues
+
 - Check `DATABASE_URL` format
 - Ensure database is accessible
 - Run `npx prisma db pull` to sync schema
 
 ### Authentication Issues
+
 - Clear browser cookies
 - Check `JWT_SECRET` is set
 - Verify token expiration
 
 ### Type Errors
+
 - Run `npx prisma generate` after schema changes
 - Restart TypeScript server in your IDE

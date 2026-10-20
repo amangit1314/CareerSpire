@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import {
   Dialog,
@@ -6,22 +6,31 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Loader2, Mic } from 'lucide-react';
-import { cn, formatPrice } from '@/lib/utils';
-import { dmSans } from '@/lib/fonts';
-import { VOICE_PACKS } from '@/lib/pricing';
-import { useState } from 'react';
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Loader2, Mic } from "lucide-react";
+import { cn, formatPrice } from "@/lib/utils";
+import { dmSans } from "@/lib/fonts";
+import { VOICE_PACKS } from "@/lib/pricing";
+import { useState } from "react";
+import { VOICE_CREDITS_GATE_CONTENT } from "@/config/content";
 
 interface VoiceCreditsGateProps {
   open: boolean;
   onClose: () => void;
-  onPurchase: (itemId: string, amount: number, description: string) => Promise<void>;
+  onPurchase: (
+    itemId: string,
+    amount: number,
+    description: string,
+  ) => Promise<void>;
 }
 
-export function VoiceCreditsGate({ open, onClose, onPurchase }: VoiceCreditsGateProps) {
+export function VoiceCreditsGate({
+  open,
+  onClose,
+  onPurchase,
+}: VoiceCreditsGateProps) {
   const [processing, setProcessing] = useState<string | null>(null);
 
   const handleBuy = async (id: string, amount: number, desc: string) => {
@@ -39,13 +48,12 @@ export function VoiceCreditsGate({ open, onClose, onPurchase }: VoiceCreditsGate
         <DialogHeader>
           <div className="flex items-center gap-2 mb-1">
             <Mic className="h-5 w-5 text-primary" />
-            <DialogTitle className={cn(dmSans.className, 'text-xl')}>
-              Get Voice Interview Sessions
+            <DialogTitle className={cn(dmSans.className, "text-xl")}>
+              {VOICE_CREDITS_GATE_CONTENT.TITLE}
             </DialogTitle>
           </div>
           <DialogDescription>
-            Voice interviews are purchased separately and are not included in any
-            plan.
+            {VOICE_CREDITS_GATE_CONTENT.DESCRIPTION}
           </DialogDescription>
         </DialogHeader>
 
@@ -54,8 +62,8 @@ export function VoiceCreditsGate({ open, onClose, onPurchase }: VoiceCreditsGate
             <div
               key={pack.id}
               className={cn(
-                'border rounded-lg p-4 flex flex-col justify-between hover:shadow-sm transition relative',
-                pack.badge && 'border-primary'
+                "border rounded-lg p-4 flex flex-col justify-between hover:shadow-sm transition relative",
+                pack.badge && "border-primary",
               )}
             >
               {pack.badge && (
@@ -65,12 +73,12 @@ export function VoiceCreditsGate({ open, onClose, onPurchase }: VoiceCreditsGate
               )}
               <div>
                 <p className="font-semibold">{pack.label}</p>
-                <p className={cn(dmSans.className, 'text-2xl font-bold mt-1')}>
+                <p className={cn(dmSans.className, "text-2xl font-bold mt-1")}>
                   {formatPrice(pack.price)}
                 </p>
                 <p className="text-sm text-muted-foreground mt-1">
                   {pack.sessions} voice session
-                  {pack.sessions > 1 ? 's' : ''}
+                  {pack.sessions > 1 ? "s" : ""}
                 </p>
               </div>
               <Button
@@ -78,17 +86,13 @@ export function VoiceCreditsGate({ open, onClose, onPurchase }: VoiceCreditsGate
                 className="w-full mt-3 cursor-pointer"
                 disabled={processing === pack.id}
                 onClick={() =>
-                  handleBuy(
-                    pack.id,
-                    pack.price,
-                    `${pack.label} Voice Pack`
-                  )
+                  handleBuy(pack.id, pack.price, `${pack.label} Voice Pack`)
                 }
               >
                 {processing === pack.id && (
                   <Loader2 className="mr-2 h-3 w-3 animate-spin" />
                 )}
-                Buy
+                {VOICE_CREDITS_GATE_CONTENT.BUY}
               </Button>
             </div>
           ))}
@@ -101,7 +105,7 @@ export function VoiceCreditsGate({ open, onClose, onPurchase }: VoiceCreditsGate
             className="text-muted-foreground cursor-pointer"
             onClick={onClose}
           >
-            Maybe later
+            {VOICE_CREDITS_GATE_CONTENT.MAYBE_LATER}
           </Button>
         </div>
       </DialogContent>

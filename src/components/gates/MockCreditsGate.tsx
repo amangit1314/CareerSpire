@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import {
   Dialog,
@@ -6,22 +6,31 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Loader2 } from 'lucide-react';
-import { cn, formatPrice } from '@/lib/utils';
-import { dmSans } from '@/lib/fonts';
-import { MOCK_PACKS, PLANS } from '@/lib/pricing';
-import { useState } from 'react';
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Loader2 } from "lucide-react";
+import { cn, formatPrice } from "@/lib/utils";
+import { dmSans } from "@/lib/fonts";
+import { MOCK_PACKS, PLANS } from "@/lib/pricing";
+import { useState } from "react";
+import { MOCK_CREDITS_GATE_CONTENT } from "@/config/content";
 
 interface MockCreditsGateProps {
   open: boolean;
   onClose: () => void;
-  onPurchase: (itemId: string, amount: number, description: string) => Promise<void>;
+  onPurchase: (
+    itemId: string,
+    amount: number,
+    description: string,
+  ) => Promise<void>;
 }
 
-export function MockCreditsGate({ open, onClose, onPurchase }: MockCreditsGateProps) {
+export function MockCreditsGate({
+  open,
+  onClose,
+  onPurchase,
+}: MockCreditsGateProps) {
   const [processing, setProcessing] = useState<string | null>(null);
 
   const handleBuy = async (id: string, amount: number, desc: string) => {
@@ -40,19 +49,23 @@ export function MockCreditsGate({ open, onClose, onPurchase }: MockCreditsGatePr
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle className={cn(dmSans.className, 'text-xl')}>
-            You&apos;ve used all your mocks
+          <DialogTitle className={cn(dmSans.className, "text-xl")}>
+            {MOCK_CREDITS_GATE_CONTENT.TITLE}
           </DialogTitle>
           <DialogDescription>
-            Choose an option to keep practicing
+            {MOCK_CREDITS_GATE_CONTENT.DESCRIPTION}
           </DialogDescription>
         </DialogHeader>
 
         <div className="grid sm:grid-cols-3 gap-4 mt-4">
           {/* PAYG Option */}
           <div className="border rounded-lg p-4 space-y-3">
-            <Badge variant="outline">Pay as you go</Badge>
-            <p className="text-sm text-muted-foreground">Buy a mock pack</p>
+            <Badge variant="outline">
+              {MOCK_CREDITS_GATE_CONTENT.PAYG_BADGE}
+            </Badge>
+            <p className="text-sm text-muted-foreground">
+              {MOCK_CREDITS_GATE_CONTENT.PAYG_SUBTITLE}
+            </p>
             <div className="space-y-2">
               {MOCK_PACKS.map((pack) => (
                 <Button
@@ -80,14 +93,16 @@ export function MockCreditsGate({ open, onClose, onPurchase }: MockCreditsGatePr
 
           {/* Pro Plan */}
           <div className="border-2 border-primary rounded-lg p-4 space-y-3 relative">
-            <Badge className="bg-primary">Most Popular</Badge>
-            <p className={cn(dmSans.className, 'text-lg font-bold')}>
+            <Badge className="bg-primary">
+              {MOCK_CREDITS_GATE_CONTENT.POPULAR_BADGE}
+            </Badge>
+            <p className={cn(dmSans.className, "text-lg font-bold")}>
               {proPlan.name}
             </p>
             <p className="text-sm text-muted-foreground">
               {proPlan.mockLabel} + {proPlan.videoMocksPerMonth} video mocks
             </p>
-            <p className={cn(dmSans.className, 'text-2xl font-bold')}>
+            <p className={cn(dmSans.className, "text-2xl font-bold")}>
               {formatPrice(proPlan.monthlyPrice)}
               <span className="text-sm font-normal text-muted-foreground">
                 /mo
@@ -100,27 +115,30 @@ export function MockCreditsGate({ open, onClose, onPurchase }: MockCreditsGatePr
                 handleBuy(
                   proPlan.id,
                   proPlan.monthlyPrice,
-                  `${proPlan.name} Plan`
+                  `${proPlan.name} Plan`,
                 )
               }
             >
               {processing === proPlan.id && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               )}
-              Upgrade to Pro
+              {MOCK_CREDITS_GATE_CONTENT.UPGRADE_TO_PRO}
             </Button>
           </div>
 
           {/* Placement Plan */}
           <div className="border rounded-lg p-4 space-y-3">
-            <Badge variant="secondary">Best Value</Badge>
-            <p className={cn(dmSans.className, 'text-lg font-bold')}>
+            <Badge variant="secondary">
+              {MOCK_CREDITS_GATE_CONTENT.BEST_VALUE_BADGE}
+            </Badge>
+            <p className={cn(dmSans.className, "text-lg font-bold")}>
               {placementPlan.name}
             </p>
             <p className="text-sm text-muted-foreground">
-              {placementPlan.mockLabel} + {placementPlan.videoMocksPerMonth} video mocks
+              {placementPlan.mockLabel} + {placementPlan.videoMocksPerMonth}{" "}
+              video mocks
             </p>
-            <p className={cn(dmSans.className, 'text-2xl font-bold')}>
+            <p className={cn(dmSans.className, "text-2xl font-bold")}>
               {formatPrice(placementPlan.monthlyPrice)}
               <span className="text-sm font-normal text-muted-foreground">
                 /mo
@@ -134,14 +152,14 @@ export function MockCreditsGate({ open, onClose, onPurchase }: MockCreditsGatePr
                 handleBuy(
                   placementPlan.id,
                   placementPlan.monthlyPrice,
-                  `${placementPlan.name} Plan`
+                  `${placementPlan.name} Plan`,
                 )
               }
             >
               {processing === placementPlan.id && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               )}
-              Upgrade to Placement
+              {MOCK_CREDITS_GATE_CONTENT.UPGRADE_TO_PLACEMENT}
             </Button>
           </div>
         </div>
@@ -153,7 +171,7 @@ export function MockCreditsGate({ open, onClose, onPurchase }: MockCreditsGatePr
             className="text-muted-foreground cursor-pointer"
             onClick={onClose}
           >
-            Maybe later
+            {MOCK_CREDITS_GATE_CONTENT.MAYBE_LATER}
           </Button>
         </div>
       </DialogContent>

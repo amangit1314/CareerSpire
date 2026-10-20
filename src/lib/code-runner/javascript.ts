@@ -1,10 +1,14 @@
-import vm from 'node:vm';
-import type { TestCase } from '@/types';
-import { isEqual } from './compare';
-import { TIME_LIMIT_MS, type TestResult } from './types';
+import vm from "node:vm";
+import type { TestCase } from "@/types";
+import { isEqual } from "./compare";
+import { TIME_LIMIT_MS, Verdict, type TestResult } from "./types";
 
-export async function runJavaScriptTests(userCode: string, testCases: TestCase[], entryName?: string | null): Promise<TestResult> {
-  const results: TestResult['details'] = [];
+export async function runJavaScriptTests(
+  userCode: string,
+  testCases: TestCase[],
+  entryName?: string | null,
+): Promise<TestResult> {
+  const results: TestResult["details"] = [];
 
   // Block common vm escape patterns before execution
   const dangerousPatterns = [
@@ -22,7 +26,7 @@ export async function runJavaScriptTests(userCode: string, testCases: TestCase[]
 
   for (const pattern of dangerousPatterns) {
     if (pattern.test(userCode)) {
-      throw new Error('Code contains forbidden patterns for security reasons.');
+      throw new Error("Code contains forbidden patterns for security reasons.");
     }
   }
 
@@ -54,6 +58,21 @@ export async function runJavaScriptTests(userCode: string, testCases: TestCase[]
   context.NaN = NaN;
   context.Infinity = Infinity;
 
+  // Root cause of AGENTS.md's "always failing (null problem)": every seeded
+  // question has entryFunctionName = null (verified — 0 of 5 seed questions
+  // set it), so every submission took the fallback branch below. That
+  // fallback's `builtinKeys` exclude-list only named 4 names
+  // ('console', 'process', 'Buffer', 'require') but this context actually
+  // pre-populates many more callable globals (Array, Object, String, Number,
+  // Boolean, Map, Set, parseInt, parseFloat, isNaN, isFinite) *before* the
+  // user's code runs — Object.getOwnPropertyNames(context) returns them in
+  // insertion order, so the loop matched 'Array' (the first non-excluded
+  // function) instead of the user's actual solution every single time.
+  // Reproduced directly: a correct Two Sum solution returned `[[2,7,11,15],9]`
+  // — exactly `Array(...args)`'s output, confirming the Array constructor was
+  // being called as the "entry point," not the user's function.
+  const preExistingKeys = new Set(Object.getOwnPropertyNames(context));
+
   try {
     // 1. Execute User Code to populate context
     vm.runInContext(userCode, context, { timeout: TIME_LIMIT_MS });
@@ -61,20 +80,23 @@ export async function runJavaScriptTests(userCode: string, testCases: TestCase[]
     // 2. Identify Entry Point
     let entryPoint: Function | null = null;
 
-    if (entryName && typeof context[entryName] === 'function') {
+    if (entryName && typeof context[entryName] === "function") {
       entryPoint = context[entryName];
     } else {
-      // Fallback: search for user-defined functions (skip built-in context keys)
-      const builtinKeys = new Set(['console', 'process', 'Buffer', 'require']);
+      // Fallback: only consider names the user's own code just defined —
+      // a before/after diff against the pre-populated globals, immune to
+      // drift if a future context.<X> = ... is added above without also
+      // updating an exclude-list (the exact bug this replaces).
       for (const key of Object.getOwnPropertyNames(context)) {
-        if (!builtinKeys.has(key) && typeof context[key] === 'function') {
+        if (!preExistingKeys.has(key) && typeof context[key] === "function") {
           entryPoint = context[key];
           break;
         }
       }
     }
 
-    if (!entryPoint) throw new Error("No function found. Please define a function.");
+    if (!entryPoint)
+      throw new Error("No function found. Please define a function.");
 
     for (const tc of testCases) {
       const expected = tc.expectedOutput ?? null;
@@ -85,7 +107,7 @@ export async function runJavaScriptTests(userCode: string, testCases: TestCase[]
         let args: unknown[] = [];
         if (Array.isArray(tc.input)) {
           args = tc.input;
-        } else if (typeof tc.input === 'string') {
+        } else if (typeof tc.input === "string") {
           const trimmed = tc.input.trim();
           try {
             // Try wrapping the whole string as a JSON array of arguments
@@ -112,13 +134,16 @@ export async function runJavaScriptTests(userCode: string, testCases: TestCase[]
         }
 
         actual = entryPoint(...args);
-        console.log(`[JS-Runner] ${entryName || 'found'} executed. Input: ${JSON.stringify(args).substring(0, 50)}... Result:`, actual);
+        console.log(
+          `[JS-Runner] ${entryName || "found"} executed. Input: ${JSON.stringify(args).substring(0, 50)}... Result:`,
+          actual,
+        );
 
         results.push({
           input: tc.input,
           expected,
           actual,
-          passed: isEqual(actual, expected)
+          passed: isEqual(actual, expected),
         });
       } catch (err: unknown) {
         results.push({
@@ -126,7 +151,7 @@ export async function runJavaScriptTests(userCode: string, testCases: TestCase[]
           expected,
           actual: null,
           passed: false,
-          error: err instanceof Error ? err.message : 'Unknown error'
+          error: err instanceof Error ? err.message : "Unknown error",
         });
       }
     }
@@ -134,11 +159,16 @@ export async function runJavaScriptTests(userCode: string, testCases: TestCase[]
     throw err;
   }
 
-  const passedCount = results.filter(r => r.passed).length;
+  const passedCount = results.filter((r) => r.passed).length;
   return {
     passed: passedCount,
     total: results.length,
-    verdict: passedCount === results.length ? 'AC' : (results.some(r => r.error) ? 'RE' : 'WA'),
-    details: results
+    verdict:
+      passedCount === results.length
+        ? Verdict.ACCEPTED
+        : results.some((r) => r.error)
+          ? Verdict.RUNTIME_ERROR
+          : Verdict.WRONG_ANSWER,
+    details: results,
   };
 }

@@ -1,36 +1,56 @@
-'use server';
+"use server";
 
-import { prisma } from '@/lib/prisma';
-import { MockSessionStatus } from '@/types/enums';
-import type { SubmitSolutionRequest, MockResult } from '@/types';
-import { generateFeedback } from '@/lib/ai/llm';
-import type { Feedback } from '@/lib/ai/llm';
-import { AppError } from '@/lib/errors';
-import { runTests } from '@/lib/code-runner';
-import type { TestResult } from '@/lib/code-runner';
-import type { MockResult as PrismaMockResult, Prisma } from '@prisma/client';
-import { mapQuestion } from './shared';
+import { prisma } from "@/lib/prisma";
+import {
+  MockSessionStatus,
+  ProblemLanguage,
+  QuestionType,
+  ErrorCode,
+} from "@/types/enums";
+import type { SubmitSolutionRequest, MockResult } from "@/types";
+import { generateFeedback } from "@/lib/ai/llm";
+import type { Feedback } from "@/lib/ai/llm";
+import { AppError } from "@/lib/errors";
+import { runTests, Verdict } from "@/lib/code-runner";
+import type { TestResult } from "@/lib/code-runner";
+import type { MockResult as PrismaMockResult, Prisma } from "@prisma/client";
+import { mapQuestion } from "./shared";
 
 export async function submitSolutionAction(
   userId: string,
-  data: SubmitSolutionRequest
+  data: SubmitSolutionRequest,
 ): Promise<MockResult> {
   const session = await prisma.mockSession.findFirst({
     where: { id: data.sessionId, userId },
   });
-  if (!session) throw new AppError('Session not found', 'NOT_FOUND', 404);
+  if (!session)
+    throw new AppError("Session not found", ErrorCode.NOT_FOUND, 404);
 
   const questionRecord = await prisma.question.findUnique({
     where: { id: data.questionId },
   });
-  if (!questionRecord) throw new AppError('Question not found', 'NOT_FOUND', 404);
+  if (!questionRecord)
+    throw new AppError("Question not found", ErrorCode.NOT_FOUND, 404);
 
   const question = mapQuestion(questionRecord);
 
   // Run tests (only for DSA/CODING with language)
-  let testResults: TestResult = { passed: 0, total: 0, verdict: 'AC', details: [] };
-  if (question.type === 'DSA' || (question.type === 'CODING' && (question.language || data.language))) {
-    const lang = (data.language || question.language || 'JAVASCRIPT').toLowerCase() as 'javascript' | 'python' | 'java' | 'cpp';
+  let testResults: TestResult = {
+    passed: 0,
+    total: 0,
+    verdict: Verdict.ACCEPTED,
+    details: [],
+  };
+  if (
+    question.type === QuestionType.DSA ||
+    (question.type === QuestionType.CODING &&
+      (question.language || data.language))
+  ) {
+    const lang = (
+      data.language ||
+      question.language ||
+      "JAVASCRIPT"
+    ).toLowerCase() as ProblemLanguage | "cpp";
     testResults = await runTests(data.code, question, lang);
   }
 
@@ -45,14 +65,16 @@ export async function submitSolutionAction(
     },
     data.code,
     { passed: testResults.passed, total: testResults.total },
-    data.timeSpent || 0
+    data.timeSpent || 0,
   );
 
   // Calculate score
   const hasTests = testResults.total > 0;
   const testScore = hasTests
     ? (testResults.passed / testResults.total) * 40
-    : (testResults.verdict === 'AC' ? 40 : 0);
+    : testResults.verdict === Verdict.ACCEPTED
+      ? 40
+      : 0;
   const codeQualityScore = (feedback.codeQuality / 100) * 30;
   const timeScore = Math.max(0, 20 - (data.timeSpent / 60) * 2);
   const finalScore = Math.round(testScore + codeQualityScore + timeScore);
@@ -63,7 +85,9 @@ export async function submitSolutionAction(
       sessionId: data.sessionId,
       questionId: data.questionId,
       userCode: data.code,
-      testResults: JSON.parse(JSON.stringify(testResults)) as Prisma.InputJsonValue,
+      testResults: JSON.parse(
+        JSON.stringify(testResults),
+      ) as Prisma.InputJsonValue,
       score: finalScore,
       feedback: JSON.parse(JSON.stringify(feedback)) as Prisma.InputJsonValue,
       timeSpent: data.timeSpent || 0,
@@ -76,7 +100,8 @@ export async function submitSolutionAction(
   });
 
   const totalQuestionsCount = session.questionIds?.length || 0;
-  const isCompleted = allResults.length >= totalQuestionsCount && totalQuestionsCount > 0;
+  const isCompleted =
+    allResults.length >= totalQuestionsCount && totalQuestionsCount > 0;
 
   if (isCompleted) {
     await handleMockCompletion(data.sessionId, userId, allResults, feedback);
@@ -87,9 +112,9 @@ export async function submitSolutionAction(
     sessionId: result.sessionId,
     questionId: result.questionId,
     userCode: result.userCode,
-    testResults: result.testResults as unknown as MockResult['testResults'],
+    testResults: result.testResults as unknown as MockResult["testResults"],
     score: result.score,
-    feedback: result.feedback as unknown as MockResult['feedback'],
+    feedback: result.feedback as unknown as MockResult["feedback"],
     timeSpent: result.timeSpent,
     submittedAt: result.submittedAt,
     question,
@@ -101,7 +126,7 @@ async function handleMockCompletion(
   sessionId: string,
   userId: string,
   allResults: PrismaMockResult[],
-  feedback: Feedback
+  feedback: Feedback,
 ): Promise<void> {
   await prisma.mockSession.update({
     where: { id: sessionId },
@@ -109,24 +134,32 @@ async function handleMockCompletion(
   });
 
   const avgScore = Math.round(
-    allResults.reduce((sum, r) => sum + r.score, 0) / allResults.length
+    allResults.reduce((sum, r) => sum + r.score, 0) / allResults.length,
   );
 
   // Award XP
   try {
-    const { awardXP } = await import('../gamification.actions');
+    const { awardXP } = await import("../gamification.actions");
     const totalTime = allResults.reduce((sum, r) => sum + r.timeSpent, 0);
     const rewards = await awardXP(userId, avgScore, totalTime);
-    console.log(`[Gamification] User ${userId} earned ${rewards.xpEarned} XP, badges: ${rewards.newBadges.join(', ')}`);
+    console.log(
+      `[Gamification] User ${userId} earned ${rewards.xpEarned} XP, badges: ${rewards.newBadges.join(", ")}`,
+    );
   } catch (err) {
-    console.error('Failed to award XP:', err);
+    console.error("Failed to award XP:", err);
   }
 
   // Send notification
   try {
-    const { sendMockResultNotification } = await import('../notification.actions');
-    await sendMockResultNotification(userId, sessionId, avgScore, feedback.improvements.join('. '));
+    const { sendMockResultNotification } =
+      await import("../notification.actions");
+    await sendMockResultNotification(
+      userId,
+      sessionId,
+      avgScore,
+      feedback.improvements.join(". "),
+    );
   } catch (err) {
-    console.error('Failed to send mock result notification:', err);
+    console.error("Failed to send mock result notification:", err);
   }
 }

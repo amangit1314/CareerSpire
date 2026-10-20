@@ -8,6 +8,7 @@ piece.
 ## Current state (verified by reading the code, not assumed)
 
 `src/lib/ai/*` is a well-built LLM wrapper, nothing more:
+
 - `groq.ts` — single-turn `chat.completions.create`, no streaming, no tools.
 - `index.ts` (`aiChat`/`aiChatJSON`) — tries Groq first, falls back to Gemini on 429 or
   failure, JSON-mode with one retry on parse failure. Solid provider-fallback plumbing.

@@ -1,16 +1,21 @@
-import { z } from 'zod';
-import { aiChat } from '../index';
+import { z } from "zod";
+import { aiChat } from "../index";
+import { SyllabusDifficulty } from "@/types/enums";
 
 const SyllabusSchema = z.object({
-  topics: z.array(z.object({
-    id: z.string(),
-    title: z.string(),
-    description: z.string(),
-    difficulty: z.enum(['Beginner', 'Intermediate', 'Advanced']),
-  }))
+  topics: z.array(
+    z.object({
+      id: z.string(),
+      title: z.string(),
+      description: z.string(),
+      difficulty: z.nativeEnum(SyllabusDifficulty),
+    }),
+  ),
 });
 
-export async function generateTopicSyllabus(skill: string): Promise<z.infer<typeof SyllabusSchema>['topics']> {
+export async function generateTopicSyllabus(
+  skill: string,
+): Promise<z.infer<typeof SyllabusSchema>["topics"]> {
   const prompt = `Generate a comprehensive study syllabus for "${skill}".
 List 9-12 essential topics (chapters) that cover everything from basics to advanced concepts.
 For example, if skill is "JavaScript", include topics like "Variables & Scope", "Hoisting", "Closures", "Promises", "Event Loop", etc.
@@ -25,14 +30,27 @@ Format as JSON object with "topics" array.
 Return ONLY valid JSON. No markdown. No backticks. No explanation. No preamble.`;
 
   try {
-    const result = await aiChat(prompt, { temperature: 0.3, responseFormat: 'json_object' });
+    const result = await aiChat(prompt, {
+      temperature: 0.3,
+      responseFormat: "json_object",
+    });
     const content = JSON.parse(result.content);
     return SyllabusSchema.parse(content).topics;
   } catch (error) {
-    console.error('Failed to generate syllabus:', error);
+    console.error("Failed to generate syllabus:", error);
     return [
-      { id: 'basics', title: `${skill} Basics`, description: 'Core concepts', difficulty: 'Beginner' },
-      { id: 'advanced', title: `Advanced ${skill}`, description: 'Deep dive features', difficulty: 'Advanced' }
+      {
+        id: "basics",
+        title: `${skill} Basics`,
+        description: "Core concepts",
+        difficulty: SyllabusDifficulty.BEGINNER,
+      },
+      {
+        id: "advanced",
+        title: `Advanced ${skill}`,
+        description: "Deep dive features",
+        difficulty: SyllabusDifficulty.ADVANCED,
+      },
     ];
   }
 }
@@ -43,7 +61,10 @@ const GuideSchema = z.object({
   keyTakeaways: z.array(z.string()),
 });
 
-export async function generateTopicGuide(skill: string, topic: string): Promise<z.infer<typeof GuideSchema>> {
+export async function generateTopicGuide(
+  skill: string,
+  topic: string,
+): Promise<z.infer<typeof GuideSchema>> {
   const prompt = `Create a comprehensive deep-dive study guide for the topic "${topic}" in the context of "${skill}".
 
 The output should include:
@@ -61,15 +82,18 @@ Format as JSON:
 Return ONLY valid JSON. No markdown. No backticks. No explanation. No preamble.`;
 
   try {
-    const result = await aiChat(prompt, { temperature: 0.3, responseFormat: 'json_object' });
+    const result = await aiChat(prompt, {
+      temperature: 0.3,
+      responseFormat: "json_object",
+    });
     const content = JSON.parse(result.content);
     return GuideSchema.parse(content);
   } catch (error) {
-    console.error('Failed to generate guide:', error);
+    console.error("Failed to generate guide:", error);
     return {
       title: topic,
       content: `Failed to generate guide for **${topic}**. Please try again later.`,
-      keyTakeaways: []
+      keyTakeaways: [],
     };
   }
 }

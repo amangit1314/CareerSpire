@@ -1,6 +1,8 @@
-'use server';
+"use server";
 
-import { incrementRoadmapTutorMessages } from './roadmaps';
+import { incrementRoadmapTutorMessages } from "./roadmaps";
+import { SubscriptionTier } from "@/types/enums";
+import { TutorChatFailureReason, type TutorChatResult } from "./tutor.types";
 
 // ---------------------------------------------------------------------------
 // Adaptive AI Tutor
@@ -14,46 +16,50 @@ import { incrementRoadmapTutorMessages } from './roadmaps';
 // ---------------------------------------------------------------------------
 
 interface TutorQuestion {
-    title: string;
-    description: string;
-    topic: string;
-    difficulty?: string;
-    hints?: unknown; // typically string[] from JSON column
-    codeSnippet?: string | null;
-    language?: string | null;
-    expectedAnswerFormat?: string | null;
+  title: string;
+  description: string;
+  topic: string;
+  difficulty?: string;
+  hints?: unknown; // typically string[] from JSON column
+  codeSnippet?: string | null;
+  language?: string | null;
+  expectedAnswerFormat?: string | null;
 }
 
 interface TutorMessage {
-    role: 'ai' | 'user';
-    content: string;
+  role: "ai" | "user";
+  content: string;
 }
 
 function buildQuestionContext(q: TutorQuestion): string {
-    const hints = Array.isArray(q.hints) ? (q.hints as string[]) : [];
-    return [
-        `Title: ${q.title}`,
-        `Topic: ${q.topic}`,
-        q.difficulty ? `Difficulty: ${q.difficulty}` : null,
-        q.language ? `Language: ${q.language}` : null,
-        `Description: ${q.description}`,
-        q.codeSnippet ? `Reference Code:\n\`\`\`${q.language ?? ''}\n${q.codeSnippet}\n\`\`\`` : null,
-        hints.length
-            ? `Available hints (only reveal if the user explicitly asks for a hint, and only one at a time):\n${hints.map((h, i) => `${i + 1}. ${h}`).join('\n')}`
-            : null,
-    ]
-        .filter(Boolean)
-        .join('\n');
+  const hints = Array.isArray(q.hints) ? (q.hints as string[]) : [];
+  return [
+    `Title: ${q.title}`,
+    `Topic: ${q.topic}`,
+    q.difficulty ? `Difficulty: ${q.difficulty}` : null,
+    q.language ? `Language: ${q.language}` : null,
+    `Description: ${q.description}`,
+    q.codeSnippet
+      ? `Reference Code:\n\`\`\`${q.language ?? ""}\n${q.codeSnippet}\n\`\`\``
+      : null,
+    hints.length
+      ? `Available hints (only reveal if the user explicitly asks for a hint, and only one at a time):\n${hints.map((h, i) => `${i + 1}. ${h}`).join("\n")}`
+      : null,
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 /**
  * Generate a brief, Socratic opening message for a new tutoring session.
  * Returns markdown. 2 short sentences + 1 invitation — NOT a lecture.
  */
-export async function generateOpeningMessage(question: TutorQuestion): Promise<string> {
-    try {
-        const { llmClient } = await import('@/lib/ai/llmClient');
-        const prompt = `You are an adaptive technical tutor starting a practice session on CareerSpire.
+export async function generateOpeningMessage(
+  question: TutorQuestion,
+): Promise<string> {
+  try {
+    const { llmClient } = await import("@/lib/ai/llmClient");
+    const prompt = `You are an adaptive technical tutor starting a practice session on CareerSpire.
 
 ### Question
 ${buildQuestionContext(question)}
@@ -72,36 +78,13 @@ Strict rules:
 
 Output: only the message text in markdown. No preamble, no headings, no code fences wrapping the whole output.`;
 
-        const response = await llmClient(prompt);
-        return response.trim();
-    } catch (error) {
-        console.error('Failed to generate opening message:', error);
-        return `Let's work on **${question.title}** together. Before writing any code — in one line, what's your current mental model of this problem?`;
-    }
+    const response = await llmClient(prompt);
+    return response.trim();
+  } catch (error) {
+    console.error("Failed to generate opening message:", error);
+    return `Let's work on **${question.title}** together. Before writing any code — in one line, what's your current mental model of this problem?`;
+  }
 }
-
-/**
- * Discriminated return type for tutorChat.
- * - ok=true: markdown reply
- * - ok=false + reason='rate_limited': user hit daily cap (frontend shows soft pause)
- * - ok=false + reason='transport': transient LLM/network failure
- */
-export type TutorChatResult =
-    | {
-          ok: true;
-          content: string;
-          usage: { used: number; limit: number | null; remaining: number | null };
-      }
-    | {
-          ok: false;
-          reason: 'rate_limited';
-          usage: { used: number; limit: number; resetsAt: string };
-      }
-    | {
-          ok: false;
-          reason: 'transport';
-          message: string;
-      };
 
 /**
  * Adaptive tutor response. Single prompt handles all intents (submission,
@@ -109,60 +92,62 @@ export type TutorChatResult =
  * so the frontend can render success / rate-limit / error distinctly.
  */
 export async function tutorChat(
-    question: TutorQuestion,
-    history: TutorMessage[],
-    userMessage: string,
+  question: TutorQuestion,
+  history: TutorMessage[],
+  userMessage: string,
 ): Promise<TutorChatResult> {
-    // 1. Identify user & resolve tier for rate limiting
-    const { getCurrentUserId } = await import('@/lib/auth');
-    const { checkAndConsume } = await import('@/lib/tutor/rateLimit');
-    const { prisma } = await import('@/lib/prisma');
+  // 1. Identify user & resolve tier for rate limiting
+  const { getCurrentUserId } = await import("@/lib/auth");
+  const { checkAndConsume, ANONYMOUS_TIER } =
+    await import("@/lib/tutor/rateLimit");
+  const { prisma } = await import("@/lib/prisma");
 
-    const userId = await getCurrentUserId();
-    const tier = userId
-        ? (
-              await prisma.user.findUnique({
-                  where: { id: userId },
-                  select: { subscriptionTier: true },
-              })
-          )?.subscriptionTier ?? 'FREE'
-        : 'ANONYMOUS';
+  const userId = await getCurrentUserId();
+  const tier = userId
+    ? ((
+        await prisma.user.findUnique({
+          where: { id: userId },
+          select: { subscriptionTier: true },
+        })
+      )?.subscriptionTier ?? SubscriptionTier.FREE)
+    : ANONYMOUS_TIER;
 
-    // Anonymous users share a single bucket; still bounded but separate from paid users.
-    const rateLimitKey = userId ?? 'anonymous';
-    const usage = checkAndConsume(rateLimitKey, tier);
+  // Anonymous users share a single bucket; still bounded but separate from paid users.
+  const rateLimitKey = userId ?? "anonymous";
+  const usage = checkAndConsume(rateLimitKey, tier);
 
-    if (!usage.allowed) {
-        return {
-            ok: false,
-            reason: 'rate_limited',
-            usage: {
-                used: usage.used,
-                limit: usage.limit,
-                resetsAt: usage.resetsAt,
-            },
-        };
-    }
+  if (!usage.allowed) {
+    return {
+      ok: false,
+      reason: TutorChatFailureReason.RateLimited,
+      usage: {
+        used: usage.used,
+        limit: usage.limit,
+        resetsAt: usage.resetsAt,
+      },
+    };
+  }
 
-    // 2. Intent-based model routing — keep this BEFORE the try so routing
-    //    decisions are visible even in error logs.
-    const { classifyTutorIntent, providerForIntent } = await import('@/lib/tutor/router');
-    const intent = classifyTutorIntent(userMessage);
-    const provider = providerForIntent(intent);
+  // 2. Intent-based model routing — keep this BEFORE the try so routing
+  //    decisions are visible even in error logs.
+  const { classifyTutorIntent, providerForIntent } =
+    await import("@/lib/tutor/router");
+  const intent = classifyTutorIntent(userMessage);
+  const provider = providerForIntent(intent);
 
-    // 3. Build prompt
-    const recentHistory = history
-        .slice(-8)
-        .map((m) => `${m.role === 'ai' ? 'Tutor' : 'Learner'}: ${m.content}`)
-        .join('\n\n');
+  // 3. Build prompt
+  const recentHistory = history
+    .slice(-8)
+    .map((m) => `${m.role === "ai" ? "Tutor" : "Learner"}: ${m.content}`)
+    .join("\n\n");
 
-    const prompt = `You are an elite, adaptive technical tutor for CareerSpire, helping a learner practice ONE specific question.
+  const prompt = `You are an elite, adaptive technical tutor for CareerSpire, helping a learner practice ONE specific question.
 
 ### Question Context
 ${buildQuestionContext(question)}
 
 ### Conversation So Far
-${recentHistory || '(this is the first exchange)'}
+${recentHistory || "(this is the first exchange)"}
 
 ### Latest Learner Message
 """
@@ -201,37 +186,37 @@ Detect the learner's intent from their latest message and respond appropriately.
 
 Output: the tutor's reply only, in markdown.`;
 
-    // 4. Call the LLM with the chosen provider
-    try {
-        const { aiChat } = await import('@/lib/ai');
-        const result = await aiChat(prompt, {
-            provider, // undefined = default (Groq → Gemini fallback); 'gemini' = straight to flash
-            temperature: 0.7,
-        });
+  // 4. Call the LLM with the chosen provider
+  try {
+    const { aiChat } = await import("@/lib/ai");
+    const result = await aiChat(prompt, {
+      provider, // undefined = default (Groq → Gemini fallback); 'gemini' = straight to flash
+      temperature: 0.7,
+    });
 
-        // 5. Record engagement on the user's custom roadmap (if applicable).
-        // Fire-and-forget — don't block the response on telemetry.
-        if (userId) {
-            incrementRoadmapTutorMessages(userId, question.topic).catch((e) =>
-                console.error('roadmap engagement update failed:', e),
-            );
-        }
-
-        return {
-            ok: true,
-            content: result.content.trim(),
-            usage: {
-                used: usage.used,
-                limit: Number.isFinite(usage.limit) ? usage.limit : null,
-                remaining: Number.isFinite(usage.remaining) ? usage.remaining : null,
-            },
-        };
-    } catch (error) {
-        console.error('tutorChat LLM error:', error, { intent, provider });
-        return {
-            ok: false,
-            reason: 'transport',
-            message: "I hit a snag on my side — could you send that again?",
-        };
+    // 5. Record engagement on the user's custom roadmap (if applicable).
+    // Fire-and-forget — don't block the response on telemetry.
+    if (userId) {
+      incrementRoadmapTutorMessages(userId, question.topic).catch((e) =>
+        console.error("roadmap engagement update failed:", e),
+      );
     }
+
+    return {
+      ok: true,
+      content: result.content.trim(),
+      usage: {
+        used: usage.used,
+        limit: Number.isFinite(usage.limit) ? usage.limit : null,
+        remaining: Number.isFinite(usage.remaining) ? usage.remaining : null,
+      },
+    };
+  } catch (error) {
+    console.error("tutorChat LLM error:", error, { intent, provider });
+    return {
+      ok: false,
+      reason: TutorChatFailureReason.Transport,
+      message: "I hit a snag on my side — could you send that again?",
+    };
+  }
 }

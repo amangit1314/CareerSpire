@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import {
   Dialog,
@@ -6,31 +6,41 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Loader2, BookOpen } from 'lucide-react';
-import { cn, formatPrice } from '@/lib/utils';
-import { dmSans } from '@/lib/fonts';
-import { ADDON_LEARNING_PATH_PRICE } from '@/lib/pricing';
-import { useState } from 'react';
-import Link from 'next/link';
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Loader2, BookOpen } from "lucide-react";
+import { cn, formatPrice } from "@/lib/utils";
+import { dmSans } from "@/lib/fonts";
+import { ADDON_LEARNING_PATH_PRICE } from "@/lib/pricing";
+import { useState } from "react";
+import Link from "next/link";
+import { ROUTES } from "@/config/routes";
+import { LEARNING_PATH_GATE_CONTENT } from "@/config/content";
 
 interface LearningPathGateProps {
   open: boolean;
   onClose: () => void;
-  onPurchase: (itemId: string, amount: number, description: string) => Promise<void>;
+  onPurchase: (
+    itemId: string,
+    amount: number,
+    description: string,
+  ) => Promise<void>;
 }
 
-export function LearningPathGate({ open, onClose, onPurchase }: LearningPathGateProps) {
+export function LearningPathGate({
+  open,
+  onClose,
+  onPurchase,
+}: LearningPathGateProps) {
   const [processing, setProcessing] = useState(false);
 
   const handleBuy = async () => {
     setProcessing(true);
     try {
       await onPurchase(
-        'addon_learning_path',
+        "addon_learning_path",
         ADDON_LEARNING_PATH_PRICE,
-        'Extra Learning Path'
+        "Extra Learning Path",
       );
     } finally {
       setProcessing(false);
@@ -43,13 +53,12 @@ export function LearningPathGate({ open, onClose, onPurchase }: LearningPathGate
         <DialogHeader>
           <div className="flex items-center gap-2 mb-1">
             <BookOpen className="h-5 w-5 text-primary" />
-            <DialogTitle className={cn(dmSans.className, 'text-xl')}>
-              No learning paths left
+            <DialogTitle className={cn(dmSans.className, "text-xl")}>
+              {LEARNING_PATH_GATE_CONTENT.TITLE}
             </DialogTitle>
           </div>
           <DialogDescription>
-            You&apos;ve used all your learning paths this month. Get more
-            instantly.
+            {LEARNING_PATH_GATE_CONTENT.DESCRIPTION}
           </DialogDescription>
         </DialogHeader>
 
@@ -59,14 +68,15 @@ export function LearningPathGate({ open, onClose, onPurchase }: LearningPathGate
             disabled={processing}
             onClick={handleBuy}
           >
-            {processing && (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            )}
-            Buy extra path — {formatPrice(ADDON_LEARNING_PATH_PRICE)}
+            {processing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {LEARNING_PATH_GATE_CONTENT.BUY_PREFIX}{" "}
+            {formatPrice(ADDON_LEARNING_PATH_PRICE)}
           </Button>
 
           <Button asChild variant="outline" className="w-full cursor-pointer">
-            <Link href="/pricing">Upgrade your plan</Link>
+            <Link href={ROUTES.PRICING}>
+              {LEARNING_PATH_GATE_CONTENT.UPGRADE_PLAN}
+            </Link>
           </Button>
         </div>
 
@@ -77,7 +87,7 @@ export function LearningPathGate({ open, onClose, onPurchase }: LearningPathGate
             className="text-muted-foreground cursor-pointer"
             onClick={onClose}
           >
-            Maybe later
+            {LEARNING_PATH_GATE_CONTENT.MAYBE_LATER}
           </Button>
         </div>
       </DialogContent>

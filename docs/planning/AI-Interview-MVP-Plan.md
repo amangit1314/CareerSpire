@@ -4,6 +4,10 @@
 
 **Phase 1 (MVP):** Tech interview focus – DSA + coding (JS/Python) + HR/behavioral for fresh engineers and job seekers.
 
+> **2026-09-22 — GitHub/LinkedIn OAuth (via NextAuth) cut from v1 scope.**
+> Only email/password auth was ever built; OAuth below is deferred, not an
+> open gap to close. Revisit post-launch if there's real demand.
+
 ---
 
 ## 1. MVP Features & Requirements
@@ -11,17 +15,20 @@
 ### Core User Flows
 
 #### 1.1 Authentication & Onboarding
+
 - **Sign-up/Login:** Email + password, GitHub/LinkedIn OAuth integration (easier for devs).
 - **User Profile:** Role selection (fresher, experienced, gov-exam aspirant), experience level, target company/job type, resume upload (optional for later feature use).
 - **Email verification** and basic profile completion before first mock.
 
 #### 1.2 Free Tier (Freemium Hook)
+
 - **2 free mock interviews** on registration (no card required, no time limit).
 - Access to **5 sample DSA questions** (easy tier only).
 - Basic feedback after each mock (score, time taken, code quality, communication observations).
 - Limited dashboard: view only the last mock's results.
 
 #### 1.3 Mock Interview Generation & Execution
+
 - **Question Selection:** AI system generates 1–3 questions based on:
   - User experience level (fresher, intermediate, experienced).
   - Focus area (DSA, Java, JS, Python, HR).
@@ -42,6 +49,7 @@
   - Reasoning & aptitude (light; expand in Phase 2): number series, logic puzzles.
 
 #### 1.4 AI Feedback Engine
+
 - **Post-Mock Analysis:**
   - **Code Quality:** Correctness (pass/fail test cases), time/space complexity, edge cases handled, code clarity, best practices adherence.
   - **Communication:** Clarity, how well they explained approach, pace, handling of hints/clarifications.
@@ -55,6 +63,7 @@
   - **Action items:** Next 3 questions to practice based on weaknesses.
 
 #### 1.5 Dashboard & Progress Tracking
+
 - **Home:** Quick stats (mocks completed, avg score, favorite topics, next recommendation).
 - **Mock History:** List of past interviews with date, score, company type, questions asked, time spent.
 - **Progress Analytics:**
@@ -66,6 +75,7 @@
 - **Leaderboard (optional for MVP):** Weekly/monthly scores (anonymous; gamification).
 
 #### 1.6 Question Bank & Resources
+
 - **Curated questions:** Organized by:
   - Topic (array, linked list, tree, etc.).
   - Difficulty.
@@ -78,6 +88,7 @@
   - Curated YouTube playlists for weak areas.
 
 #### 1.7 Subscription & Payment
+
 - **Pricing:**
   - **Free:** 2 mocks + 5 sample questions + basic feedback.
   - **Pay-per-mock:** ₹99 per additional mock.
@@ -92,12 +103,14 @@
 ## 2. Tech Stack for MVP
 
 ### Backend
+
 - **Node.js + Express.js** (or NestJS for scalability later).
 - **TypeScript** for type safety.
 - **PostgreSQL + Prisma ORM:** User data, mocks history, question bank, subscription info.
 - **Redis:** Caching (user session, leaderboard data, frequently accessed questions).
 
 ### Frontend
+
 - **Next.js** (App Router) for SSR/CSR flexibility.
 - **React** for interactive components.
 - **TailwindCSS** for styling.
@@ -105,6 +118,7 @@
 - **Chart.js** or **Recharts** for analytics/progress graphs.
 
 ### AI & Agents
+
 - **LLM:** GPT-4o or Claude 3.5 Sonnet for:
   - Question generation (adaptive based on user level).
   - Code evaluation and feedback generation.
@@ -146,6 +160,7 @@
   ```
 
 ### Infrastructure & Deployment
+
 - **Backend:** Node.js on **Vercel** (serverless) or **Koyeb** (affordable, India-friendly).
 - **Database:** PostgreSQL on **Vercel Postgres** or **Supabase** (PostgreSQL + free tier generous for startups).
 - **Frontend:** Deployed on Vercel (integrated with Next.js).
@@ -153,6 +168,7 @@
 - **Email:** SendGrid or Resend for verification & notifications.
 
 ### Third-Party Services
+
 - **LLM APIs:** OpenAI (GPT-4o) or Anthropic (Claude).
 - **Payment:** Razorpay (for ₹ subscriptions).
 - **Authentication:** NextAuth.js (GitHub/LinkedIn OAuth) + JWT for API.
@@ -163,26 +179,31 @@
 ## 3. Agents & Automation Details
 
 ### Agent 1: Interview Generation Agent
+
 **Purpose:** Fetch relevant questions, adapt difficulty based on user history, generate interview package.
 
 **Inputs:**
+
 - User ID, experience level, weak topics, language preference.
 - Past mock results (to identify weak areas).
 
 **Process:**
+
 1. Query question bank: `SELECT * FROM questions WHERE difficulty = user_level AND topic IN (weak_topics) ORDER BY popularity LIMIT 5`
 2. Use GPT-4o with prompt:
    ```
-   "Given the candidate details (experience: {level}, weak topics: {topics}), 
+   "Given the candidate details (experience: {level}, weak topics: {topics}),
     select the 3 most suitable interview questions from this pool: {pool}.
     Consider: difficulty progression, relevance, educational value."
    ```
 3. Return 3 questions + metadata (topic, difficulty, expected time).
 
 **Output:**
+
 - Interview object: `{ questions: [...], estimatedTime: 45, interviewType: "DSA + HR" }`
 
 **Implementation:**
+
 ```typescript
 // Using Langbase SDK or LangChain.js
 const interviewGenerationAgent = async (userId: string) => {
@@ -195,7 +216,7 @@ const interviewGenerationAgent = async (userId: string) => {
 
   const llm = new OpenAI({ model: "gpt-4o" });
   const selectedQuestions = await llm.invoke(
-    `Select top 3 questions from ${JSON.stringify(questionPool)} for a ${user.level} developer weak in ${weakTopics.join(", ")}.`
+    `Select top 3 questions from ${JSON.stringify(questionPool)} for a ${user.level} developer weak in ${weakTopics.join(", ")}.`,
   );
 
   return { questions: selectedQuestions, estimatedTime: 45 };
@@ -203,14 +224,17 @@ const interviewGenerationAgent = async (userId: string) => {
 ```
 
 ### Agent 2: Code Evaluation & Feedback Agent
+
 **Purpose:** Evaluate submitted code, check correctness, analyze complexity, generate actionable feedback.
 
 **Inputs:**
+
 - User's code (JS/Python).
 - Test cases (predefined for each question).
 - Question details (expected approach, optimal complexity).
 
 **Process:**
+
 1. **Parse & Execute:**
    - Extract function from user code.
    - Run against test cases (using Node.js `vm` module or isolated sandbox).
@@ -230,6 +254,7 @@ const interviewGenerationAgent = async (userId: string) => {
    ```
 
 **Output:**
+
 ```json
 {
   "testPassRate": 80,
@@ -242,13 +267,14 @@ const interviewGenerationAgent = async (userId: string) => {
 ```
 
 **Implementation:**
+
 ```typescript
 const evaluateCodeAgent = async (submission: CodeSubmission) => {
   const testResults = runTests(submission.code, submission.question.testCases);
   const complexity = analyzeComplexity(submission.code);
-  
+
   const feedback = await llm.invoke(
-    `Code: ${submission.code}\nTests: ${JSON.stringify(testResults)}\nProvide feedback.`
+    `Code: ${submission.code}\nTests: ${JSON.stringify(testResults)}\nProvide feedback.`,
   );
 
   return { testPassRate: testResults.passRate, feedback, complexity };
@@ -256,13 +282,16 @@ const evaluateCodeAgent = async (submission: CodeSubmission) => {
 ```
 
 ### Agent 3: Analytics & Recommendation Agent
+
 **Purpose:** Analyze user performance trends, identify weak areas, recommend next questions/topics.
 
 **Inputs:**
+
 - User's mock history (scores, topics, time taken).
 - Global benchmarks (avg score by topic).
 
 **Process:**
+
 1. **Aggregation:**
    - Group mocks by topic.
    - Calculate: avg score, pass rate, time spent.
@@ -280,6 +309,7 @@ const evaluateCodeAgent = async (submission: CodeSubmission) => {
    ```
 
 **Output:**
+
 ```json
 {
   "weakTopics": ["dynamic-programming", "graphs"],
@@ -290,13 +320,16 @@ const evaluateCodeAgent = async (submission: CodeSubmission) => {
 ```
 
 ### Agent 4: HR/Behavioral Evaluation Agent (Future)
+
 **Purpose:** Evaluate HR responses for communication, culture fit, confidence.
 
 **Inputs:**
+
 - User's text/voice transcription for HR questions.
 - Expected answer framework.
 
 **Process:**
+
 1. **Transcription** (if voice; for MVP, text input is fine).
 2. **LLM Analysis:**
    ```
@@ -304,6 +337,7 @@ const evaluateCodeAgent = async (submission: CodeSubmission) => {
    ```
 
 **Output:**
+
 ```json
 {
   "clarity": 8,
@@ -319,6 +353,7 @@ const evaluateCodeAgent = async (submission: CodeSubmission) => {
 ## 4. MVP Launch Checklist
 
 ### Must-Have Features
+
 - [ ] User signup/login (email + GitHub OAuth).
 - [ ] 2 free mocks on registration.
 - [ ] AI mock interview generation (2-3 DSA/HR questions).
@@ -333,6 +368,7 @@ const evaluateCodeAgent = async (submission: CodeSubmission) => {
 - [ ] Analytics: score trend, weak topics, next recommendations.
 
 ### Nice-to-Have (Post-MVP)
+
 - [ ] LinkedIn OAuth.
 - [ ] Video/voice recording for soft skills.
 - [ ] Resume upload and parsing.
@@ -343,6 +379,7 @@ const evaluateCodeAgent = async (submission: CodeSubmission) => {
 - [ ] Batch onboarding for colleges/training institutes.
 
 ### Technical Pre-Launch
+
 - [ ] Secure all API keys (env vars).
 - [ ] Database migrations tested.
 - [ ] Error handling & logging (Sentry or similar).
@@ -356,9 +393,11 @@ const evaluateCodeAgent = async (submission: CodeSubmission) => {
 ## 5. Marketing the MVP
 
 ### Phase 1: Pre-Launch (Weeks 1–2)
+
 **Goal:** Build awareness & collect waitlist.
 
 #### 5.1 Content & Community
+
 - **Post on LinkedIn:**
   - Share your journey: "Building an AI interview prep for India's 1.5M engineers."
   - Behind-the-scenes: "Day 10: 500+ DSA questions curated", "Building the AI feedback engine."
@@ -376,6 +415,7 @@ const evaluateCodeAgent = async (submission: CodeSubmission) => {
   - GitHub issue/discussion threads for LeetCode/interview prep repos.
 
 #### 5.2 Landing Page
+
 - **Build on Vercel + Next.js in 1 day:**
   - Hero: "AI Mock Interviews, Real Feedback, ₹499/month."
   - 3 key benefits: "24/7 practice, personalized roadmaps, see your progress."
@@ -386,15 +426,18 @@ const evaluateCodeAgent = async (submission: CodeSubmission) => {
   - Countdown timer: "MVP launches Jan 25" (create urgency).
 
 #### 5.3 Email Sequence
+
 - **Day 0:** "You're on the waitlist! Here's what's coming."
 - **Day 5:** "Why AI interview prep is 10x better than courses" (blog link).
 - **Day 10:** "See how 100 beta users improved their DSA scores."
 - **Launch day:** "Go live. 2 free mocks waiting for you."
 
 ### Phase 2: MVP Launch (Weeks 3–4)
+
 **Goal:** Get 500–1K users in first 2 weeks.
 
 #### 5.4 Product Hunt Launch
+
 - **Day before:** Create PH account, write compelling description.
   - **Title:** "MortalInterview – AI Mock Interviews for India's Engineers"
   - **Tagline:** "Unlimited practice. Real feedback. ₹499/month."
@@ -406,12 +449,14 @@ const evaluateCodeAgent = async (submission: CodeSubmission) => {
   - **Target:** Top 5 in category → 200–400 upvotes, 100+ signups.
 
 #### 5.5 Indie Hackers
+
 - **Cross-post to Indie Hackers.**
   - Detailed post: "How I built an AI interview prep in 3 months (solo)."
   - Include: tech stack, challenges, learnings, metrics.
   - **Target:** 50–100 signups, 20–30 upvotes.
 
 #### 5.6 Influencer Outreach
+
 - **Micro-influencers in EdTech/dev space (10K–100K followers):**
   - Dev YouTubers (Dev Delight, CodeWithHarry followers, etc.).
   - LinkedIn creators (20k+ followers in EdTech).
@@ -420,6 +465,7 @@ const evaluateCodeAgent = async (submission: CodeSubmission) => {
   - **Realistic:** 5 influencers × 20 signups each = 100 warm signups.
 
 #### 5.7 Organic Channels
+
 - **SEO Keywords (long-term):**
   - "AI mock interview India"
   - "DSA practice with AI feedback"
@@ -435,9 +481,11 @@ const evaluateCodeAgent = async (submission: CodeSubmission) => {
   - Target: 1K views → 100–200 signups.
 
 ### Phase 3: Growth & Retention (Weeks 5–8)
+
 **Goal:** Achieve 1K–2K users, optimize for conversion to paid.
 
 #### 5.8 Viral Loops & Referrals
+
 - **Share Mock Results:**
   - After each mock, let users share results on LinkedIn/Twitter.
   - "I scored 85 on the TCS interview mock via MortalInterview. Try it!"
@@ -450,6 +498,7 @@ const evaluateCodeAgent = async (submission: CodeSubmission) => {
   - "Top scorer this week: @devuser scored 95 on Google DSA mocks."
 
 #### 5.9 Content Marketing
+
 - **Weekly Blog Posts (on your domain):**
   - Week 5: "Why 90% of engineers fail interviews (and how to fix it)."
   - Week 6: "DSA patterns every FAANG company asks in 2026."
@@ -461,15 +510,18 @@ const evaluateCodeAgent = async (submission: CodeSubmission) => {
   - Segment: New users, high performers (higher LTV), low performers (churn risk).
 
 #### 5.10 Direct Outreach
+
 - **Target Your Audience Directly:**
   - Find engineering college Discord/Telegram groups; share your tool.
   - DM active users on LeetCode discussions, GeeksforGeeks forums.
   - Connect with placement coordinators at Tier 2/3 colleges; offer bulk discounts.
 
 ### Phase 4: Scale (Months 3–4)
+
 **Goal:** Hit 5K users, $5K MRR, refine for expansion to aptitude/reasoning.
 
 #### 5.11 Paid Ads (After Proving PMF)
+
 - **LinkedIn Ads:**
   - Target: "Job title: Engineer, Student. Interest: Interview prep, EdTech."
   - Budget: ₹3K–5K/week.
@@ -482,6 +534,7 @@ const evaluateCodeAgent = async (submission: CodeSubmission) => {
   - Target conversion: 5–10% (sign-ups) × 20% (conversion to paid) = 1–2% CAC efficiency.
 
 #### 5.12 Retention & Upsell
+
 - **Retention Metrics:**
   - Weekly active users (WAU) / monthly active users (MAU).
   - Target: 30% WAU/MAU (good for EdTech SaaS).
@@ -493,6 +546,7 @@ const evaluateCodeAgent = async (submission: CodeSubmission) => {
   - Starter → Pro (₹499/month): "Get HR prep + resume review."
 
 #### 5.13 Metrics to Track
+
 - **Week 1–4 Goals:**
   - 500+ signups.
   - 50–100 paid conversions.
@@ -516,6 +570,7 @@ const evaluateCodeAgent = async (submission: CodeSubmission) => {
 ## 6. Quick Marketing Checklist
 
 ### Pre-Launch (Week 1–2)
+
 - [ ] Landing page live (Vercel + Convertkit).
 - [ ] LinkedIn strategy: Schedule 3 posts (journey, feature deep-dive, call-to-action).
 - [ ] Reddit: Identify 5 subreddits for posting.
@@ -524,6 +579,7 @@ const evaluateCodeAgent = async (submission: CodeSubmission) => {
 - [ ] Video demo: Create 30-sec demo (Loom).
 
 ### Launch Day (Week 3)
+
 - [ ] Product Hunt live + day-of engagement plan.
 - [ ] Indie Hackers post live.
 - [ ] Email waitlist (target 500+ recipients).
@@ -533,6 +589,7 @@ const evaluateCodeAgent = async (submission: CodeSubmission) => {
 - [ ] Monitor analytics; respond to all comments/questions.
 
 ### Growth Phase (Week 4–8)
+
 - [ ] Referral system live.
 - [ ] First blog post published + shared.
 - [ ] YouTube videos 1–3 uploaded.
@@ -546,11 +603,13 @@ const evaluateCodeAgent = async (submission: CodeSubmission) => {
 ## 7. Success Metrics & Milestones
 
 ### MVP Success Definition
+
 - **4-week target:** 1K signups, 100 paid users, ₹10K MRR.
 - **3-month target:** 5K users, 500 paid, ₹50K MRR, 30% WAU/MAU retention.
 - **1-year target:** 50K users, 5K paid, ₹500K MRR, validated model for Phase 2 (aptitude/reasoning/gov exams).
 
 ### Tracking Tools
+
 - **Analytics:** Vercel Analytics (free), custom event tracking via `gtag` for signups/conversions.
 - **Payments:** Razorpay dashboard (real-time MRR, churn).
 - **User Feedback:** Typeform surveys, Intercom for chat support.
@@ -561,25 +620,28 @@ const evaluateCodeAgent = async (submission: CodeSubmission) => {
 ## 8. Risk Mitigation & Contingency
 
 ### Risks & Solutions
-| Risk | Solution |
-|------|----------|
-| Low conversion (free → paid) | A/B test pricing; offer limited free tier to drive urgency. |
-| High churn (users leave after 1-2 mocks) | Implement onboarding flow; send "you're weak in X" recommendations. |
-| Poor LLM feedback quality | Start with GPT-4o; fine-tune prompts using user feedback; offer manual review option. |
-| Low organic reach | Invest ₹5K/month in LinkedIn ads early (cut losses if CAC > LTV). |
-| Competitor undercuts pricing | Focus on Indian market specificity; build brand loyalty early. |
-| Platform bugs / downtime | Daily backups; Sentry error tracking; GitHub status page. |
+
+| Risk                                     | Solution                                                                              |
+| ---------------------------------------- | ------------------------------------------------------------------------------------- |
+| Low conversion (free → paid)             | A/B test pricing; offer limited free tier to drive urgency.                           |
+| High churn (users leave after 1-2 mocks) | Implement onboarding flow; send "you're weak in X" recommendations.                   |
+| Poor LLM feedback quality                | Start with GPT-4o; fine-tune prompts using user feedback; offer manual review option. |
+| Low organic reach                        | Invest ₹5K/month in LinkedIn ads early (cut losses if CAC > LTV).                     |
+| Competitor undercuts pricing             | Focus on Indian market specificity; build brand loyalty early.                        |
+| Platform bugs / downtime                 | Daily backups; Sentry error tracking; GitHub status page.                             |
 
 ---
 
 ## 9. Post-MVP Roadmap (Phases 2–3)
 
 ### Phase 2 (Months 5–8): Aptitude & Reasoning
+
 - Add timed aptitude tests (quantitative, logical reasoning, verbal).
 - Partner with coaching institutes for bulk licensing.
 - Target: College placement cells + gov exam aspirants.
 
 ### Phase 3 (Months 9–12): Gov Exams & Multi-Language
+
 - SSC/Bank exams prep (aptitude + English).
 - Hindi support + regional languages.
 - White-label version for institutes.
@@ -603,6 +665,7 @@ const evaluateCodeAgent = async (submission: CodeSubmission) => {
 ## 11. Quick Reference: Tech Implementation Example
 
 ### Interview Generation Agent (Pseudocode)
+
 ```typescript
 import { OpenAI } from "openai";
 import { prisma } from "@/lib/prisma";
@@ -610,11 +673,11 @@ import { prisma } from "@/lib/prisma";
 const generateInterview = async (userId: string) => {
   const user = await prisma.user.findUnique({ where: { id: userId } });
   const weakTopics = await getWeakTopics(userId);
-  
+
   const questions = await prisma.question.findMany({
-    where: { 
+    where: {
       difficulty: user.level,
-      topic: { in: weakTopics.slice(0, 3) } 
+      topic: { in: weakTopics.slice(0, 3) },
     },
     take: 10,
   });
@@ -625,7 +688,7 @@ const generateInterview = async (userId: string) => {
     messages: [
       {
         role: "user",
-        content: `Select 2-3 interview questions for a ${user.level} dev weak in ${weakTopics.join(", ")} from: ${JSON.stringify(questions.map(q => ({ id: q.id, title: q.title, topic: q.topic, difficulty: q.difficulty })))}. Return IDs only.`,
+        content: `Select 2-3 interview questions for a ${user.level} dev weak in ${weakTopics.join(", ")} from: ${JSON.stringify(questions.map((q) => ({ id: q.id, title: q.title, topic: q.topic, difficulty: q.difficulty })))}. Return IDs only.`,
       },
     ],
   });

@@ -1,31 +1,49 @@
-import { z } from 'zod';
-import { aiChat } from '../index';
-import { Difficulty, QuestionType, ProgrammingLanguage, Framework, QuestionFormat, AnswerFormat } from '@/types/enums';
-import { normalizeEnum } from './normalize';
+import { z } from "zod";
+import { aiChat } from "../index";
+import {
+  Difficulty,
+  QuestionType,
+  ProgrammingLanguage,
+  Framework,
+  QuestionFormat,
+  AnswerFormat,
+  HRQuestionCategory,
+} from "@/types/enums";
+import { normalizeEnum } from "./normalize";
 
 const AISchema = z.object({
-  questions: z.array(z.object({
-    title: z.string(),
-    description: z.string(),
-    topic: z.string(),
-    difficulty: z.nativeEnum(Difficulty),
-    type: z.nativeEnum(QuestionType),
-    language: z.string().optional(),
-    testCases: z.array(z.object({
-      input: z.unknown(),
-      expectedOutput: z.unknown(),
-      isHidden: z.boolean().optional(),
-    })).optional().default([]),
-    expectedComplexity: z.string().optional(),
-    hints: z.array(z.string()),
-  })),
+  questions: z.array(
+    z.object({
+      title: z.string(),
+      description: z.string(),
+      topic: z.string(),
+      difficulty: z.nativeEnum(Difficulty),
+      type: z.nativeEnum(QuestionType),
+      language: z.string().optional(),
+      testCases: z
+        .array(
+          z.object({
+            input: z.unknown(),
+            expectedOutput: z.unknown(),
+            isHidden: z.boolean().optional(),
+          }),
+        )
+        .optional()
+        .default([]),
+      expectedComplexity: z.string().optional(),
+      hints: z.array(z.string()),
+    }),
+  ),
 });
 
-export async function generateAIQuestions(
-  options: { difficulty: string; type: string; count: number; topics: string[] }
-): Promise<z.infer<typeof AISchema>['questions']> {
+export async function generateAIQuestions(options: {
+  difficulty: string;
+  type: string;
+  count: number;
+  topics: string[];
+}): Promise<z.infer<typeof AISchema>["questions"]> {
   const prompt = `Generate ${options.count} ${options.difficulty} ${options.type} interview questions.
-Topics to cover: ${options.topics.join(', ') || 'Any common interview topics'}.
+Topics to cover: ${options.topics.join(", ") || "Any common interview topics"}.
 
 For each question, provide:
 - Title
@@ -46,12 +64,12 @@ Return ONLY valid JSON. No markdown. No backticks. No explanation. No preamble.`
   try {
     const result = await aiChat(prompt, {
       temperature: 0.3,
-      responseFormat: 'json_object',
+      responseFormat: "json_object",
     });
     const content = JSON.parse(result.content);
     return AISchema.parse(content).questions;
   } catch (error) {
-    console.error('Failed to generate AI questions:', error);
+    console.error("Failed to generate AI questions:", error);
     return [];
   }
 }
@@ -64,19 +82,24 @@ const DSAQuestionSchema = z.object({
   tags: z.array(z.string()),
   statement: z.string(),
   definitions: z.string().optional(),
-  examples: z.array(z.object({
-    input: z.string(),
-    output: z.string(),
-    explanation: z.string()
-  })).min(2).max(3),
+  examples: z
+    .array(
+      z.object({
+        input: z.string(),
+        output: z.string(),
+        explanation: z.string(),
+      }),
+    )
+    .min(2)
+    .max(3),
   constraints: z.array(z.string()),
   expectedComplexity: z.object({
     time: z.string(),
-    space: z.string().optional()
+    space: z.string().optional(),
   }),
   hints: z.array(z.string()).optional(),
   starterCode: z.string().optional(),
-  entryFunctionName: z.string().optional()
+  entryFunctionName: z.string().optional(),
 });
 
 // CODING Schema
@@ -85,31 +108,55 @@ const CodingQuestionSchema = z.object({
   title: z.string().optional(),
   question: z.string(),
   codeSnippet: z.string().nullable().optional(),
-  language: z.preprocess((val) => normalizeEnum(val, ProgrammingLanguage) || val, z.string()),
-  framework: z.preprocess((val) => normalizeEnum(val, Framework) || val, z.string().nullable()),
-  difficulty: z.preprocess((val) => normalizeEnum(val, Difficulty) || val, z.nativeEnum(Difficulty)),
-  questionFormat: z.preprocess((val) => typeof val === 'string' ? val.toUpperCase() : val, z.nativeEnum(QuestionFormat)).default(QuestionFormat.CODE_WRITING),
-  expectedAnswerFormat: z.preprocess((val) => typeof val === 'string' ? val.toUpperCase() : val, z.nativeEnum(AnswerFormat)),
+  language: z.preprocess(
+    (val) => normalizeEnum(val, ProgrammingLanguage) || val,
+    z.string(),
+  ),
+  framework: z.preprocess(
+    (val) => normalizeEnum(val, Framework) || val,
+    z.string().nullable(),
+  ),
+  difficulty: z.preprocess(
+    (val) => normalizeEnum(val, Difficulty) || val,
+    z.nativeEnum(Difficulty),
+  ),
+  questionFormat: z
+    .preprocess(
+      (val) => (typeof val === "string" ? val.toUpperCase() : val),
+      z.nativeEnum(QuestionFormat),
+    )
+    .default(QuestionFormat.CODE_WRITING),
+  expectedAnswerFormat: z.preprocess(
+    (val) => (typeof val === "string" ? val.toUpperCase() : val),
+    z.nativeEnum(AnswerFormat),
+  ),
   followUps: z.array(z.string()).default([]),
   tags: z.array(z.string()).default([]),
   expectedTimeMinutes: z.number(),
   entryFunctionName: z.string().optional(),
   starterCode: z.string().optional(),
-  examples: z.array(z.object({
-    input: z.string(),
-    output: z.string(),
-    explanation: z.string()
-  })).optional(),
-  constraints: z.array(z.string()).optional()
+  examples: z
+    .array(
+      z.object({
+        input: z.string(),
+        output: z.string(),
+        explanation: z.string(),
+      }),
+    )
+    .optional(),
+  constraints: z.array(z.string()).optional(),
 });
 
 // HR Schema
 const HRQuestionSchema = z.object({
   id: z.string().optional(),
   question: z.string(),
-  category: z.preprocess((val) => typeof val === 'string' ? val.toUpperCase() : val, z.enum(["BEHAVIORAL", "REFLECTION", "PUZZLE", "MOTIVATION", "CONFLICT", "LEADERSHIP", "OWNERSHIP"])),
+  category: z.preprocess(
+    (val) => (typeof val === "string" ? val.toUpperCase() : val),
+    z.nativeEnum(HRQuestionCategory),
+  ),
   guidance: z.string(),
-  expectedTimeMinutes: z.number()
+  expectedTimeMinutes: z.number(),
 });
 
 // ======== INFERRED TYPES ========
@@ -121,7 +168,10 @@ export type HRQuestion = z.infer<typeof HRQuestionSchema>;
 // Heterogeneous by design — stores DSAQuestion[]/CodingQuestion[]/HRQuestion[]
 // under different keys. getCachedQuestions<T>() casts back to the caller's
 // known type on read, same as before, just without the `any` escape hatch.
-const questionCache = new Map<string, { questions: unknown[]; expires: number }>();
+const questionCache = new Map<
+  string,
+  { questions: unknown[]; expires: number }
+>();
 const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 
 function getCachedQuestions<T = unknown>(key: string): T[] | null {
@@ -139,15 +189,15 @@ function getCachedQuestions<T = unknown>(key: string): T[] | null {
 function setCachedQuestions<T>(key: string, questions: T[]) {
   questionCache.set(key, {
     questions,
-    expires: Date.now() + CACHE_TTL
+    expires: Date.now() + CACHE_TTL,
   });
 }
 
 // ======== GENERATORS ========
 
 export async function generateDSAQuestions(opts: {
-  difficulty: Difficulty,
-  count?: number
+  difficulty: Difficulty;
+  count?: number;
 }): Promise<DSAQuestion[]> {
   const count = opts.count ?? 4;
   const cacheKey = `dsa_${opts.difficulty}_${count}`;
@@ -191,21 +241,24 @@ Format example:
 ONLY RETURN JSON.
 `;
 
-  const result = await aiChat(prompt, { temperature: 0.3, responseFormat: 'json_object' });
+  const result = await aiChat(prompt, {
+    temperature: 0.3,
+    responseFormat: "json_object",
+  });
   let data: { questions?: unknown[] };
   try {
     data = JSON.parse(result.content);
   } catch (parseError) {
-    console.error('[LLM] Failed to parse DSA questions JSON:', parseError);
-    throw new Error('AI returned invalid response. Please try again.');
+    console.error("[LLM] Failed to parse DSA questions JSON:", parseError);
+    throw new Error("AI returned invalid response. Please try again.");
   }
 
   let questions;
   try {
     questions = z.array(DSAQuestionSchema).parse(data.questions);
   } catch (validationError) {
-    console.error('[LLM] DSA questions failed validation:', validationError);
-    throw new Error('AI generated invalid question format. Please try again.');
+    console.error("[LLM] DSA questions failed validation:", validationError);
+    throw new Error("AI generated invalid question format. Please try again.");
   }
   setCachedQuestions(cacheKey, questions);
   return questions;
@@ -217,18 +270,21 @@ export async function generateCodingQuestions(opts: {
   difficulty: Difficulty;
   count: number;
 }): Promise<(CodingQuestion & { id: string })[]> {
-  const cacheKey = `coding_${opts.language}_${opts.framework ?? 'none'}_${opts.difficulty}_${opts.count}`;
+  const cacheKey = `coding_${opts.language}_${opts.framework ?? "none"}_${opts.difficulty}_${opts.count}`;
   const cached = getCachedQuestions<CodingQuestion & { id: string }>(cacheKey);
   if (cached) return cached;
 
   // Split into 2 parallel batches if count is high
   const batchSize = Math.ceil(opts.count / 2);
-  const batches = [batchSize, opts.count - batchSize].filter(c => c > 0);
+  const batches = [batchSize, opts.count - batchSize].filter((c) => c > 0);
 
-  console.log(`[LLM] Generating ${opts.count} Coding questions in ${batches.length} parallel batches...`);
+  console.log(
+    `[LLM] Generating ${opts.count} Coding questions in ${batches.length} parallel batches...`,
+  );
 
-  const results = await Promise.all(batches.map(async (count) => {
-    const prompt = `
+  const results = await Promise.all(
+    batches.map(async (count) => {
+      const prompt = `
 You are a Senior Technical Interviewer at a top-tier tech company (Google, Meta, Netflix).
 Your goal is to conduct a rigorous, professional, and insightful technical interview.
 Generate ${count} high-quality interview questions.
@@ -275,23 +331,35 @@ Generate a diverse mix of the following types:
 
 Return ONLY JSON: { "questions": [...] }
 `;
-    const aiResult = await aiChat(prompt, { temperature: 0.3, responseFormat: 'json_object' });
-    let data: { questions?: unknown[] };
-    try {
-      data = JSON.parse(aiResult.content);
-    } catch (parseError) {
-      console.error('[LLM] Failed to parse Coding questions JSON:', parseError);
-      return [];
-    }
-    try {
-      return z.array(CodingQuestionSchema).parse(data.questions);
-    } catch (validationError) {
-      console.error('[LLM] Coding questions failed validation:', validationError);
-      return [];
-    }
-  }));
+      const aiResult = await aiChat(prompt, {
+        temperature: 0.3,
+        responseFormat: "json_object",
+      });
+      let data: { questions?: unknown[] };
+      try {
+        data = JSON.parse(aiResult.content);
+      } catch (parseError) {
+        console.error(
+          "[LLM] Failed to parse Coding questions JSON:",
+          parseError,
+        );
+        return [];
+      }
+      try {
+        return z.array(CodingQuestionSchema).parse(data.questions);
+      } catch (validationError) {
+        console.error(
+          "[LLM] Coding questions failed validation:",
+          validationError,
+        );
+        return [];
+      }
+    }),
+  );
 
-  const questions = results.flat().map((q, i) => ({ ...q, id: `coding_${Date.now()}_${i}` }));
+  const questions = results
+    .flat()
+    .map((q, i) => ({ ...q, id: `coding_${Date.now()}_${i}` }));
   setCachedQuestions(cacheKey, questions);
   return questions;
 }
@@ -306,12 +374,15 @@ export async function generateHRQuestions(opts: {
 
   // Split into 2 batches
   const batchSize = Math.ceil(opts.count / 2);
-  const batches = [batchSize, opts.count - batchSize].filter(c => c > 0);
+  const batches = [batchSize, opts.count - batchSize].filter((c) => c > 0);
 
-  console.log(`[LLM] Generating ${opts.count} HR questions in ${batches.length} parallel batches...`);
+  console.log(
+    `[LLM] Generating ${opts.count} HR questions in ${batches.length} parallel batches...`,
+  );
 
-  const results = await Promise.all(batches.map(async (count) => {
-    const prompt = `
+  const results = await Promise.all(
+    batches.map(async (count) => {
+      const prompt = `
 Generate ${count} HR/behavioral interview questions.
 
 Mix categories:
@@ -331,23 +402,29 @@ For each include:
 Return only JSON:
 { "questions": [ ... ] }
 `;
-    const aiResult = await aiChat(prompt, { temperature: 0.3, responseFormat: 'json_object' });
-    let data: { questions?: unknown[] };
-    try {
-      data = JSON.parse(aiResult.content);
-    } catch (parseError) {
-      console.error('[LLM] Failed to parse HR questions JSON:', parseError);
-      return [];
-    }
-    try {
-      return z.array(HRQuestionSchema).parse(data.questions);
-    } catch (validationError) {
-      console.error('[LLM] HR questions failed validation:', validationError);
-      return [];
-    }
-  }));
+      const aiResult = await aiChat(prompt, {
+        temperature: 0.3,
+        responseFormat: "json_object",
+      });
+      let data: { questions?: unknown[] };
+      try {
+        data = JSON.parse(aiResult.content);
+      } catch (parseError) {
+        console.error("[LLM] Failed to parse HR questions JSON:", parseError);
+        return [];
+      }
+      try {
+        return z.array(HRQuestionSchema).parse(data.questions);
+      } catch (validationError) {
+        console.error("[LLM] HR questions failed validation:", validationError);
+        return [];
+      }
+    }),
+  );
 
-  const questions = results.flat().map((q, i) => ({ ...q, id: `hr_${Date.now()}_${i}` }));
+  const questions = results
+    .flat()
+    .map((q, i) => ({ ...q, id: `hr_${Date.now()}_${i}` }));
   setCachedQuestions(cacheKey, questions);
   return questions;
 }

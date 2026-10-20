@@ -52,6 +52,18 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-inverse: var(--inverse);
+  --color-inverse-foreground: var(--inverse-foreground);
+
+  /* Two-weight system: every font-medium/bold/extrabold/black utility in the
+     codebase collapses to Regular (400, unchanged --font-weight-normal) or
+     Semibold (600). One override point instead of a mechanical find/replace
+     across every component — see docs/DECISIONS.md. */
+  --font-weight-medium: 400;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 600;
+  --font-weight-extrabold: 600;
+  --font-weight-black: 600;
 }
 
 /* =============================================================================
@@ -65,6 +77,12 @@
   --background: oklch(0.995 0.002 260);
   --foreground: oklch(0.16 0.025 260);
 
+  /* Fixed-dark surface for panels that must stay dark in both themes
+     (e.g. CTA banners) — deliberately NOT redeclared in .dark, so it
+     never flips and can't reproduce the light-on-light contrast bug. */
+  --inverse: oklch(0.16 0.025 260);
+  --inverse-foreground: oklch(0.995 0.002 260);
+
   /* Card & Popover surfaces */
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.16 0.025 260);
@@ -77,7 +95,7 @@
 
   /* Secondary */
   --secondary: oklch(0.965 0.008 260);
-  --secondary-foreground: oklch(0.20 0.025 260);
+  --secondary-foreground: oklch(0.2 0.025 260);
 
   /* Muted */
   --muted: oklch(0.96 0.006 260);
@@ -85,7 +103,7 @@
 
   /* Accent */
   --accent: oklch(0.96 0.012 260);
-  --accent-foreground: oklch(0.20 0.025 260);
+  --accent-foreground: oklch(0.2 0.025 260);
 
   /* Destructive */
   --destructive: oklch(0.577 0.245 27.3);
@@ -106,7 +124,7 @@
 
   /* Charts */
   --chart-1: oklch(0.646 0.222 41.1);
-  --chart-2: oklch(0.60 0.118 184.7);
+  --chart-2: oklch(0.6 0.118 184.7);
   --chart-3: oklch(0.398 0.07 227.4);
   --chart-4: oklch(0.828 0.189 84.4);
   --chart-5: oklch(0.769 0.188 70.1);
@@ -114,10 +132,10 @@
   /* Sidebar */
   --sidebar: oklch(0.985 0.004 260);
   --sidebar-foreground: oklch(0.16 0.025 260);
-  --sidebar-primary: oklch(0.20 0.025 260);
+  --sidebar-primary: oklch(0.2 0.025 260);
   --sidebar-primary-foreground: oklch(0.985 0.005 260);
   --sidebar-accent: oklch(0.96 0.008 260);
-  --sidebar-accent-foreground: oklch(0.20 0.025 260);
+  --sidebar-accent-foreground: oklch(0.2 0.025 260);
   --sidebar-border: oklch(0.915 0.008 260);
   --sidebar-ring: oklch(0.545 0.245 262);
 
@@ -145,9 +163,9 @@
   --foreground: oklch(0.96 0.005 260);
 
   /* Card & Popover surfaces - Slightly elevated */
-  --card: oklch(0.20 0.018 260);
+  --card: oklch(0.2 0.018 260);
   --card-foreground: oklch(0.96 0.005 260);
-  --popover: oklch(0.20 0.018 260);
+  --popover: oklch(0.2 0.018 260);
   --popover-foreground: oklch(0.96 0.005 260);
 
   /* Primary - Vibrant blue for dark backgrounds */
@@ -175,8 +193,8 @@
   --success-foreground: oklch(0.155 0.018 155);
 
   /* Warning */
-  --warning: oklch(0.80 0.17 75);
-  --warning-foreground: oklch(0.20 0.025 75);
+  --warning: oklch(0.8 0.17 75);
+  --warning-foreground: oklch(0.2 0.025 75);
 
   /* Borders & inputs */
   --border: oklch(1 0 0 / 10%);
@@ -216,19 +234,14 @@
 
   body {
     @apply bg-background text-foreground;
+    /* Single typeface — see docs/DECISIONS.md. Headings inherit this, no
+       separate font-family override. */
     font-family: var(--font-inter), system-ui, sans-serif;
-    font-feature-settings: "rlig" 1, "calt" 1;
+    font-feature-settings:
+      "rlig" 1,
+      "calt" 1;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-  }
-
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6 {
-    font-family: var(--font-dm-sans), sans-serif;
   }
 }
 
@@ -237,6 +250,34 @@
    ============================================================================= */
 
 @layer utilities {
+  /* =============================================================================
+     TYPE SCALE — exactly three semantic sizes, two weights (400/600 above).
+     Every heading/body/label in redesigned pages uses one of these three
+     instead of picking from Tailwind's full text-xs..text-9xl range.
+     Sizes still respond across breakpoints (that's normal responsive type,
+     not a 4th/5th size) — the constraint is three *roles*, not one frozen px
+     value. See docs/DECISIONS.md.
+     ============================================================================= */
+
+  /* Role 1: Display — page/section headlines (h1, hero, big CTA) */
+  .text-display {
+    @apply text-4xl sm:text-6xl md:text-7xl font-semibold tracking-tight leading-[1.05];
+  }
+
+  /* Role 2: Heading — subheads and card/component titles (h2/h3) */
+  .text-heading {
+    @apply text-xl sm:text-2xl md:text-3xl font-semibold tracking-tight leading-snug;
+  }
+
+  /* Role 3: Body — paragraphs, buttons, nav, and (via case/tracking/color,
+     never a smaller font-size) eyebrows and micro-labels. */
+  .text-body {
+    @apply text-base font-normal leading-relaxed;
+  }
+
+  .text-label {
+    @apply text-base font-semibold uppercase tracking-[0.14em] text-muted-foreground;
+  }
 
   /* Glass effects */
   .glass {
@@ -251,9 +292,11 @@
   }
 
   .glass-primary {
-    background: linear-gradient(135deg,
-        oklch(from var(--primary) l c h / 0.1) 0%,
-        oklch(from var(--primary) l c h / 0.05) 100%);
+    background: linear-gradient(
+      135deg,
+      oklch(from var(--primary) l c h / 0.1) 0%,
+      oklch(from var(--primary) l c h / 0.05) 100%
+    );
     backdrop-filter: var(--glass-blur);
     -webkit-backdrop-filter: var(--glass-blur);
     border: 1px solid oklch(from var(--primary) l c h / 0.2);
@@ -267,9 +310,21 @@
   /* Mesh gradient background */
   .mesh-gradient {
     background-image:
-      radial-gradient(at 0% 0%, oklch(from var(--primary) l c h / 0.12) 0, transparent 50%),
-      radial-gradient(at 50% 0%, oklch(from var(--secondary) l c h / 0.08) 0, transparent 50%),
-      radial-gradient(at 100% 0%, oklch(from var(--primary) l c h / 0.12) 0, transparent 50%);
+      radial-gradient(
+        at 0% 0%,
+        oklch(from var(--primary) l c h / 0.12) 0,
+        transparent 50%
+      ),
+      radial-gradient(
+        at 50% 0%,
+        oklch(from var(--secondary) l c h / 0.08) 0,
+        transparent 50%
+      ),
+      radial-gradient(
+        at 100% 0%,
+        oklch(from var(--primary) l c h / 0.12) 0,
+        transparent 50%
+      );
   }
 
   /* Card hover effect - subtle border highlight + shadow */
@@ -287,6 +342,17 @@
   /* Section fade-in animation */
   .section-fade-in {
     animation: sectionFadeIn 0.7s var(--animation-smooth) both;
+  }
+
+  /* Generous section rhythm — replaces the mix of py-16/py-20/py-24 ad hoc
+     values on marketing pages with one consistent, roomier vertical
+     cadence so sections stop reading as cramped. */
+  .section-space {
+    @apply py-24 sm:py-32 md:py-40;
+  }
+
+  .section-space-sm {
+    @apply py-16 sm:py-20 md:py-24;
   }
 
   /* Button glow effect */

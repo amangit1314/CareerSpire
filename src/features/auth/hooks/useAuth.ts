@@ -1,9 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { authService } from '@/features/auth/services/auth.service';
-import type { SignUpRequest, SignInRequest, User } from '@/types';
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { authService } from "@/features/auth/services/auth.service";
+import type { SignUpRequest, SignInRequest, User } from "@/types";
 
-const AUTH_QUERY_KEY = ['auth'] as const;
-const USER_QUERY_KEY = ['auth', 'user'] as const;
+const AUTH_QUERY_KEY = ["auth"] as const;
+const USER_QUERY_KEY = ["auth", "user"] as const;
 
 export const useAuth = () => {
   const queryClient = useQueryClient();
@@ -15,11 +15,10 @@ export const useAuth = () => {
         return await authService.getCurrentUser();
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error);
-        console.error('Failed to fetch user:', message);
+        console.error("Failed to fetch user:", message);
         return null;
       }
     },
-    enabled: typeof window !== 'undefined',
     staleTime: 5 * 60 * 1000,
     retry: false,
   });

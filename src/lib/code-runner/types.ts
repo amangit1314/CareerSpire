@@ -1,7 +1,11 @@
+import { Verdict } from "@/types/enums";
+
+export { Verdict };
+
 export interface TestResult {
   passed: number;
   total: number;
-  verdict: 'AC' | 'WA' | 'TLE' | 'RE' | 'CE' | 'UNKNOWN';
+  verdict: Verdict;
   details: Array<{
     input: unknown;
     expected: unknown;

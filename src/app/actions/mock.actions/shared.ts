@@ -3,17 +3,32 @@
 // were file-private in the original mock.actions.ts too), so they stay
 // plain functions that the 'use server' action files import.
 
-import { prisma } from '@/lib/prisma';
-import { Difficulty, QuestionType, MockSessionStatus, ProgrammingLanguage, Framework, QuestionFormat, AnswerFormat, SubscriptionTier } from '@/types/enums';
-import type { MockSession, TestCase, Question as AppQuestion, MockResult } from '@/types';
-import { AppError } from '@/lib/errors';
-import type { BankQuestion } from '@/lib/practice/question-bank';
+import { prisma } from "@/lib/prisma";
+import {
+  Difficulty,
+  QuestionType,
+  MockSessionStatus,
+  ProgrammingLanguage,
+  Framework,
+  QuestionFormat,
+  AnswerFormat,
+  SubscriptionTier,
+  ErrorCode,
+} from "@/types/enums";
+import type {
+  MockSession,
+  TestCase,
+  Question as AppQuestion,
+  MockResult,
+} from "@/types";
+import { AppError } from "@/lib/errors";
+import type { BankQuestion } from "@/lib/practice/question-bank";
 import type {
   User as PrismaUser,
   Question as PrismaQuestion,
   MockResult as PrismaMockResult,
   Prisma,
-} from '@prisma/client';
+} from "@prisma/client";
 
 // Prisma MockResult with nested question included
 export type PrismaMockResultWithQuestion = PrismaMockResult & {
@@ -51,9 +66,9 @@ export function mapMockResult(r: PrismaMockResultWithQuestion): MockResult {
     sessionId: r.sessionId,
     questionId: r.questionId,
     userCode: r.userCode,
-    testResults: r.testResults as unknown as MockResult['testResults'],
+    testResults: r.testResults as unknown as MockResult["testResults"],
     score: r.score,
-    feedback: r.feedback as unknown as MockResult['feedback'],
+    feedback: r.feedback as unknown as MockResult["feedback"],
     timeSpent: r.timeSpent,
     submittedAt: r.submittedAt,
     ...(r.question && { question: mapQuestion(r.question) }),
@@ -61,10 +76,17 @@ export function mapMockResult(r: PrismaMockResultWithQuestion): MockResult {
 }
 
 /** Check mock quota and deduct one mock credit */
-export async function checkAndDeductMock(userId: string, user: PrismaUser): Promise<void> {
-  if (user.subscriptionTier === 'FREE') {
+export async function checkAndDeductMock(
+  userId: string,
+  user: PrismaUser,
+): Promise<void> {
+  if (user.subscriptionTier === SubscriptionTier.FREE) {
     if (user.freeMocksRemaining <= 0) {
-      throw new AppError('No mocks remaining. Buy a mock pack or upgrade your plan.', 'NO_MOCKS_REMAINING', 403);
+      throw new AppError(
+        "No mocks remaining. Buy a mock pack or upgrade your plan.",
+        ErrorCode.NO_MOCKS_REMAINING,
+        403,
+      );
     }
     await prisma.user.update({
       where: { id: userId },
@@ -72,12 +94,12 @@ export async function checkAndDeductMock(userId: string, user: PrismaUser): Prom
     });
   } else {
     // Paid tier — enforce monthly quota
-    const { getPlanByTier } = await import('@/lib/pricing');
+    const { getPlanByTier } = await import("@/lib/pricing");
     const plan = getPlanByTier(user.subscriptionTier as SubscriptionTier);
     if (user.mocksUsedThisCycle >= plan.mocksPerMonth) {
       throw new AppError(
         `You've used all ${plan.mocksPerMonth} mocks this month. Buy a mock pack or upgrade.`,
-        'NO_MOCKS_REMAINING',
+        ErrorCode.NO_MOCKS_REMAINING,
         403,
       );
     }
@@ -94,14 +116,18 @@ export async function createMockSession(
   interviewType: QuestionType,
   questions: PrismaQuestion[],
   user: PrismaUser,
-  opts?: { difficulty?: Difficulty; language?: ProgrammingLanguage | null; framework?: Framework | null }
+  opts?: {
+    difficulty?: Difficulty;
+    language?: ProgrammingLanguage | null;
+    framework?: Framework | null;
+  },
 ): Promise<MockSession> {
   const questionIds = questions.map((q) => q.id);
 
   const session = await prisma.mockSession.create({
     data: {
       userId,
-      status: 'IN_PROGRESS',
+      status: MockSessionStatus.IN_PROGRESS,
       interviewType,
       questionIds,
       ...(opts?.difficulty && { difficulty: opts.difficulty }),
@@ -126,9 +152,13 @@ export async function createMockSession(
 }
 
 /** Filter cached questions by difficulty, pick random subset */
-export function selectFromPool(questions: BankQuestion[], difficulty: Difficulty, count: number): BankQuestion[] {
+export function selectFromPool(
+  questions: BankQuestion[],
+  difficulty: Difficulty,
+  count: number,
+): BankQuestion[] {
   const byDifficulty = questions.filter(
-    (q) => q.difficulty?.toLowerCase() === difficulty.toLowerCase()
+    (q) => q.difficulty?.toLowerCase() === difficulty.toLowerCase(),
   );
   const pool = byDifficulty.length >= count ? byDifficulty : questions;
   return pool.sort(() => Math.random() - 0.5).slice(0, count);
@@ -154,28 +184,34 @@ export async function saveBankQuestionsToDb(
   questions: BankQuestion[],
   type: QuestionType,
   difficulty: Difficulty,
-  opts?: { language?: ProgrammingLanguage | null; framework?: Framework | null }
+  opts?: {
+    language?: ProgrammingLanguage | null;
+    framework?: Framework | null;
+  },
 ): Promise<PrismaQuestion[]> {
   const saved: PrismaQuestion[] = [];
   for (const q of questions) {
-    const record = await prisma.question.create({
-      data: {
-        title: q.question?.substring(0, 100) || `${type} Question`,
-        description: q.question || q.answer_guide || '',
-        topic: q.topic || type,
-        difficulty: difficulty,
-        type,
-        ...(opts?.language && { language: opts.language }),
-        ...(opts?.framework && { framework: opts.framework || 'NONE' }),
-        tags: [q.topic].filter((t): t is string => Boolean(t)),
-        hints: [],
-        testCases: extractTestCases(q),
-        entryFunctionName: q.entryFunctionName || q.entry_function_name || null,
-        starterCode: q.starterCode || q.starter_code || null,
-        expectedTimeMinutes: 10,
-        source: 'AI',
-      },
-    }).catch(() => null);
+    const record = await prisma.question
+      .create({
+        data: {
+          title: q.question?.substring(0, 100) || `${type} Question`,
+          description: q.question || q.answer_guide || "",
+          topic: q.topic || type,
+          difficulty: difficulty,
+          type,
+          ...(opts?.language && { language: opts.language }),
+          ...(opts?.framework && { framework: opts.framework || "NONE" }),
+          tags: [q.topic].filter((t): t is string => Boolean(t)),
+          hints: [],
+          testCases: extractTestCases(q),
+          entryFunctionName:
+            q.entryFunctionName || q.entry_function_name || null,
+          starterCode: q.starterCode || q.starter_code || null,
+          expectedTimeMinutes: 10,
+          source: "AI",
+        },
+      })
+      .catch(() => null);
     if (record) saved.push(record);
   }
   return saved;
@@ -189,9 +225,12 @@ export interface DSAQuestion {
 
 export function formatDSADescription(q: DSAQuestion): string {
   const examples = q.examples
-    .map((ex, i) => `**Example ${i + 1}:**\n- **Input:** ${ex.input}\n- **Output:** ${ex.output}\n- **Explanation:** ${ex.explanation}`)
-    .join('\n\n');
-  const constraints = q.constraints?.map((c) => `- ${c}`).join('\n') || 'None';
+    .map(
+      (ex, i) =>
+        `**Example ${i + 1}:**\n- **Input:** ${ex.input}\n- **Output:** ${ex.output}\n- **Explanation:** ${ex.explanation}`,
+    )
+    .join("\n\n");
+  const constraints = q.constraints?.map((c) => `- ${c}`).join("\n") || "None";
   return `${q.statement}\n\n### Examples\n${examples}\n\n### Constraints\n${constraints}`;
 }
 
@@ -204,10 +243,10 @@ export interface CodingQuestionInput {
 export function formatCodingDescription(q: CodingQuestionInput): string {
   let desc = q.question;
   if (q.examples?.length) {
-    desc += `\n\n### Examples\n${q.examples.map((ex, i) => `**Example ${i + 1}:**\n- **Input:** ${ex.input}\n- **Output:** ${ex.output}\n- **Explanation:** ${ex.explanation}`).join('\n\n')}`;
+    desc += `\n\n### Examples\n${q.examples.map((ex, i) => `**Example ${i + 1}:**\n- **Input:** ${ex.input}\n- **Output:** ${ex.output}\n- **Explanation:** ${ex.explanation}`).join("\n\n")}`;
   }
   if (q.constraints?.length) {
-    desc += `\n\n### Constraints\n${q.constraints.map((c) => `- ${c}`).join('\n')}`;
+    desc += `\n\n### Constraints\n${q.constraints.map((c) => `- ${c}`).join("\n")}`;
   }
   return desc;
 }

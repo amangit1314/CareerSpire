@@ -1,16 +1,22 @@
-import { motion } from 'framer-motion';
-import { Card, CardContent } from '@/components/ui/card';
-import { Calendar, Eye, Heart, Play, Users } from 'lucide-react';
-import { dmSans } from '@/lib/fonts';
-import { cn } from '@/lib/utils';
-import type { VideoInterview } from '../types';
+import { motion } from "framer-motion";
+import { Card, CardContent } from "@/components/ui/card";
+import { Calendar, Eye, Heart, Play, Users } from "lucide-react";
+import { dmSans } from "@/lib/fonts";
+import { cn } from "@/lib/utils";
+import { Difficulty } from "@/types/enums";
+import { VIDEO_CARD_CONTENT } from "@/config/content";
+import type { VideoInterview } from "@/types";
 
 function getDifficultyColor(difficulty: string | null) {
   switch (difficulty?.toUpperCase()) {
-    case 'EASY': return 'bg-green-500/10 text-green-500 border-green-500/20';
-    case 'MEDIUM': return 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20';
-    case 'HARD': return 'bg-red-500/10 text-red-500 border-red-500/20';
-    default: return 'bg-primary/10 text-primary border-primary/20';
+    case Difficulty.EASY:
+      return "bg-green-500/10 text-green-500 border-green-500/20";
+    case Difficulty.MEDIUM:
+      return "bg-yellow-500/10 text-yellow-500 border-yellow-500/20";
+    case Difficulty.HARD:
+      return "bg-red-500/10 text-red-500 border-red-500/20";
+    default:
+      return "bg-primary/10 text-primary border-primary/20";
   }
 }
 
@@ -37,11 +43,14 @@ export function VideoCard({ video, index }: VideoCardProps) {
 
           {video.difficulty && (
             <div className="absolute top-3 left-3">
-              <span className={cn(
-                "px-3 py-1 rounded-full text-xs font-semibold border",
-                getDifficultyColor(video.difficulty)
-              )}>
-                {video.difficulty.charAt(0).toUpperCase() + video.difficulty.slice(1).toLowerCase()}
+              <span
+                className={cn(
+                  "px-3 py-1 rounded-full text-xs font-semibold border",
+                  getDifficultyColor(video.difficulty),
+                )}
+              >
+                {video.difficulty.charAt(0).toUpperCase() +
+                  video.difficulty.slice(1).toLowerCase()}
               </span>
             </div>
           )}
@@ -49,8 +58,14 @@ export function VideoCard({ video, index }: VideoCardProps) {
 
         <CardContent className="p-4">
           <div className="mb-3">
-            <h3 className={cn(dmSans.className, "font-semibold line-clamp-2 mb-2")}>
-              {video.user.name || 'Anonymous'}&apos;s Interview
+            <h3
+              className={cn(
+                dmSans.className,
+                "font-semibold line-clamp-2 mb-2",
+              )}
+            >
+              {video.user.name || VIDEO_CARD_CONTENT.ANONYMOUS_NAME}
+              {VIDEO_CARD_CONTENT.TITLE_SUFFIX}
             </h3>
           </div>
 
@@ -60,7 +75,9 @@ export function VideoCard({ video, index }: VideoCardProps) {
               <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
                 <Users className="h-4 w-4 text-primary" />
               </div>
-              <span className="text-sm font-medium">{video.user.name || 'Anonymous'}</span>
+              <span className="text-sm font-medium">
+                {video.user.name || VIDEO_CARD_CONTENT.ANONYMOUS_NAME}
+              </span>
             </div>
 
             <div className="flex items-center gap-4 text-sm text-muted-foreground">
@@ -78,10 +95,10 @@ export function VideoCard({ video, index }: VideoCardProps) {
           {/* Date */}
           <div className="mt-3 text-xs text-muted-foreground flex items-center gap-1">
             <Calendar className="h-3 w-3" />
-            {new Date(video.createdAt).toLocaleDateString('en-US', {
-              month: 'short',
-              day: 'numeric',
-              year: 'numeric'
+            {new Date(video.createdAt).toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
             })}
           </div>
         </CardContent>

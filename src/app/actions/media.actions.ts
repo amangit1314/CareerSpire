@@ -1,15 +1,19 @@
-'use server';
+"use server";
 
-import { prisma } from '@/lib/prisma';
-import { createSignedUploadUrl, getSignedUrl } from '@/lib/supabase/storage';
-import { requireAuth } from '@/lib/auth';
-import { AppError } from '@/lib/errors';
-import { z } from 'zod';
+import { prisma } from "@/lib/prisma";
+import { createSignedUploadUrl, getSignedUrl } from "@/lib/supabase/storage";
+import { requireAuth } from "@/lib/auth";
+import { AppError } from "@/lib/errors";
+import { ErrorCode } from "@/types/enums";
+import { z } from "zod";
 
 const uploadMediaSchema = z.object({
   fileName: z.string().min(1).max(255),
   contentType: z.string().min(1),
-  size: z.number().min(1).max(100 * 1024 * 1024), // 100MB max
+  size: z
+    .number()
+    .min(1)
+    .max(100 * 1024 * 1024), // 100MB max
 });
 
 export async function createMediaUploadUrlAction(input: unknown) {
@@ -21,14 +25,14 @@ export async function createMediaUploadUrlAction(input: unknown) {
       userId,
       data.fileName,
       data.contentType,
-      data.size
+      data.size,
     );
 
     // Store media object metadata
     const mediaObject = await prisma.mediaObject.create({
       data: {
         userId,
-        bucket: 'media',
+        bucket: "media",
         path,
         contentType: data.contentType,
         size: data.size,
@@ -44,9 +48,9 @@ export async function createMediaUploadUrlAction(input: unknown) {
     };
   } catch (error: unknown) {
     throw new AppError(
-      error instanceof Error ? error.message : 'Failed to create upload URL',
-      'MEDIA_UPLOAD_ERROR',
-      400
+      error instanceof Error ? error.message : "Failed to create upload URL",
+      ErrorCode.MEDIA_UPLOAD_ERROR,
+      400,
     );
   }
 }
@@ -62,11 +66,14 @@ export async function getMediaSignedUrlAction(mediaId: string) {
   });
 
   if (!mediaObject) {
-    throw new AppError('Media not found', 'NOT_FOUND', 404);
+    throw new AppError("Media not found", ErrorCode.NOT_FOUND, 404);
   }
 
   // Check if signed URL is still valid
-  if (mediaObject.signedUrlExpires && mediaObject.signedUrlExpires > new Date()) {
+  if (
+    mediaObject.signedUrlExpires &&
+    mediaObject.signedUrlExpires > new Date()
+  ) {
     // Return existing signed URL if still valid
     const signedUrl = await getSignedUrl(mediaObject.path);
     return { signedUrl, expiresAt: mediaObject.signedUrlExpires };
@@ -95,11 +102,11 @@ export async function deleteMediaAction(mediaId: string) {
   });
 
   if (!mediaObject) {
-    throw new AppError('Media not found', 'NOT_FOUND', 404);
+    throw new AppError("Media not found", ErrorCode.NOT_FOUND, 404);
   }
 
   // Delete from Supabase storage
-  const { deleteMedia } = await import('@/lib/supabase/storage');
+  const { deleteMedia } = await import("@/lib/supabase/storage");
   await deleteMedia(mediaObject.path);
 
   // Delete from database

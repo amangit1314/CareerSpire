@@ -1,12 +1,12 @@
-'use server';
+"use server";
 
-import { prisma } from '@/lib/prisma';
-import { requireAuth } from '@/lib/auth';
-import { AppError } from '@/lib/errors';
-import type { Payment } from '@/types';
-import type { Payment as PrismaPayment } from '@prisma/client';
-import { SubscriptionTier, PaymentStatus } from '@/types/enums';
-import { PLANS, getPlanByTier } from '@/lib/pricing';
+import { prisma } from "@/lib/prisma";
+import { requireAuth } from "@/lib/auth";
+import { AppError } from "@/lib/errors";
+import type { Payment } from "@/types";
+import type { Payment as PrismaPayment } from "@prisma/client";
+import { SubscriptionTier, PaymentStatus, ErrorCode } from "@/types/enums";
+import { PLANS, getPlanByTier } from "@/lib/pricing";
 
 export interface BillingData {
   plan: SubscriptionTier;
@@ -26,19 +26,22 @@ export async function getBillingDataAction(): Promise<BillingData> {
   });
 
   if (!user) {
-    throw new AppError('User not found', 'USER_NOT_FOUND', 404);
+    throw new AppError("User not found", ErrorCode.USER_NOT_FOUND, 404);
   }
 
   const payments = await prisma.payment.findMany({
     where: { userId },
-    orderBy: { createdAt: 'desc' },
+    orderBy: { createdAt: "desc" },
     take: 50,
   });
 
-  const tier = (user.subscriptionTier as SubscriptionTier) ?? SubscriptionTier.FREE;
+  const tier =
+    (user.subscriptionTier as SubscriptionTier) ?? SubscriptionTier.FREE;
   const planActive =
     tier === SubscriptionTier.FREE ||
-    (user.subscriptionEndsAt ? new Date(user.subscriptionEndsAt) > new Date() : false);
+    (user.subscriptionEndsAt
+      ? new Date(user.subscriptionEndsAt) > new Date()
+      : false);
 
   const plan = getPlanByTier(tier);
 

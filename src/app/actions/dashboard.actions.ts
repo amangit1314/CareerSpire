@@ -1,24 +1,26 @@
-'use server';
+"use server";
 
-import { prisma } from '@/lib/prisma';
-import { format } from 'date-fns';
-import type { DashboardStats } from '@/types';
-import { SubscriptionTier } from '@/types/enums';
+import { prisma } from "@/lib/prisma";
+import { format } from "date-fns";
+import type { DashboardStats } from "@/types";
+import { SubscriptionTier, MockSessionStatus } from "@/types/enums";
 
-export async function getDashboardStatsAction(userId: string): Promise<DashboardStats> {
+export async function getDashboardStatsAction(
+  userId: string,
+): Promise<DashboardStats> {
   // Get user profile
   const user = await prisma.user.findUnique({
     where: { id: userId },
   });
 
   if (!user) {
-    throw new Error('User not found');
+    throw new Error("User not found");
   }
 
   // Get all sessions
   const sessions = await prisma.mockSession.findMany({
     where: { userId },
-    orderBy: { startedAt: 'desc' },
+    orderBy: { startedAt: "desc" },
   });
 
   // Get all results
@@ -33,7 +35,9 @@ export async function getDashboardStatsAction(userId: string): Promise<Dashboard
 
   // Calculate stats
   const totalMocks = sessions.length;
-  const completedMocks = sessions.filter((s) => s.status === 'COMPLETED').length;
+  const completedMocks = sessions.filter(
+    (s) => s.status === MockSessionStatus.COMPLETED,
+  ).length;
 
   const scores = allResults.map((r) => r.score);
   const averageScore =
@@ -67,8 +71,9 @@ export async function getDashboardStatsAction(userId: string): Promise<Dashboard
     const sessionScore =
       sessionResults.length > 0
         ? Math.round(
-          sessionResults.reduce((sum, r) => sum + r.score, 0) / sessionResults.length
-        )
+            sessionResults.reduce((sum, r) => sum + r.score, 0) /
+              sessionResults.length,
+          )
         : 0;
 
     return {
@@ -84,16 +89,19 @@ export async function getDashboardStatsAction(userId: string): Promise<Dashboard
     .slice(0, 10)
     .reverse()
     .map((session) => {
-      const sessionResults = allResults.filter((r) => r.sessionId === session.id);
+      const sessionResults = allResults.filter(
+        (r) => r.sessionId === session.id,
+      );
       const sessionScore =
         sessionResults.length > 0
           ? Math.round(
-            sessionResults.reduce((sum, r) => sum + r.score, 0) / sessionResults.length
-          )
+              sessionResults.reduce((sum, r) => sum + r.score, 0) /
+                sessionResults.length,
+            )
           : 0;
 
       return {
-        date: format(session.startedAt, 'MMM dd'),
+        date: format(session.startedAt, "MMM dd"),
         score: sessionScore,
       };
     });
